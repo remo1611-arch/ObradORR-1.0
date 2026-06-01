@@ -1,1 +1,1 @@
-swiftremo_sql_fase6.72.9_cache_total_imports
+swiftremo_sql_fase6.72.10_fix_sintaxis_app
