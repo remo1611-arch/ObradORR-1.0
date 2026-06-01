@@ -1,4 +1,4 @@
-# SwiftRemo · publicación pública 6.67
+# SwiftRemo · publicación pública 6.68
 
 Paquete mínimo para GitHub Pages.
 
@@ -14,6 +14,11 @@ Incluye solo lo necesario para ejecutar la app:
 No incluye scripts de desarrollo, SQL fuente, migraciones ni auditorías históricas internas.
 
 
-## Fase 6.67
+## Fase 6.68
 
 Añade clasificación orientativa de calidad en Biblioteca: completas, revisables, pobres y archivadas. No modifica cálculo, persistencia, impresión ni base docente.
+
+
+## Fase 6.68
+
+Mejora dirigida de fichas actuales: lote culinario prioritario, saneamiento de Pan rápido y recalculado de pesos base panaderos.

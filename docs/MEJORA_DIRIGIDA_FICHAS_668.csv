@@ -1,0 +1,15 @@
+tipo,id,nombre,intervencion
+culinary,REC-CROQUETAS-JAMON,Croquetas de jamón,Proceso/APPCC/servicio específico reforzado
+culinary,REC-LASAÑA-BOLOÑESA-CLASICA,Lasaña boloñesa,Proceso/APPCC/servicio específico reforzado
+culinary,REC-CALDO-GALLEGO,Caldo gallego,Proceso/APPCC/servicio específico reforzado
+culinary,REC-GAZPACHO-ANDALUZ,Gazpacho andaluz,Proceso/APPCC/servicio específico reforzado
+culinary,REC-BROWNIE-CHOCOLATE-NUECES,Brownie de chocolate y nueces,Proceso/APPCC/servicio específico reforzado
+culinary,REC-TORRIJAS,Torrijas de leche,Proceso/APPCC/servicio específico reforzado
+culinary,REC-BICA-GALLEGA,Bica gallega,Proceso/APPCC/servicio específico reforzado
+culinary,REC-MARMITAKO,Marmitako de bonito,Proceso/APPCC/servicio específico reforzado
+culinary,REC-SALSA-TOMATE,Salsa de tomate,Proceso/APPCC/servicio específico reforzado
+culinary,REC-CALDO-CORTO-PESCADO,Caldo corto para pescado,Proceso/APPCC/servicio específico reforzado
+bakery,pan-rapido-pedro,Pan rápido,"Saneada contradicción: pasa de notas legacy no válidas a pan directo coherente; levadura seca 5 % → 1,5 %"
+bakery,bica-de-laza,Bica de Laza,Notas y contrato técnico docente reforzados
+bakery,torta-de-nata-pedro,Torta de nata,Notas y contrato técnico docente reforzados
+bakery,*,Fórmulas panaderas,Base raw weight recalculado desde porcentajes panaderos para 99 fórmulas

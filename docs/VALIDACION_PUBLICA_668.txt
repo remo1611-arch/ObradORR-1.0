@@ -1,0 +1,15 @@
+Fase 6.68 · validación mejora dirigida de fichas actuales
+
+OK paquete público limpio mantenido
+OK sin scripts/sql/migration
+OK sin __pycache__ ni .pyc
+OK cache ?v=6680
+OK metadatos SQLite 6.68
+OK ingredients = 743
+OK culinary_recipes = 206
+OK bakery_recipes = 99
+OK lote culinario prioritario reforzado = 10 fichas
+OK lote panadero reforzado = Pan rápido, Bica de Laza, Torta de nata
+OK base_raw_weight_g panadero recalculado desde porcentajes = 99 fórmulas
+OK Pan rápido sin contradicción legacy de receta no validada
+OK no se modifican cálculo, persistencia, pedido ni impresión
