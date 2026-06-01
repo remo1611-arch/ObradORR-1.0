@@ -2,7 +2,7 @@
 
 Aplicación docente para aula-taller de Cocina, Pastelería y Panadería: prácticas, fichas técnicas, formulación panadera, pedidos e impresión A4.
 
-Versión pública: **Fase 6.70.1 · Reorganización UX por flujo docente validada
+Versión pública: **Fase 6.71 · Shell docente limpio**.
 
 ## Uso
 
@@ -38,9 +38,9 @@ No se incorporan fotografías en esta fase. Las futuras imágenes deberán ser p
 No deben usarse fotografías tomadas de internet sin licencia clara.
 
 
-Versión pública actual: `swiftremo_sql_fase6.70.1_reorganizacion_ux_flujo_docente_validada`.
+Versión pública actual: `swiftremo_sql_fase6.71_shell_docente_limpio`.
 
 
 ## Versión publicada
 
-Fase 6.70.4 · Interfaz guiada por estado.
+Fase 6.71 · Shell docente limpio.

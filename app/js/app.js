@@ -184,6 +184,13 @@ function bindEvents() {
       focusPracticeSearchV6703();
       return;
     }
+    const shellAction = ev.target.closest?.("[data-shell-action]");
+    if (shellAction) {
+      ev.preventDefault();
+      const action = shellAction.dataset.shellAction || "";
+      if (action === "archive-selection") { createSessionFromSelection(); return; }
+      if (action === "clear-selection") { clearSelection(); return; }
+    }
     const tabButton = ev.target.closest?.("[data-tab]");
     if (tabButton && !tabButton.dataset.tabBound) {
       ev.preventDefault();
@@ -1105,7 +1112,7 @@ function getWorkflowStateV6704() {
       stage: hasItems ? (orderRows.length ? "ready" : "selection") : "empty",
       nextAction: hasItems ? "Revisar pedido" : "Añadir elaboración",
       nextHelp: hasItems
-        ? "La práctica ya tiene elaboraciones. Revisa el pedido y prepara la salida documental."
+        ? "La práctica ya tiene elaboraciones. El siguiente paso es revisar pedido o preparar salida documental."
         : "La práctica está vacía. Añade primero una elaboración desde el buscador."
     };
   } catch (err) {
@@ -1135,7 +1142,7 @@ function workflowSummaryHtmlV6704(wf, context = "panel") {
       <div class="workflow-state-card-6704 empty">
         <div>
           <b>Práctica vacía</b>
-          <span>Solo se muestran las acciones útiles para empezar. Pedido, salida e impresión se activarán al añadir la primera elaboración.</span>
+          <span>La app mantiene bloqueados Pedido y Salida hasta que añadas una elaboración. El siguiente paso real es buscar y añadir.</span>
         </div>
         ${workflowStepsHtmlV6704(wf)}
         <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="library">Abrir biblioteca</button></div>
@@ -1144,12 +1151,42 @@ function workflowSummaryHtmlV6704(wf, context = "panel") {
   return `
     <div class="workflow-state-card-6704 ready">
       <div>
-        <b>Práctica preparada para continuar</b>
+        <b>Práctica activa</b>
         <span>${fmtNumber(wf.itemCount,0)} elaboración(es) · ${fmtNumber(wf.orderLineCount,0)} línea(s) de pedido · coste estimado ${fmtMoney(wf.orderCost || wf.estimatedCost || 0)}.</span>
       </div>
       ${workflowStepsHtmlV6704(wf)}
       <div class="actions"><button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Preparar salida</button></div>
     </div>`;
+}
+
+
+function shellActionButtonHtmlV671(wf, area = "practice") {
+  if (!wf?.hasItems) {
+    if (area === "order") {
+      return `<button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="selection">Volver a práctica</button>`;
+    }
+    return `<button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="library">Biblioteca avanzada</button>`;
+  }
+  if (area === "order") {
+    return `<button type="button" class="btn primary" data-tab="print">Preparar salida</button><button type="button" class="btn ghost" data-tab="selection">Volver a práctica</button>`;
+  }
+  if (area === "practice-next") {
+    return `<button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Preparar salida</button><button type="button" class="btn ghost" data-tab="audit">Revisar calidad</button>`;
+  }
+  return `<button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Preparar salida</button><button type="button" class="btn ghost" data-shell-action="archive-selection">Archivar como sesión</button><button type="button" class="btn danger" data-shell-action="clear-selection">Vaciar</button>`;
+}
+
+function renderShellActionsV671(wf) {
+  const practiceActions = document.querySelector("#practiceActionsV671");
+  if (practiceActions) practiceActions.innerHTML = shellActionButtonHtmlV671(wf, "practice");
+  const practiceNext = document.querySelector("#practiceNextActionsV671");
+  if (practiceNext) practiceNext.innerHTML = shellActionButtonHtmlV671(wf, "practice-next");
+  const orderActions = document.querySelector("#orderActionsV671");
+  if (orderActions) orderActions.innerHTML = shellActionButtonHtmlV671(wf, "order");
+  const outputGrid = document.querySelector("#outputActionsGridV671");
+  if (outputGrid) outputGrid.classList.toggle("shell-output-grid-disabled-671", !wf.hasItems);
+  const printHistoryCard = document.querySelector("#printHistoryCardV623");
+  if (printHistoryCard) printHistoryCard.classList.toggle("shell-secondary-empty-671", printHistoryCard.classList.contains("is-empty"));
 }
 
 function applyWorkflowButtonStateV6704(wf) {
@@ -1204,15 +1241,16 @@ function renderWorkflowStateV6704() {
   const order = document.querySelector("#orderStateHintV6704");
   if (order) {
     order.innerHTML = wf.hasItems
-      ? `<div class="workflow-state-card-6704 ready"><b>Pedido disponible</b><span>Revisa cantidades, unidades, proveedor, zona y coste antes de imprimir.</span></div>`
+      ? `<div class="workflow-state-card-6704 ready"><b>Pedido disponible</b><span>Revisa cantidades, unidades, proveedor, zona y coste. La impresión se hace desde Salida.</span></div>`
       : `<div class="workflow-state-card-6704 empty"><b>Pedido bloqueado</b><span>El pedido se genera automáticamente cuando la práctica tiene elaboraciones.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
   }
   const output = document.querySelector("#outputStateHintV6704");
   if (output) {
     output.innerHTML = wf.hasItems
-      ? `<div class="workflow-state-card-6704 ready"><b>Salida preparada</b><span>Elige dossier, fichas, pedido u opciones avanzadas para la práctica actual.</span></div>`
+      ? `<div class="workflow-state-card-6704 ready"><b>Salida preparada</b><span>Centro único para generar dossier, fichas, pedido u opciones avanzadas.</span></div>`
       : `<div class="workflow-state-card-6704 empty"><b>Salida no disponible todavía</b><span>Añade al menos una elaboración para activar la impresión y la exportación documental.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
   }
+  renderShellActionsV671(wf);
   applyWorkflowButtonStateV6704(wf);
 }
 
@@ -2032,6 +2070,8 @@ async function clearSelection() {
     renderSelection();
     renderOrder();
     renderWorkflowStateV6704();
+    const activeTab = document.querySelector(".tab-section.active")?.id?.replace("tab-", "");
+    if (activeTab === "order" || activeTab === "print") switchTab("selection");
     await autosave({ backup: false, reason: "vaciar práctica actual" });
     toast("Práctica actual vaciada.", "warn");
   } catch (err) { console.error(err); toast(err.message, "err"); }

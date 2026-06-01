@@ -1,0 +1,8 @@
+VALIDACION PUBLICA FASE 6.71
+
+OK estructura pública mínima comprobada.
+OK sintaxis JavaScript validada con Node.
+OK app/sqlite.html usa cache tag ?v=6710.
+OK shell docente limpio sin cambios de esquema SQL.
+OK botones principales generados por estado desde renderShellActionsV671.
+OK impresión concentrada en Salida y copias concentradas en Datos.

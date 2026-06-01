@@ -1185,3 +1185,21 @@ body[data-workflow-state="empty"] .practice-main-actions-642 { gap: .45rem; }
   .workflow-state-card-6704 .actions { display: grid; grid-template-columns: 1fr; }
   .workflow-steps-6704 { gap: .3rem; }
 }
+
+
+/* Fase 6.71 · Shell docente limpio */
+.shell-command-grid-671 .shell-secondary-card-671{background:#fff;border-style:dashed;}
+.shell-primary-card-671{outline:3px solid rgba(35,116,71,.14);}
+.shell-actions-671{align-items:center;}
+.shell-actions-671 .btn{min-height:2.35rem;}
+.shell-output-grid-671{transition:opacity .15s ease;}
+.shell-output-grid-disabled-671{opacity:.48;pointer-events:none;filter:grayscale(.18);}
+.shell-secondary-empty-671{display:none!important;}
+#orderActionsV671 .btn.primary{background:#355c74;border-color:#355c74;color:#fff;}
+body[data-workflow-state="empty"] #tab-selection .practice-main-actions-642 .btn.danger,
+body[data-workflow-state="empty"] #tab-selection .practice-main-actions-642 [data-shell-action="archive-selection"]{display:none!important;}
+body[data-workflow-state="empty"] #tab-order .order-guidance-619{display:none;}
+@media(max-width:720px){
+  .shell-actions-671{display:grid!important;grid-template-columns:1fr;width:100%;}
+  .shell-actions-671 .btn{width:100%;}
+}
