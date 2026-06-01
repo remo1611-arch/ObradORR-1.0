@@ -4,3 +4,24 @@ __pycache__/
 *.pyd
 .DS_Store
 Thumbs.db
+
+# SwiftRemo · datos privados locales
+private/
+db/local/
+db/*.private.sqlite
+db/*_privado.sqlite
+db/*carlos*.sqlite
+db/*Carlos*.sqlite
+exports/
+*.local.sqlite
+*.personal.sqlite
+*.privado.sqlite
+assets/photos/private/
+assets/photos/carlos/
+
+
+# Paquetes privados generados fuera del repositorio
+NO_SUBIR_GITHUB_*
+*_FOTOS_BLOB.sqlite
+*_PRIVADO.sqlite
+*_PRIVATE.sqlite

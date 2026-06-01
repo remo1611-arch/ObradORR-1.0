@@ -2,7 +2,7 @@
 
 Aplicación docente para aula-taller de Cocina, Pastelería y Panadería: prácticas, fichas técnicas, formulación panadera, pedidos e impresión A4.
 
-Versión pública: **Fase 6.71 · Shell docente limpio**.
+Versión pública: **Fase 6.72.5 · Paquetes privados y fotos BLOB locales**.
 
 ## Uso
 
@@ -33,19 +33,24 @@ Consulta `NOTICE.md` y `AVISO_LEGAL.md`.
 
 ## Fotografías
 
-No se incorporan fotografías en esta fase. Las futuras imágenes deberán ser propias, de dominio público, CC0, Creative Commons compatible con atribución verificable, o contar con permiso expreso.
+La base pública no incorpora fotografías privadas. Las fotos de paquetes locales pueden guardarse como BLOB optimizado dentro de una copia `.sqlite` privada, siempre que sean propias, de dominio público, Creative Commons compatible con atribución verificable o cuenten con permiso expreso.
 
-No deben usarse fotografías tomadas de internet sin licencia clara.
+No deben publicarse fotografías privadas en GitHub ni usarse fotografías tomadas de internet sin licencia clara.
 
 
-Versión pública actual: `swiftremo_sql_fase6.72.4_interfaz_docente_final
+Versión pública actual: `swiftremo_sql_fase6.72.5_private_media_blob`
 
 
 ## Versión publicada
 
-Fase 6.71 · Shell docente limpio.
+Fase 6.72.5 · Paquetes privados y fotos BLOB locales.
 
 
 ## Interfaz docente 6.72.3
 
 La navegación principal se organiza en cuatro dominios: **Taller / Histórico / Archivo técnico / Sistema**. Las pantallas internas heredadas se conservan como transición funcional hasta completar la sustitución por adaptadores.
+
+
+## Fase 6.72.6
+
+Paquetes privados con fotos BLOB y vínculos pendientes: las fotos pueden importarse antes que las fichas privadas y quedan conservadas en la base local.

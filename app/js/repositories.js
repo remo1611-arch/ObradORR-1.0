@@ -985,7 +985,12 @@ export class Repository {
     const obj = { app: "SwiftRemo", version: (this.db.selectValue("SELECT value FROM app_meta WHERE key='schema_version'") || "swiftremo_sql_desconocido"), exportedAt: new Date().toISOString(), tables: {}, views: {} };
     for (const t of tables) {
       const ident = safeIdent(t);
-      if (ident) obj.tables[t] = this.db.query(`SELECT * FROM ${ident};`);
+      if (!ident) continue;
+      if (t === "media_assets") {
+        obj.tables[t] = this.db.query(`SELECT id, source_id, file_name, mime_type, width, height, size_bytes, sha256, created_at FROM ${ident};`);
+      } else {
+        obj.tables[t] = this.db.query(`SELECT * FROM ${ident};`);
+      }
     }
     for (const v of views) {
       const ident = safeIdent(v);

@@ -29,6 +29,10 @@ const PRINT_STYLE = `
   th { background: #eef2f6; font-size: 9px; text-align: left; }
   td.num, th.num { text-align: right; white-space: nowrap; overflow-wrap: normal; }
   .note { white-space: pre-wrap; border: 1px solid #d9dee5; border-radius: 8px; padding: 7px; min-height: 28px; background: #fbfcfd; }
+  .recipe-photo-block { display: grid; grid-template-columns: minmax(0, 1fr) 44mm; gap: 8px; align-items: start; margin: 6px 0 8px; break-inside: avoid; page-break-inside: avoid; }
+  .recipe-photo-block.only-photo { display: block; max-width: 58mm; margin-left: auto; margin-right: 0; }
+  .recipe-photo-block img { display: block; width: 100%; max-height: 42mm; object-fit: contain; border: 1px solid #d7dce2; border-radius: 6px; background: #fff; }
+  .recipe-photo-caption { margin-top: 3px; font-size: 8.2px; color: #5f6b7a; text-align: center; }
   .warn { border-left: 4px solid #d97706; padding: 6px 8px; background: #fff7ed; break-inside: avoid; page-break-inside: avoid; }
   .ok { border-left: 4px solid #14803c; padding: 6px 8px; background: #f0fdf4; break-inside: avoid; page-break-inside: avoid; }
   .page-break { page-break-before: always; break-before: page; }
@@ -165,6 +169,7 @@ export function printBakeryRecipe(db, recipeId) {
   const html = docHtml(`${recipe.name} · ficha panadera`, `
     <section class="sheet">
       ${header("Ficha técnica panadera", recipe.name, [recipe.family, recipe.subfamily].filter(Boolean).join(" · "))}
+      ${recipeMediaBlock(db, "bakery", recipe.id)}
       <div class="grid">
         ${box("Harina base", mass(recipe.base_flour_g))}
         ${box("Masa total base", mass(totals.preview_dough_total_g))}
@@ -224,6 +229,7 @@ export function printCulinaryRecipe(db, recipeId) {
   const html = docHtml(`${recipe.name} · ficha culinaria`, `
     <section class="sheet">
       ${header("Ficha técnica de cocina/pastelería", recipe.name, [recipe.family, recipe.subfamily].filter(Boolean).join(" · "))}
+      ${recipeMediaBlock(db, "culinary", recipe.id)}
       <div class="grid">
         ${box("Raciones base", fmtNumber(recipe.base_servings,0))}
         ${box("Peso/ración", recipe.serving_weight_g ? `${fmtNumber(recipe.serving_weight_g,0)} g` : "—")}
@@ -521,6 +527,55 @@ export function printWorkSelectionTeachingSheetsWithOrder(db, selectionId = "WOR
 }
 
 
+
+function recipeMediaBlock(db, recipeKind, recipeId) {
+  try {
+    const exists = one(db, "SELECT name FROM sqlite_schema WHERE type='table' AND name='recipe_media';");
+    if (!exists || !recipeId) return "";
+    const media = one(db, `
+      SELECT ma.data, ma.mime_type, ma.file_name, ma.width, ma.height, ma.size_bytes,
+             rm.caption, rm.alt_text, rm.role
+      FROM recipe_media rm
+      JOIN media_assets ma ON ma.id=rm.media_id
+      WHERE rm.recipe_kind=$kind AND rm.recipe_id=$id
+      ORDER BY CASE rm.role WHEN 'primary' THEN 1 ELSE 2 END, rm.sort_order
+      LIMIT 1;
+    `, { $kind: recipeKind, $id: recipeId });
+    if (!media?.data) return "";
+    const src = mediaDataUrl(media);
+    if (!src) return "";
+    const caption = media.caption || media.file_name || "Foto de elaboración";
+    return `<div class="recipe-photo-block only-photo"><img src="${src}" alt="${esc(media.alt_text || caption)}"><div class="recipe-photo-caption">${esc(caption)}</div></div>`;
+  } catch (err) {
+    console.warn("[SwiftRemo] No se pudo recuperar la foto BLOB de la ficha.", err);
+    return "";
+  }
+}
+
+function mediaDataUrl(row) {
+  const bytes = blobBytes(row.data);
+  if (!bytes?.length) return "";
+  return `data:${String(row.mime_type || "image/jpeg")};base64,${bytesToBase64(bytes)}`;
+}
+
+function blobBytes(value) {
+  if (!value) return null;
+  if (value instanceof Uint8Array) return value;
+  if (Array.isArray(value)) return new Uint8Array(value);
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  if (value?.buffer instanceof ArrayBuffer) return new Uint8Array(value.buffer, value.byteOffset || 0, value.byteLength || value.buffer.byteLength);
+  return null;
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
 function culinaryTeachingSheet(db, item, lines, { subrecipeMode = "expanded", processMode = "show" } = {}) {
   const recipe = one(db, `
     SELECT cr.*, tf.name AS family, tsf.name AS subfamily, yu.symbol AS yield_unit
@@ -537,6 +592,7 @@ function culinaryTeachingSheet(db, item, lines, { subrecipeMode = "expanded", pr
   return `
     <section class="sheet teaching-sheet">
       ${header("Ficha completa", item.item_name, [itemQty(item), recipe.family, recipe.subfamily].filter(Boolean).join(" · "))}
+      ${recipeMediaBlock(db, "culinary", item.culinary_recipe_id)}
       <div class="grid">
         ${box("Producción", itemQty(item))}
         ${box("Coste total", fmtMoney(totalCost))}
@@ -574,6 +630,7 @@ function bakeryTeachingSheet(db, item, lines, { processMode = "show" } = {}) {
   return `
     <section class="sheet teaching-sheet">
       ${header("Formulación completa", item.item_name, [itemQty(item), recipe.family, recipe.subfamily].filter(Boolean).join(" · "))}
+      ${recipeMediaBlock(db, "bakery", item.bakery_recipe_id)}
       <div class="grid">
         ${box("Producción", itemQty(item))}
         ${box("Harina base", effectiveFlour ? mass(effectiveFlour) : "—")}

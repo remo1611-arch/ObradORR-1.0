@@ -1,1 +1,1 @@
-swiftremo_sql_fase6.72.4_interfaz_docente_final
+SwiftRemo SQL · FASE 6.72.6 · paquetes privados BLOB con vínculos pendientes

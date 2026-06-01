@@ -124,6 +124,12 @@ function bindEvents() {
   $("#sqliteFile").addEventListener("change", loadSqliteFile);
   $("#exportSqlite").addEventListener("click", exportSqlite);
   $("#exportJson").addEventListener("click", exportJson);
+  bindIfExists("#privateSqliteFile", "change", importPrivateSqlitePackage);
+  bindIfExists("#exportPrivateSqlite", "click", exportPrivateSqlite);
+  bindIfExists("#privatePhotoFiles", "change", importPrivatePhotoFiles);
+  bindIfExists("#privateSourceName", "input", syncPrivateSourceSlug);
+  bindIfExists("#privateSourceSlug", "input", ev => { ev.target.dataset.autofilled = "0"; renderPrivateDataManager(); });
+  bindIfExists("#privatePhotoKind", "change", renderPrivateDataManager);
 
   $("#ingredientSearch").addEventListener("input", ev => { state.filters.search = ev.target.value; renderIngredients(); });
   $("#ingredientActiveFilter").addEventListener("change", ev => { state.filters.active = ev.target.value; renderIngredients(); });
@@ -345,6 +351,7 @@ async function loadBestAvailableDb() {
   if (recovery?.bytes) {
     try {
       await swiftDb.loadFromBytesAsync(new Uint8Array(recovery.bytes));
+      ensurePrivateMediaSchema();
       afterDbLoaded("Base de trabajo restaurada.", "Guardado", recovery.savedAt);
       return;
     } catch (err) {
@@ -370,6 +377,7 @@ async function loadInitialDb(saveAsCurrent = true) {
   setState("Cargando base…", "loading");
   setStatus("Cargando base inicial…", "warn");
   await swiftDb.loadFromUrl("../db/swiftremo.sqlite");
+  ensurePrivateMediaSchema();
   if (saveAsCurrent) await autosave({ backup: true, reason: "base inicial" });
   afterDbLoaded("Base inicial cargada.", "Guardado", new Date().toISOString());
 }
@@ -380,6 +388,7 @@ async function loadSqliteFile(ev) {
   if (!file) return;
   try {
     await swiftDb.loadFromFile(file);
+    ensurePrivateMediaSchema();
     await autosave({ backup: true, reason: "importación" });
     afterDbLoaded(`Copia importada: ${file.name}`, "Guardado", new Date().toISOString());
   } catch (err) {
@@ -389,6 +398,8 @@ async function loadSqliteFile(ev) {
 }
 
 function afterDbLoaded(message, saveLabel = "Guardado", savedAt = null) {
+  ensurePrivateMediaSchema();
+  syncPrivateSourceSlug();
   repo = new Repository(swiftDb);
   catalogs = repo.catalogs();
   selectedIngredientId = null;
@@ -471,6 +482,7 @@ function renderAll() {
     renderOrder,
     renderMargins,
     renderAudit,
+    renderPrivateDataManager,
     renderWorkshopState
   ].forEach(fn => {
     try { fn(); }
@@ -2442,6 +2454,387 @@ No se borra: solo active = 0.`)) return;
   renderAll();
   await autosave({ backup: false, reason: "desactivar" });
   toast("Ingrediente desactivado.", "warn");
+}
+
+
+const PRIVATE_DEFAULT_SOURCE_NAME = "Carlos González Sanmartín";
+const PRIVATE_DEFAULT_SOURCE_ID = "carlos_gonzalez_sanmartin";
+const PRIVATE_MERGE_TABLES = Object.freeze([
+  "data_sources", "units", "technical_families", "technical_subfamilies", "order_groups", "suppliers", "storage_zones", "allergens",
+  "ingredients", "ingredient_allergens", "ingredient_price_history",
+  "culinary_recipes", "culinary_recipe_lines",
+  "bakery_recipes", "bakery_recipe_lines", "bakery_preferments", "bakery_process_steps",
+  "media_assets", "recipe_media", "entity_sources"
+]);
+const PRIVATE_ENTITY_TABLES = Object.freeze({
+  ingredients: "ingredient",
+  culinary_recipes: "culinary_recipe",
+  bakery_recipes: "bakery_recipe",
+  media_assets: "media_asset"
+});
+
+function ensurePrivateMediaSchema(db = swiftDb) {
+  if (!db?.isLoaded?.()) return;
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS data_sources (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      owner TEXT,
+      visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('public','private','internal')),
+      permission_notes TEXT,
+      imported_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS entity_sources (
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('public','private','internal')),
+      notes TEXT,
+      PRIMARY KEY (entity_type, entity_id, source_id),
+      FOREIGN KEY (source_id) REFERENCES data_sources(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS media_assets (
+      id TEXT PRIMARY KEY,
+      source_id TEXT NOT NULL,
+      file_name TEXT,
+      mime_type TEXT NOT NULL,
+      width INTEGER,
+      height INTEGER,
+      size_bytes INTEGER,
+      sha256 TEXT,
+      data BLOB NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (source_id) REFERENCES data_sources(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS recipe_media (
+      recipe_kind TEXT NOT NULL CHECK (recipe_kind IN ('culinary','bakery')),
+      recipe_id TEXT NOT NULL,
+      media_id TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'primary' CHECK (role IN ('primary','gallery','process','plating','texture','other')),
+      caption TEXT,
+      alt_text TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 1,
+      PRIMARY KEY (recipe_kind, recipe_id, media_id),
+      FOREIGN KEY (media_id) REFERENCES media_assets(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_entity_sources_source ON entity_sources(source_id, entity_type);
+    CREATE INDEX IF NOT EXISTS idx_recipe_media_recipe ON recipe_media(recipe_kind, recipe_id, sort_order);
+    CREATE INDEX IF NOT EXISTS idx_media_assets_source ON media_assets(source_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_media_assets_source_sha ON media_assets(source_id, sha256) WHERE sha256 IS NOT NULL AND TRIM(sha256) <> '';
+    CREATE VIEW IF NOT EXISTS v_recipe_media_primary AS
+    SELECT rm.recipe_kind, rm.recipe_id, rm.media_id, rm.role, rm.caption, rm.alt_text, rm.sort_order,
+           ma.source_id, ma.file_name, ma.mime_type, ma.width, ma.height, ma.size_bytes, ma.sha256
+    FROM recipe_media rm
+    JOIN media_assets ma ON ma.id = rm.media_id
+    WHERE rm.role='primary'
+      AND rm.sort_order = (
+        SELECT MIN(rm2.sort_order) FROM recipe_media rm2
+        WHERE rm2.recipe_kind=rm.recipe_kind AND rm2.recipe_id=rm.recipe_id AND rm2.role='primary'
+      );
+    INSERT OR REPLACE INTO app_meta(key,value,updated_at) VALUES ('schema_private_media','6.72.6',CURRENT_TIMESTAMP);
+  `);
+}
+
+function privateSourceName() {
+  return (document.querySelector("#privateSourceName")?.value || PRIVATE_DEFAULT_SOURCE_NAME).trim() || PRIVATE_DEFAULT_SOURCE_NAME;
+}
+function privateSourceId() {
+  const raw = document.querySelector("#privateSourceSlug")?.value || slugTechnical(privateSourceName()) || PRIVATE_DEFAULT_SOURCE_ID;
+  return slugTechnical(raw) || PRIVATE_DEFAULT_SOURCE_ID;
+}
+function syncPrivateSourceSlug() {
+  const nameEl = document.querySelector("#privateSourceName");
+  const slugEl = document.querySelector("#privateSourceSlug");
+  if (nameEl && !nameEl.value) nameEl.value = PRIVATE_DEFAULT_SOURCE_NAME;
+  if (slugEl && (!slugEl.value || slugEl.dataset.autofilled === "1")) {
+    slugEl.value = slugTechnical(privateSourceName()) || PRIVATE_DEFAULT_SOURCE_ID;
+    slugEl.dataset.autofilled = "1";
+  }
+}
+function slugTechnical(value) {
+  const normalized = String(value || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return normalized || "privado";
+}
+function safeSqlIdent(name) {
+  const value = String(name || "");
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) throw new Error(`Identificador SQL no seguro: ${value}`);
+  return `"${value.replace(/"/g, '""')}"`;
+}
+function tableExistsIn(db, name) {
+  return Number(db.selectValue("SELECT COUNT(*) FROM sqlite_schema WHERE type='table' AND name=$name;", { $name: name }) || 0) > 0;
+}
+function tableColumnsIn(db, name) {
+  return db.query(`PRAGMA table_info(${safeSqlIdent(name)});`).map(r => r.name);
+}
+function selectTableRows(db, name, columns) {
+  return db.query(`SELECT ${columns.map(safeSqlIdent).join(", ")} FROM ${safeSqlIdent(name)};`);
+}
+function ensureDataSourceRow(db, { id, name, owner = "", visibility = "private", notes = "" } = {}) {
+  const sourceId = slugTechnical(id || name || PRIVATE_DEFAULT_SOURCE_ID);
+  db.exec(`
+    INSERT INTO data_sources(id, name, owner, visibility, permission_notes, imported_at)
+    VALUES ($id, $name, $owner, $visibility, $notes, CURRENT_TIMESTAMP)
+    ON CONFLICT(id) DO UPDATE SET
+      name=excluded.name,
+      owner=COALESCE(NULLIF(excluded.owner,''), data_sources.owner),
+      visibility=excluded.visibility,
+      permission_notes=COALESCE(NULLIF(excluded.permission_notes,''), data_sources.permission_notes);
+  `, { $id: sourceId, $name: name || sourceId, $owner: owner || "", $visibility: visibility || "private", $notes: notes || "" });
+  return sourceId;
+}
+function insertEntitySource(db, tableName, row, sourceId) {
+  const entityType = PRIVATE_ENTITY_TABLES[tableName];
+  if (!entityType || !row?.id) return;
+  db.exec(`INSERT OR IGNORE INTO entity_sources(entity_type, entity_id, source_id, visibility, notes)
+           VALUES ($type, $id, $source, 'private', 'Importado como paquete privado.');`,
+    { $type: entityType, $id: String(row.id), $source: sourceId });
+}
+function insertGenericRow(db, tableName, columns, row) {
+  const bind = {};
+  const placeholders = columns.map((_, i) => `$v${i}`);
+  columns.forEach((c, i) => { bind[`$v${i}`] = row[c] ?? null; });
+  const sql = `INSERT OR IGNORE INTO ${safeSqlIdent(tableName)} (${columns.map(safeSqlIdent).join(", ")}) VALUES (${placeholders.join(", ")});`;
+  db.exec(sql, bind);
+  return Number(db.selectValue("SELECT changes();") || 0);
+}
+async function importPrivateSqlitePackage(ev) {
+  const input = ev.target;
+  const file = input.files?.[0];
+  if (!file) return;
+  if (!swiftDb.isLoaded()) { toast("La base principal todavía no está cargada.", "warn"); input.value = ""; return; }
+  const sourceId = privateSourceId();
+  const sourceName = privateSourceName();
+  const sourceDb = new SwiftDB();
+  try {
+    setState("Importando paquete…", "saving");
+    setStatus("Fusionando paquete privado SQLite…", "warn");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    await sourceDb.loadFromBytesAsync(bytes);
+    ensurePrivateMediaSchema(swiftDb);
+    try { ensurePrivateMediaSchema(sourceDb); } catch (err) { console.warn("[SwiftRemo] El paquete privado no permite crear esquema auxiliar; se intentará importar tablas existentes.", err); }
+    const report = mergePrivateDatabase(sourceDb, { sourceId, sourceName, fileName: file.name });
+    await autosave({ backup: true, reason: `paquete privado ${sourceName}` });
+    renderAll();
+    const insertedTotal = report.reduce((a, r) => a + Number(r.inserted || 0), 0);
+    const skippedTotal = report.reduce((a, r) => a + Number(r.skipped || 0), 0);
+    const pendingTotal = report.reduce((a, r) => a + Number(r.pending || 0), 0);
+    toast(`Paquete privado fusionado: ${insertedTotal} registros nuevos${pendingTotal ? `; ${pendingTotal} vínculo(s) de foto pendiente(s)` : ""}.`, pendingTotal ? "warn" : "ok");
+    setStatus(`Paquete privado fusionado: ${file.name}. ${insertedTotal} registros nuevos; ${skippedTotal} omitidos por existir${pendingTotal ? `; ${pendingTotal} vínculo(s) de foto pendiente(s) hasta importar sus fichas.` : ""}.`, pendingTotal ? "warn" : "ok");
+  } catch (err) {
+    console.error(err);
+    toast(err.message || "No se pudo importar el paquete privado.", "err");
+    setStatus(`No se pudo importar el paquete privado: ${err.message}`, "err");
+    setState("Error de importación", "error");
+  } finally {
+    sourceDb.close();
+    input.value = "";
+  }
+}
+function mergePrivateDatabase(sourceDb, { sourceId, sourceName, fileName } = {}) {
+  const report = [];
+  swiftDb.exec("BEGIN IMMEDIATE;");
+  try {
+    const normalizedSourceId = ensureDataSourceRow(swiftDb, {
+      id: sourceId,
+      name: sourceName || sourceId,
+      owner: sourceName || "",
+      visibility: "private",
+      notes: `Paquete privado importado desde ${fileName || "archivo SQLite"}.`
+    });
+    for (const tableName of PRIVATE_MERGE_TABLES) {
+      if (!tableExistsIn(sourceDb, tableName) || !tableExistsIn(swiftDb, tableName)) continue;
+      const targetCols = tableColumnsIn(swiftDb, tableName);
+      const sourceCols = tableColumnsIn(sourceDb, tableName);
+      const common = sourceCols.filter(c => targetCols.includes(c));
+      if (!common.length) continue;
+      const rows = selectTableRows(sourceDb, tableName, common);
+      let inserted = 0;
+      let skipped = 0;
+      for (const originalRow of rows) {
+        const row = { ...originalRow };
+        if (tableName === "media_assets" && !String(row.source_id || "").trim()) row.source_id = normalizedSourceId;
+        if (tableName === "entity_sources" && !String(row.source_id || "").trim()) row.source_id = normalizedSourceId;
+        const changed = insertGenericRow(swiftDb, tableName, common, row);
+        if (changed) {
+          inserted += changed;
+          insertEntitySource(swiftDb, tableName, row, normalizedSourceId);
+        } else {
+          skipped += 1;
+        }
+      }
+      report.push({ table: tableName, rows: rows.length, inserted, skipped });
+    }
+    const fk = swiftDb.query("PRAGMA foreign_key_check;");
+    if (fk.length) {
+      throw new Error(`La fusión generó ${fk.length} referencia(s) rota(s). No se ha guardado ningún cambio del paquete.`);
+    }
+    const pendingMedia = swiftDb.query(`
+      SELECT rm.recipe_kind, rm.recipe_id, rm.media_id
+      FROM recipe_media rm
+      WHERE (rm.recipe_kind='culinary' AND NOT EXISTS (SELECT 1 FROM culinary_recipes cr WHERE cr.id=rm.recipe_id))
+         OR (rm.recipe_kind='bakery' AND NOT EXISTS (SELECT 1 FROM bakery_recipes br WHERE br.id=rm.recipe_id));
+    `);
+    if (pendingMedia.length) {
+      report.push({ table: "recipe_media_pending", rows: pendingMedia.length, inserted: 0, skipped: pendingMedia.length, pending: pendingMedia.length });
+      console.warn("[SwiftRemo] Fotos privadas pendientes de ficha. Se conservarán y se activarán cuando exista una ficha con el mismo ID.", pendingMedia.slice(0, 25));
+    }
+    swiftDb.exec("COMMIT;");
+    console.info("[SwiftRemo] Informe de importación privada", report);
+    return report;
+  } catch (err) {
+    try { swiftDb.exec("ROLLBACK;"); } catch {}
+    throw err;
+  }
+}
+
+function renderPrivateDataManager() {
+  const box = document.querySelector("#privateDataStatus");
+  const recipeSelect = document.querySelector("#privatePhotoRecipe");
+  if (!box && !recipeSelect) return;
+  if (!swiftDb.isLoaded()) {
+    if (box) box.innerHTML = `<p class="small">Base no cargada.</p>`;
+    return;
+  }
+  ensurePrivateMediaSchema();
+  syncPrivateSourceSlug();
+  if (recipeSelect) {
+    const current = recipeSelect.value;
+    const kind = document.querySelector("#privatePhotoKind")?.value || "all";
+    const rows = swiftDb.query(`
+      SELECT uid, source_type, source_id, name
+      FROM v_elaborations_unified
+      WHERE active=1 AND ($kind='all' OR source_type=$kind)
+      ORDER BY name;
+    `, { $kind: kind });
+    recipeSelect.innerHTML = `<option value="">Selecciona ficha/formulación…</option>` + rows.map(r => `<option value="${esc(r.uid)}">${esc(r.name)} · ${esc(r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería")}</option>`).join("");
+    if (rows.some(r => r.uid === current)) recipeSelect.value = current;
+  }
+  if (!box) return;
+  const stats = {
+    sources: Number(swiftDb.selectValue("SELECT COUNT(*) FROM data_sources WHERE visibility='private';") || 0),
+    media: Number(swiftDb.selectValue("SELECT COUNT(*) FROM media_assets;") || 0),
+    linked: Number(swiftDb.selectValue("SELECT COUNT(*) FROM recipe_media;") || 0),
+    pending: Number(swiftDb.selectValue(`SELECT COUNT(*) FROM recipe_media rm
+      WHERE (rm.recipe_kind='culinary' AND NOT EXISTS (SELECT 1 FROM culinary_recipes cr WHERE cr.id=rm.recipe_id))
+         OR (rm.recipe_kind='bakery' AND NOT EXISTS (SELECT 1 FROM bakery_recipes br WHERE br.id=rm.recipe_id));`) || 0),
+    recipes: Number(swiftDb.selectValue("SELECT COUNT(DISTINCT entity_id) FROM entity_sources WHERE visibility='private' AND entity_type IN ('culinary_recipe','bakery_recipe');") || 0)
+  };
+  const sources = swiftDb.query(`
+    SELECT ds.id, ds.name, ds.visibility, ds.imported_at,
+           (SELECT COUNT(*) FROM entity_sources es WHERE es.source_id=ds.id) AS entities,
+           (SELECT COUNT(*) FROM media_assets ma WHERE ma.source_id=ds.id) AS media_count
+    FROM data_sources ds
+    ORDER BY ds.visibility DESC, ds.name;
+  `);
+  box.innerHTML = `
+    <div class="private-kpi-grid">
+      <div class="kpi"><span>Fuentes privadas</span><b>${fmtNumber(stats.sources,0)}</b></div>
+      <div class="kpi"><span>Fichas trazadas</span><b>${fmtNumber(stats.recipes,0)}</b></div>
+      <div class="kpi"><span>Fotos BLOB</span><b>${fmtNumber(stats.media,0)}</b></div>
+      <div class="kpi"><span>Fotos vinculadas</span><b>${fmtNumber(stats.linked,0)}</b></div>
+      <div class="kpi"><span>Vínculos pendientes</span><b>${fmtNumber(stats.pending,0)}</b></div>
+    </div>
+    ${stats.pending ? `<div class="notice warn"><b>Fotos privadas pendientes</b><p>Hay ${fmtNumber(stats.pending,0)} vínculo(s) de foto cuyo ID de ficha todavía no existe en la base actual. No es un error si has importado primero las fotos de Carlos: se activarán cuando se importe una base de fichas con esos mismos IDs.</p></div>` : ""}
+    ${sources.length ? table([
+      { label: "Origen", key: "name" },
+      { label: "ID", key: "id" },
+      { label: "Visibilidad", key: "visibility" },
+      { label: "Entidades", key: "entities", render: r => fmtNumber(r.entities,0) },
+      { label: "Fotos", key: "media_count", render: r => fmtNumber(r.media_count,0) }
+    ], sources) : `<p class="small">Aún no hay fuentes privadas registradas.</p>`}
+  `;
+}
+async function importPrivatePhotoFiles(ev) {
+  const input = ev.target;
+  const files = Array.from(input.files || []);
+  if (!files.length) return;
+  if (!swiftDb.isLoaded()) { toast("La base principal todavía no está cargada.", "warn"); input.value = ""; return; }
+  const selection = document.querySelector("#privatePhotoRecipe")?.value || "";
+  const [kind, recipeId] = selection.split(":");
+  if (!kind || !recipeId || !["culinary","bakery"].includes(kind)) {
+    toast("Selecciona primero una ficha o formulación para vincular las fotos.", "warn");
+    input.value = "";
+    return;
+  }
+  try {
+    ensurePrivateMediaSchema();
+    const sourceId = ensureDataSourceRow(swiftDb, { id: privateSourceId(), name: privateSourceName(), owner: privateSourceName(), visibility: "private", notes: "Fotos privadas integradas como BLOB optimizado." });
+    setState("Integrando fotos…", "saving");
+    setStatus("Optimizando e integrando fotos privadas como BLOB…", "warn");
+    let imported = 0;
+    for (const file of files) {
+      if (!/^image\//i.test(file.type || "")) continue;
+      const media = await normalizedImageBlob(file);
+      const hash = await sha256Hex(media.bytes);
+      const mediaId = `${sourceId}_media_${hash.slice(0, 16)}`;
+      swiftDb.exec(`
+        INSERT OR IGNORE INTO media_assets(id, source_id, file_name, mime_type, width, height, size_bytes, sha256, data)
+        VALUES ($id, $source, $file, $mime, $width, $height, $size, $sha, $data);
+      `, { $id: mediaId, $source: sourceId, $file: media.fileName, $mime: media.mimeType, $width: media.width || null, $height: media.height || null, $size: media.bytes.byteLength, $sha: hash, $data: media.bytes });
+      const storedId = swiftDb.selectValue("SELECT id FROM media_assets WHERE source_id=$source AND sha256=$sha ORDER BY created_at LIMIT 1;", { $source: sourceId, $sha: hash }) || mediaId;
+      const existingPrimary = Number(swiftDb.selectValue("SELECT COUNT(*) FROM recipe_media WHERE recipe_kind=$kind AND recipe_id=$recipe AND role='primary';", { $kind: kind, $recipe: recipeId }) || 0);
+      const sortOrder = Number(swiftDb.selectValue("SELECT COALESCE(MAX(sort_order),0)+1 FROM recipe_media WHERE recipe_kind=$kind AND recipe_id=$recipe;", { $kind: kind, $recipe: recipeId }) || 1);
+      const role = existingPrimary ? "gallery" : "primary";
+      swiftDb.exec(`
+        INSERT OR REPLACE INTO recipe_media(recipe_kind, recipe_id, media_id, role, caption, alt_text, sort_order)
+        VALUES ($kind, $recipe, $media, $role, $caption, $alt, $sort);
+      `, { $kind: kind, $recipe: recipeId, $media: storedId, $role: role, $caption: media.caption, $alt: media.caption, $sort: sortOrder });
+      swiftDb.exec(`INSERT OR IGNORE INTO entity_sources(entity_type, entity_id, source_id, visibility, notes)
+                    VALUES ($type, $id, $source, 'private', 'Foto privada vinculada como BLOB.');`,
+        { $type: kind === "bakery" ? "bakery_recipe" : "culinary_recipe", $id: recipeId, $source: sourceId });
+      imported += 1;
+    }
+    if (!imported) throw new Error("No se encontró ninguna imagen válida en la selección.");
+    await autosave({ backup: true, reason: `fotos privadas ${privateSourceName()}` });
+    renderAll();
+    toast(`${imported} foto(s) integrada(s) como BLOB.`);
+    setStatus(`${imported} foto(s) privada(s) integrada(s) como BLOB y vinculada(s) a la ficha.`, "ok");
+  } catch (err) {
+    console.error(err);
+    toast(err.message || "No se pudieron integrar las fotos.", "err");
+    setStatus(`No se pudieron integrar las fotos: ${err.message}`, "err");
+  } finally {
+    input.value = "";
+  }
+}
+async function normalizedImageBlob(file) {
+  const fallback = async () => ({ bytes: new Uint8Array(await file.arrayBuffer()), mimeType: file.type || "image/jpeg", width: null, height: null, fileName: file.name || "foto", caption: file.name || "Foto" });
+  if (!window.createImageBitmap || !document.createElement("canvas").toBlob) return fallback();
+  let bitmap = null;
+  try {
+    bitmap = await createImageBitmap(file);
+    const maxEdge = 1600;
+    const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d", { alpha: false });
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", 0.84));
+    if (!blob) return fallback();
+    const base = String(file.name || "foto").replace(/\.[^.]+$/, "");
+    return { bytes: new Uint8Array(await blob.arrayBuffer()), mimeType: "image/webp", width, height, fileName: `${slugTechnical(base)}.webp`, caption: base || "Foto" };
+  } catch (err) {
+    console.warn("[SwiftRemo] No se pudo optimizar la imagen; se guarda original.", err);
+    return fallback();
+  } finally {
+    try { bitmap?.close?.(); } catch {}
+  }
+}
+async function sha256Hex(bytes) {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+function exportPrivateSqlite() {
+  const base = slugTechnical(privateSourceName()) || PRIVATE_DEFAULT_SOURCE_ID;
+  downloadBytes(`SwiftRemo_${base}_${dateSlug()}.sqlite`, swiftDb.exportBytes());
+  toast("Copia SQLite privada descargada.");
+  setStatus("Copia local privada descargada. No la subas al repositorio público.", "ok");
 }
 
 function exportSqlite() {
