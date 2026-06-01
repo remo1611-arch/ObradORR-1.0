@@ -1,0 +1,1402 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>SwiftRemo SQL · Aula taller</title>
+  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6702">
+</head>
+<body>
+  <header class="app-header">
+    <div class="wrap header-grid">
+      <div>
+        <h1>🍽️🍞 SwiftRemo SQL</h1>
+        <p class="subtitle">Aula taller · biblioteca · práctica · pedido · salida documental</p>
+        <p class="subtitle" style="font-size:.82rem;opacity:.82">© Remo José Pereira González · Uso docente personal autorizado · Sin licencia abierta de redistribución o explotación comercial.</p>
+      </div>
+      <div id="dbState" class="state-pill state-loading">Preparando…</div>
+    </div>
+  </header>
+
+  <nav class="top-nav">
+    <div class="wrap nav-row nav-row-670">
+      <button type="button" data-tab="panel" class="active">Inicio</button>
+      <button type="button" data-tab="library">Biblioteca</button>
+      <button type="button" data-tab="selection">Práctica</button>
+      <button type="button" data-tab="order">Pedido</button>
+      <button type="button" data-tab="print">Salida</button>
+      <button type="button" data-tab="data">Datos</button>
+      <button type="button" data-tab="audit">Calidad</button>
+    </div>
+  </nav>
+
+  <main class="wrap main-grid main-grid-670">
+    <section class="content content-670">
+      <section id="tab-panel" class="tab-section active">
+        <div class="card panel-hero">
+          <div class="section-head">
+            <div>
+              <h2>¿Qué quieres hacer?</h2>
+              <p class="small">Flujo docente: selecciona en Biblioteca, ajusta en Práctica, revisa Pedido, genera documentos en Salida y guarda copias en Datos.</p>
+            </div>
+            <button type="button" class="btn primary" data-tab="library">Empezar en Biblioteca</button>
+          </div>
+
+          <div class="command-grid-619 command-grid-670">
+            <button type="button" class="command-card-619 primary" data-tab="library"><strong>1 · Biblioteca</strong><span>Busca fichas, fórmulas e ingredientes. Añade elaboraciones a la práctica.</span></button>
+            <button type="button" class="command-card-619" data-tab="selection"><strong>2 · Práctica</strong><span>Ajusta cantidades, datos docentes y elaboraciones seleccionadas.</span></button>
+            <button type="button" class="command-card-619" data-tab="order"><strong>3 · Pedido</strong><span>Revisa necesidades, unidades, costes, zonas y proveedor.</span></button>
+            <button type="button" class="command-card-619" data-tab="print"><strong>4 · Salida</strong><span>Genera fichas, pedido o dossier completo para imprimir o guardar PDF.</span></button>
+            <button type="button" class="command-card-619" data-tab="data"><strong>5 · Datos</strong><span>Guarda, carga o exporta copias SQLite y JSON técnico.</span></button>
+            <button type="button" class="command-card-619" data-tab="audit"><strong>Calidad</strong><span>Comprueba estado de la base e incidencias antes de usar en clase.</span></button>
+          </div>
+          <div id="kpis" class="kpi-grid"></div>
+          <div id="baseStatusPanelV663" class="base-status-card-v663 muted">
+            <div class="base-status-title-v663">Estado de la base pendiente de cargar</div>
+            <div class="small">Se mostrará cuando SQLite esté disponible.</div>
+          </div>
+          <div id="panelQualitySummary" class="quality-strip muted">Calidad pendiente de cargar. Si tarda, entra en Revisar calidad.</div>
+        </div>
+        <div class="card compact-guidance-619">
+          <h2>Resumen de práctica</h2>
+          <p class="small">Estado de la práctica actual. Para fichas sueltas, entra en Elaboraciones e imprime directamente.</p>
+          <div id="sessionSummary" class="wide"></div>
+        </div>
+      </section>
+
+      <section id="tab-library" class="tab-section">
+        <div class="card workspace-hero-619 library-hero-666b">
+          <div class="section-head">
+            <div>
+              <h2>Biblioteca docente</h2>
+              <p class="small">Consulta completa de ingredientes, fichas de cocina/pastelería y fórmulas panaderas. Catálogo de selección y revisión. Añade elaboraciones a la práctica; las pantallas de edición avanzada quedan accesibles desde los detalles.</p>
+            </div>
+            <div class="actions">
+              <button id="libraryCopyReviewV667" type="button" class="btn ghost">Copiar informe</button>
+              <button id="libraryClearFiltersV666C" type="button" class="btn ghost">Limpiar filtros</button>
+              <button type="button" class="btn primary" data-tab="selection">Preparar práctica</button>
+            </div>
+          </div>
+
+          <div class="filters-grid library-filters-666b">
+            <label>Catálogo
+              <select id="libraryKindV666B">
+                <option value="elaborations">Todas las elaboraciones</option>
+                <option value="ingredients">Ingredientes</option>
+                <option value="culinary">Fichas cocina/pastelería</option>
+                <option value="bakery">Fórmulas panaderas</option>
+              </select>
+            </label>
+            <label>Buscar
+              <input id="librarySearchV666B" placeholder="Nombre, familia, subfamilia, ingrediente, rol…">
+            </label>
+            <label>Estado
+              <select id="libraryStatusV666B">
+                <option value="active">Activos</option>
+                <option value="all">Todos</option>
+                <option value="inactive">Archivados / inactivos</option>
+              </select>
+            </label>
+            <label>Calidad ficha
+              <select id="libraryQualityV667">
+                <option value="all">Todas</option>
+                <option value="complete">Completas</option>
+                <option value="actionable">Revisables + pobres</option>
+                <option value="review">Solo revisables</option>
+                <option value="poor">Solo pobres</option>
+                <option value="archived">Archivadas</option>
+              </select>
+            </label>
+            <label>Por página
+              <select id="libraryPageSizeV666B">
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="librarySummaryV666B" class="kpi-grid"></div>
+        </div>
+
+        <div class="card library-list-card-666b">
+          <div class="section-head">
+            <div>
+              <h2>Resultados paginados</h2>
+              <p class="small">Usa “Detalle” para revisar ingredientes, proceso, APPCC, rendimiento y líneas técnicas sin cambiar de práctica.</p>
+            </div>
+            <div id="libraryPagerTopV666B" class="library-pager-666b"></div>
+          </div>
+          <div id="libraryTableV666B" class="wide library-table-666b"></div>
+          <div id="libraryPagerBottomV666B" class="library-pager-666b bottom"></div>
+        </div>
+
+        <div class="card library-detail-card-666b">
+          <div class="section-head">
+            <div>
+              <h2>Detalle de biblioteca</h2>
+              <p class="small">Consulta técnica y auditoría orientativa. La edición sigue estando en las pantallas de ingredientes, cocina/pastelería o panadería.</p>
+            </div>
+          </div>
+          <div id="libraryDetailV666B" class="library-detail-666b muted">Selecciona un registro para ver su detalle.</div>
+        </div>
+      </section>
+
+      <section id="tab-elaborations" class="tab-section">
+        <div class="card workspace-hero-619 elaborations-hero-625">
+          <div class="section-head">
+            <div>
+              <h2>Editor avanzado de elaboraciones</h2>
+              <p class="small">Zona técnica para abrir fichas o fórmulas concretas. Para el flujo diario usa Biblioteca → Práctica → Pedido → Salida.</p>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn primary" data-tab="selection">Ver práctica</button>
+              <button type="button" class="btn ghost" data-tab="culinary">Crear ficha técnica</button>
+              <button type="button" class="btn ghost" data-tab="bakery">Crear fórmula panadera</button>
+            </div>
+          </div>
+          <div class="unified-note-625"><b>Modelo 6.25:</b> toda receta, ficha, fórmula o subelaboración se trata como una <b>Elaboración</b>. Lo que cambia es su modelo de producción: raciones, rendimiento, porcentaje panadero, piezas o uso dual.</div>
+          <div class="filters-grid elaborations-filters-625">
+            <label>Buscar
+              <input id="elaborationSearchV625" placeholder="Nombre, familia, modelo, tipo…">
+            </label>
+            <label>Tipo
+              <select id="elaborationTypeFilterV625">
+                <option value="all">Todas</option>
+                <option value="culinary">Cocina/Pastelería</option>
+                <option value="bakery">Panadería</option>
+                <option value="technical_yield">Subelaboraciones técnicas</option>
+                <option value="dual">Duales</option>
+              </select>
+            </label>
+            <label>Estado
+              <select id="elaborationStatusFilterV625">
+                <option value="active">Activas</option>
+                <option value="all">Todas</option>
+                <option value="inactive">Inactivas</option>
+              </select>
+            </label>
+          </div>
+          <div id="elaborationsSummaryV625" class="kpi-grid"></div>
+        </div>
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2>Resultados</h2>
+              <p class="small">Añade a la práctica para pedir o imprimir sin sesión. Abre la elaboración si necesitas editarla.</p>
+            </div>
+          </div>
+          <div id="elaborationsListV625" class="elaboration-card-grid-625"></div>
+        </div>
+      </section>
+
+      <section id="tab-ingredients" class="tab-section">
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2>Editor avanzado de ingredientes</h2>
+              <p class="small">Alta, edición y desactivación lógica. No se borran registros para no romper formulaciones ni histórico.</p>
+            </div>
+            <button id="newIngredient" type="button" class="btn primary">Nuevo ingrediente</button>
+          </div>
+
+          <div class="filters-grid ingredients-filters-618">
+            <label>Buscar
+              <input id="ingredientSearch" placeholder="Nombre, familia, grupo, rol…">
+            </label>
+            <label>Vista
+              <select id="ingredientViewMode">
+                <option value="work">Trabajo</option>
+                <option value="audit">Auditoría</option>
+              </select>
+            </label>
+            <label>Estado
+              <select id="ingredientActiveFilter">
+                <option value="active">Activos</option>
+                <option value="all">Todos</option>
+                <option value="inactive">Inactivos</option>
+              </select>
+            </label>
+            <label>Uso
+              <select id="ingredientUseFilter">
+                <option value="all">Todos</option>
+                <option value="bakery">Panadería</option>
+                <option value="culinary">Cocina</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="section-toolbar-619">
+            <button type="button" class="toolbar-chip-619" data-scroll-target="#ingredientsTable">Ver resultados</button>
+            <button type="button" class="toolbar-chip-619" data-scroll-target="#ingredientFormTitle">Editar seleccionado</button>
+            <button type="button" class="toolbar-chip-619" data-tab="audit">Revisar calidad</button>
+          </div>
+          <div class="view-hint-618">Vista trabajo: tarjetas compactas para editar rápido. Vista auditoría: tabla completa para revisión masiva.</div>
+          <div id="ingredientsTable" class="wide ingredients-output-618"></div>
+        </div>
+
+        <div class="card editor-card">
+          <h2 id="ingredientFormTitle">Nuevo ingrediente</h2>
+          <p class="small">Los campos con * son obligatorios. El ID se genera automáticamente para ingredientes nuevos.</p>
+
+          <form id="ingredientForm" class="form-grid">
+            <input id="ing_id" type="hidden">
+
+            <label>Nombre *
+              <input id="ing_name" required placeholder="Ej. Harina de trigo panificable">
+            </label>
+
+            <label>Familia *
+              <select id="ing_family_id" required></select>
+            </label>
+
+            <label>Subfamilia
+              <select id="ing_subfamily_id"></select>
+            </label>
+
+            <label>Unidad base *
+              <select id="ing_base_unit_id" required></select>
+            </label>
+
+            <label>Unidad de compra
+              <select id="ing_purchase_unit_id"></select>
+            </label>
+
+            <label>Precio compra *
+              <input id="ing_purchase_price" inputmode="decimal" required>
+            </label>
+
+            <label>Cantidad neta compra *
+              <input id="ing_purchase_net_quantity" inputmode="decimal" required>
+            </label>
+
+            <label>Merma %
+              <input id="ing_waste_pct" inputmode="decimal">
+            </label>
+
+            <label>Grupo pedido
+              <select id="ing_order_group_id"></select>
+            </label>
+
+            <label>Proveedor
+              <select id="ing_supplier_id"></select>
+            </label>
+
+            <label>Zona almacenamiento
+              <select id="ing_storage_zone_id"></select>
+            </label>
+
+            <label>Rol panadero
+              <select id="ing_bakery_role">
+                <option value="">Sin rol</option>
+                <option value="flour">Harina</option>
+                <option value="liquid">Líquido</option>
+                <option value="yeast">Levadura/fermento</option>
+                <option value="salt">Sal</option>
+                <option value="fat">Grasa</option>
+                <option value="sugar">Azúcar</option>
+                <option value="egg">Huevo</option>
+                <option value="dairy">Lácteo</option>
+                <option value="aroma">Aroma</option>
+                <option value="seed">Semilla</option>
+                <option value="inclusion">Inclusión</option>
+                <option value="other">Otro</option>
+              </select>
+            </label>
+
+            <label>Coeficiente hídrico
+              <input id="ing_hydration_factor" inputmode="decimal">
+            </label>
+
+            <label>Rendimiento comestible %
+              <input id="ing_edible_yield_pct" inputmode="decimal">
+            </label>
+
+            <div class="check-row">
+              <label><input id="ing_use_culinary" type="checkbox"> Cocina</label>
+              <label><input id="ing_use_bakery" type="checkbox"> Panadería</label>
+              <label><input id="ing_active" type="checkbox"> Activo</label>
+            </div>
+
+            <label class="full">Notas
+              <textarea id="ing_notes" rows="3"></textarea>
+            </label>
+
+            <div class="form-actions full">
+              <button class="btn primary" type="submit">Guardar ingrediente</button>
+              <button class="btn danger" id="deactivateIngredient" type="button">Desactivar</button>
+              <button class="btn ghost" id="clearIngredientForm" type="button">Limpiar</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="tab-bakery" class="tab-section">
+        <div class="card workspace-hero-619 bakery-hero-619">
+          <div class="section-head">
+            <div>
+              <h2>Panadería · formulación y producción</h2>
+              <p class="small">Porcentaje panadero, hidratación real, prefermento y producción por harinas, masa o piezas.</p>
+            </div>
+            <div class="actions">
+              <button id="bakeryNewRecipeV40" type="button" class="btn ghost">Nueva formulación</button>
+              <button id="bakeryAddSelectionV623" type="button" class="btn ghost">Añadir a práctica</button>
+              <button id="bakeryPrintRecipeV40" type="button" class="btn success">Imprimir ficha</button>
+              <button id="bakeryReloadV37" type="button" class="btn ghost">Recalcular fórmula</button>
+            </div>
+          </div>
+
+          <div class="section-toolbar-619">
+            <button type="button" class="toolbar-chip-619" data-scroll-target="#bakeryRecipeFormV40">Ficha</button>
+            <button type="button" class="toolbar-chip-619" data-scroll-target="#bakeryFormulaEditTableV40">Fórmula %</button>
+            <button type="button" class="toolbar-chip-619" data-scroll-target="#bakeryProductionModeV37">Producción</button>
+            <button type="button" class="toolbar-chip-619" data-scroll-target="#prefermentPresetV38">Prefermento</button>
+            <button type="button" class="toolbar-chip-619" data-scroll-target="#extrasTableV39">Fuera de masa</button>
+            <button type="button" class="toolbar-chip-619" data-scroll-target="#bakeryDoughLinesV37">Resultado</button>
+          </div>
+
+          <div class="bakery-v37-grid">
+            <div>
+              <label>Formulación
+                <select id="bakeryRecipeSelectV37"></select>
+              </label>
+              <div id="bakeryValidationV37" class="soft-note-v37">Cargando validación…</div>
+            </div>
+
+            <div class="summary-grid-v37" id="bakerySummaryV37"></div>
+          </div>
+        </div>
+
+        <div class="card editor-card">
+          <div class="section-head">
+            <div>
+              <h2>Ficha panadera</h2>
+              <p class="small">Edición mínima y robusta de la formulación. Las líneas se guardan en transacción y se recalculan desde SQL.</p>
+            </div>
+            <button id="bakerySaveRecipeV40" type="button" class="btn primary">Guardar ficha</button>
+          </div>
+
+          <form id="bakeryRecipeFormV40" class="form-grid">
+            <input id="bakeryRecipeIdV40" type="hidden">
+
+            <label class="full">Nombre de la formulación *
+              <input id="bakeryRecipeNameV40" required placeholder="Ej. Pan gallego básico">
+            </label>
+
+            <label>Harina base para vista previa (g) *
+              <input id="bakeryBaseFlourV40" inputmode="decimal" value="1000" required>
+            </label>
+
+            <label>Piezas base
+              <input id="bakeryBasePiecesV40" inputmode="decimal" placeholder="Ej. 20">
+            </label>
+
+            <label>Peso crudo por pieza (g)
+              <input id="bakeryPieceRawWeightV40" inputmode="decimal" placeholder="Ej. 250">
+            </label>
+
+            <label>Merma de cocción %
+              <input id="bakeryBakingLossV40" inputmode="decimal" value="0">
+            </label>
+
+            <label>Temperatura de masa deseada °C
+              <input id="bakeryTargetTempV40" inputmode="decimal" placeholder="Ej. 24">
+            </label>
+
+            <label>Estado
+              <select id="bakeryStatusV40">
+                <option value="draft">Borrador</option>
+                <option value="reviewed">Revisada</option>
+                <option value="validated">Validada</option>
+                <option value="archived">Archivada</option>
+              </select>
+            </label>
+
+            <div class="check-row">
+              <label><input id="bakeryActiveV40" type="checkbox" checked> Activa</label>
+            </div>
+
+            <label class="full">Notas técnicas
+              <textarea id="bakeryRecipeNotesV40" rows="3" placeholder="Fermentación, formado, cocción, conservación, observaciones didácticas..."></textarea>
+            </label>
+          </form>
+        </div>
+
+        <div class="card editor-card">
+          <div class="section-head">
+            <div>
+              <h2>Ingredientes de la fórmula</h2>
+              <p class="small">Solo masa panadera. Rellenos, coberturas y decoraciones se gestionan en “Fuera de masa”.</p>
+            </div>
+            <button id="bakeryClearLineV40" type="button" class="btn ghost">Nueva línea</button>
+          </div>
+
+          <div id="bakeryFormulaEditTableV40" class="wide"></div>
+
+          <form id="bakeryLineFormV40" class="form-grid">
+            <input id="bakeryLineIdV40" type="hidden">
+
+            <label>Ingrediente *
+              <select id="bakeryLineIngredientV40" required></select>
+            </label>
+
+            <label>Rol *
+              <select id="bakeryLineRoleV40">
+                <option value="flour">Harina</option>
+                <option value="liquid">Líquido</option>
+                <option value="yeast">Levadura</option>
+                <option value="salt">Sal</option>
+                <option value="fat">Grasa</option>
+                <option value="sugar">Azúcar</option>
+                <option value="egg">Huevo</option>
+                <option value="dairy">Lácteo</option>
+                <option value="aroma">Aroma</option>
+                <option value="seed">Semilla</option>
+                <option value="inclusion">Inclusión</option>
+                <option value="other">Otro</option>
+              </select>
+            </label>
+
+            <label>% panadero total *
+              <input id="bakeryLinePctV40" inputmode="decimal" required placeholder="Ej. 65">
+            </label>
+
+            <label>Orden
+              <input id="bakeryLineSortV40" inputmode="numeric" value="100">
+            </label>
+
+            <label class="full">Nota técnica
+              <textarea id="bakeryLineNoteV40" rows="2" placeholder="Ej. Añadir al final del amasado."></textarea>
+            </label>
+
+            <div class="form-actions full">
+              <button type="submit" class="btn primary">Guardar línea</button>
+              <button type="button" id="bakeryDeleteLineV40" class="btn danger">Eliminar línea</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Producción</h2>
+          <div class="production-grid-v37">
+            <label>Método
+              <select id="bakeryProductionModeV37">
+                <option value="flour">Según harinas totales</option>
+                <option value="dough">Según masa total</option>
+                <option value="pieces">Según piezas</option>
+              </select>
+            </label>
+
+            <label id="bakeryFlourWrapV37">Harinas totales
+              <input id="bakeryFlourAmountV37" inputmode="decimal" value="1000">
+            </label>
+
+            <label id="bakeryDoughWrapV37">Masa total deseada
+              <input id="bakeryDoughAmountV37" inputmode="decimal" value="5000">
+            </label>
+
+            <label id="bakeryPiecesWrapV37">Nº piezas
+              <input id="bakeryPiecesCountV37" inputmode="numeric" value="20">
+            </label>
+
+            <label id="bakeryPieceWeightWrapV37">Peso por pieza en masa cruda
+              <input id="bakeryPieceWeightV37" inputmode="decimal" value="250">
+            </label>
+
+            <label id="bakeryInputUnitWrapV37">Unidad de entrada
+              <select id="bakeryInputUnitV37">
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+              </select>
+            </label>
+
+            <label>Masa necesaria automática
+              <input id="bakeryAutoDoughTotalV37" readonly>
+            </label>
+          </div>
+
+          <div id="bakeryProductionSummaryV37" class="soft-note-v37"></div>
+        </div>
+
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2>Prefermento</h2>
+              <p class="small">Configura el prefermento como reparto técnico de harina, agua y levadura. No duplica ingredientes en el pedido.</p>
+            </div>
+            <button id="bakerySavePrefermentV38" type="button" class="btn primary">Guardar prefermento</button>
+          </div>
+
+          <div class="preferment-grid-v38">
+            <label>Preset
+              <select id="prefermentPresetV38"></select>
+            </label>
+
+            <label>Tipo
+              <input id="prefermentTypeV38" placeholder="Poolish, biga, esponja, masa madre…">
+            </label>
+
+            <label>Modo de cálculo
+              <select id="prefermentModeV38">
+                <option value="none">Sin prefermento</option>
+                <option value="flour_prefermented_pct">% de harina prefermentada</option>
+                <option value="preferment_total_pct">% de prefermento total sobre harina</option>
+              </select>
+            </label>
+
+            <label>Harina prefermentada %
+              <input id="prefermentFlourPctV38" inputmode="decimal">
+            </label>
+
+            <label>Prefermento total sobre harina %
+              <input id="prefermentTotalPctV38" inputmode="decimal">
+            </label>
+
+            <label>Hidratación prefermento %
+              <input id="prefermentHydrationPctV38" inputmode="decimal">
+            </label>
+
+            <label>Tipo de levadura
+              <select id="prefermentYeastTypeV38"></select>
+            </label>
+
+            <label>Levadura prefermento %
+              <input id="prefermentYeastPctV38" inputmode="decimal">
+            </label>
+
+            <label>Base cálculo levadura
+              <select id="prefermentYeastBaseV38">
+                <option value="total_flour">Sobre harina total</option>
+                <option value="preferment_flour">Sobre harina del prefermento</option>
+              </select>
+            </label>
+
+            <label>Tiempo h
+              <input id="prefermentTimeHoursV38" inputmode="decimal">
+            </label>
+
+            <label>Temperatura °C
+              <input id="prefermentTemperatureV38" inputmode="decimal">
+            </label>
+
+            <label class="full">Notas
+              <textarea id="prefermentNotesV38" rows="3"></textarea>
+            </label>
+          </div>
+
+          <div id="prefermentPreviewV38" class="soft-note-v37">Selecciona una formulación panadera para configurar su prefermento.</div>
+        </div>
+
+
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2>Fuera de masa</h2>
+              <p class="small">Añade rellenos, coberturas, acabados y decoraciones. Se calculan para producción y pedido, pero no forman parte de la masa.</p>
+            </div>
+            <button id="extraNewV39" type="button" class="btn primary">Nuevo fuera de masa</button>
+          </div>
+
+          <div id="extrasTableV39" class="wide"></div>
+
+          <form id="extraFormV39" class="extras-grid-v39">
+            <input id="extraLineIdV39" type="hidden">
+
+            <label>Ingrediente
+              <select id="extraIngredientV39" required></select>
+            </label>
+
+            <label>Grupo
+              <select id="extraGroupV39">
+                <option value="filling">Relleno</option>
+                <option value="topping">Cobertura / acabado</option>
+                <option value="decoration">Decoración</option>
+                <option value="other">Otro fuera de masa</option>
+              </select>
+            </label>
+
+            <label>Base de cálculo
+              <select id="extraCalcBaseV39">
+                <option value="per_piece">g por pieza</option>
+                <option value="flour_pct">% sobre harinas</option>
+                <option value="dough_pct">% sobre masa</option>
+                <option value="fixed">cantidad fija</option>
+              </select>
+            </label>
+
+            <label>Valor
+              <input id="extraValueV39" inputmode="decimal" required placeholder="Ej. 35">
+            </label>
+
+            <label>Orden
+              <input id="extraSortV39" inputmode="numeric" value="100">
+            </label>
+
+            <label class="full">Nota técnica
+              <textarea id="extraNoteV39" rows="2" placeholder="Ej. Crema pastelera 35 g/pieza una vez enfriada la pieza."></textarea>
+            </label>
+
+            <div class="form-actions full">
+              <button type="submit" class="btn primary">Guardar línea</button>
+              <button type="button" id="extraDeleteV39" class="btn danger">Eliminar</button>
+              <button type="button" id="extraClearV39" class="btn ghost">Limpiar</button>
+            </div>
+          </form>
+
+          <div class="soft-note-v37">
+            Regla técnica: estos ingredientes no entran en masa, no alteran la hidratación y no modifican el porcentaje panadero. Sí deben aparecer en producción, coste y pedido.
+          </div>
+        </div>
+
+
+        <div class="card">
+          <h2>Resultado técnico</h2>
+
+          <div class="block-title-v37">Ingredientes de masa</div>
+          <div id="bakeryDoughLinesV37" class="wide"></div>
+
+          <div class="block-title-v37">Prefermento</div>
+          <div id="bakeryPrefermentLinesV37" class="wide"></div>
+
+          <div class="block-title-v37">Masa final</div>
+          <div id="bakeryFinalDoughLinesV37" class="wide"></div>
+
+          <div class="block-title-v37">Fuera de masa · rellenos · coberturas · acabados</div>
+          <div id="bakeryExtraLinesV37" class="wide"></div>
+        </div>
+
+        <div id="bakeryTable" style="display:none"></div>
+      </section>
+
+
+      <section id="tab-culinary" class="tab-section">
+        <div class="card workspace-hero-619 culinary-hero-619">
+          <div class="section-head">
+            <div>
+              <h2>Fichas técnicas · cocina y pastelería</h2>
+              <p class="small">Fichas por raciones, escandallo, proceso, servicio y notas APPCC. Biblioteca inicial para pruebas de aula.</p>
+              <p id="culinaryCountV51" class="small">Cargando fichas…</p>
+            </div>
+            <div class="actions">
+              <button id="culinaryNewRecipeV51" type="button" class="btn ghost">Nueva ficha</button>
+              <button id="culinarySaveRecipeV51" type="button" class="btn primary">Guardar ficha</button>
+              <button id="culinaryAddSelectionV623" type="button" class="btn ghost">Añadir a práctica</button>
+              <button id="culinaryPrintRecipeV51" type="button" class="btn success">Imprimir ficha</button>
+            </div>
+          </div>
+
+          <div class="section-toolbar-619">
+            <button type="button" class="toolbar-chip-619" data-scroll-target="#culinaryRecipeSelectV51">Seleccionar ficha</button>
+            <button type="button" class="toolbar-chip-619" data-scroll-target="#culinaryRecipeFormV51">Datos técnicos</button>
+            <button type="button" class="toolbar-chip-619" data-scroll-target="#culinaryLinesTableV51">Ingredientes</button>
+            <button type="button" class="toolbar-chip-619" data-tab="class">Añadir a clase</button>
+          </div>
+          <label>Ficha técnica
+            <select id="culinaryRecipeSelectV51"></select>
+          </label>
+          <div id="culinarySummaryV51" class="kpi-grid"></div>
+        </div>
+
+        <div class="card editor-card">
+          <h2>Datos técnicos de la ficha</h2>
+          <form id="culinaryRecipeFormV51" class="form-grid">
+            <input id="culinaryRecipeIdV51" type="hidden">
+
+            <label class="full">Nombre *</label>
+            <input id="culinaryNameV51" class="full" placeholder="Ej. Crema básica de verduras">
+
+            <label>Familia
+              <select id="culinaryFamilyV51"></select>
+            </label>
+            <label>Subfamilia
+              <select id="culinarySubfamilyV51"></select>
+            </label>
+            <label>Raciones base *</label>
+            <input id="culinaryServingsV51" inputmode="decimal" value="10">
+            <label>Peso por ración (g)</label>
+            <input id="culinaryServingWeightV51" inputmode="decimal">
+            <label>Estado
+              <select id="culinaryStatusV51">
+                <option value="draft">Borrador</option>
+                <option value="reviewed">Revisada</option>
+                <option value="validated">Validada</option>
+                <option value="archived">Archivada</option>
+              </select>
+            </label>
+            <label>Mano de obra (min)</label>
+            <input id="culinaryLaborMinutesV51" inputmode="decimal" value="0">
+            <label>Coste mano de obra €/h</label>
+            <input id="culinaryLaborCostV51" inputmode="decimal" value="0">
+            <label>Gastos generales %</label>
+            <input id="culinaryOverheadPctV51" inputmode="decimal" value="0">
+            <label>Margen objetivo %</label>
+            <input id="culinaryMarginPctV51" inputmode="decimal" value="0">
+
+            <div class="check-row">
+              <label><input id="culinaryActiveV51" type="checkbox" checked> Activa</label>
+            </div>
+
+            <label class="full">Proceso técnico</label>
+            <textarea id="culinaryProcessV51" class="full" rows="4" placeholder="Fases principales de elaboración..."></textarea>
+            <label class="full">Servicio / conservación</label>
+            <textarea id="culinaryServiceNotesV51" class="full" rows="3"></textarea>
+            <label class="full">APPCC / puntos críticos</label>
+            <textarea id="culinaryAppccNotesV51" class="full" rows="3"></textarea>
+            <label class="full">Observaciones didácticas</label>
+            <textarea id="culinaryNotesV51" class="full" rows="3"></textarea>
+          </form>
+        </div>
+
+        <div class="card editor-card">
+          <div class="section-head">
+            <div>
+              <h2>Ingredientes de la ficha</h2>
+              <p class="small">Cantidades de la ficha base. La sesión escala automáticamente por raciones.</p>
+            </div>
+            <button id="culinaryClearLineV51" type="button" class="btn ghost">Nueva línea</button>
+          </div>
+
+          <div id="culinaryLinesTableV51" class="wide"></div>
+
+          <form id="culinaryLineFormV51" class="form-grid">
+            <input id="culinaryLineIdV51" type="hidden">
+
+            <label>Ingrediente *</label>
+            <select id="culinaryLineIngredientV51" required></select>
+            <label>Cantidad *</label>
+            <input id="culinaryLineQuantityV51" inputmode="decimal" required placeholder="Ej. 1200">
+            <label>Unidad</label>
+            <select id="culinaryLineUnitV51"></select>
+            <label>Merma %</label>
+            <input id="culinaryLineWasteV51" inputmode="decimal" value="0">
+            <label>Orden</label>
+            <input id="culinaryLineSortV51" inputmode="numeric" value="100">
+            <label class="full">Nota técnica</label>
+            <textarea id="culinaryLineNoteV51" class="full" rows="2"></textarea>
+
+            <div class="form-actions full">
+              <button type="submit" class="btn primary">Guardar línea</button>
+              <button type="button" id="culinaryDeleteLineV51" class="btn danger">Eliminar</button>
+              <button type="button" id="culinaryClearLineFormV51" class="btn ghost">Limpiar</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+
+      <section id="tab-class" class="tab-section">
+        <div class="card class-control-card">
+          <div class="section-head">
+            <div>
+              <h2>Historial y sesiones</h2>
+              <p class="small">Consulta sesiones guardadas o formaliza una práctica. Para preparar sin registrar sesión, usa Preparar práctica.</p>
+            </div>
+            <div class="actions">
+              <button id="classNewSessionV41" type="button" class="btn ghost">Nueva sesión</button>
+              <button id="classSaveSessionV41" type="button" class="btn primary">Guardar sesión</button>
+              <button id="classPrintSessionV41" type="button" class="btn success">Imprimir sesión</button>
+              <button id="classPrintOrderV61" type="button" class="btn ghost">Imprimir pedido</button>
+            </div>
+          </div>
+
+          <div id="classWorkflowHint" class="class-workflow-hint">Abre el bloque que necesites: cada paso se despliega justo debajo de su cabecera, sin saltos largos ni pérdida de contexto.</div>
+
+          <div class="class-session-topline">
+            <label>Sesiones guardadas
+              <select id="classSessionSelectV65"></select>
+            </label>
+            <div id="classActiveSessionSummaryV65" class="class-active-summary small">Sin sesión seleccionada.</div>
+          </div>
+          <div id="classSessionsTableV41" class="wide hidden"></div>
+        </div>
+
+        <details id="classSessionDetailsV66" class="card class-fold class-fold-app class-workflow-step">
+          <summary>
+            <span><b>1 · Datos</b><small>Identificación docente, fecha, ciclo, módulo y observaciones.</small></span>
+            <label class="app-switch" onclick="event.stopPropagation()">
+              <input id="classUseSessionDataV66" type="checkbox">
+              <span class="app-switch-slider"></span>
+              <span class="app-switch-text">Usar en impresión</span>
+            </label>
+          </summary>
+          <form id="classSessionFormV41" class="form-grid class-form-grid">
+            <input id="classSessionIdV41" type="hidden">
+            <label class="full">Nombre de la práctica <span class="mini">Opcional. Si queda vacío, se genera un identificador interno por fecha y hora.</span>
+              <input id="classTitleV41" placeholder="Ej. Panes con prefermento · práctica de aula">
+            </label>
+            <label>Fecha
+              <input id="classDateV41" type="date">
+            </label>
+            <label>Ciclo
+              <select id="classCycleV41"></select>
+            </label>
+            <label>Módulo
+              <select id="classModuleV41"></select>
+            </label>
+            <label>Grupo
+              <select id="classGroupPresetV65">
+                <option value="1º A">1º A</option>
+                <option value="1º B">1º B</option>
+                <option value="2º A">2º A</option>
+                <option value="2º B">2º B</option>
+                <option value="otro">Otro / escribir</option>
+              </select>
+            </label>
+            <label id="classGroupCustomWrapV66">Grupo personalizado
+              <input id="classGroupV41" placeholder="Ej. 1º A">
+            </label>
+            <label>Responsable
+              <input id="classResponsibleV41" placeholder="Docente responsable">
+            </label>
+            <label class="full">Observaciones
+              <textarea id="classNotesV41" rows="3" placeholder="Ej. mise en place, alergias del grupo, servicio previsto, material necesario…"></textarea>
+            </label>
+          </form>
+        </details>
+
+        <div id="classQuantityDetailsV67" class="hidden-compat-634" hidden>
+          <input id="classUseOrganizationV66" type="checkbox">
+          <input id="classTeamCountV627" type="hidden" value="1">
+          <input id="classPeoplePerTeamV627" type="hidden" value="1">
+          <input id="classStudentCountV65" type="hidden" value="">
+          <input id="classPiecesPerStudentV65" type="hidden" value="">
+          <input id="classServingsPerStudentV65" type="hidden" value="">
+          <input id="classSafetyMarginV65" type="hidden" value="0">
+          <div id="classQuantityPlanHintV67"></div>
+        </div>
+
+        <details id="classAddDetails" class="card class-fold class-fold-app class-workflow-step active" open>
+          <summary><span><b>3 · Añadir</b><small>Busca una ficha o formulación y define el modo de producción.</small></span></summary>
+          <div class="section-head class-inside-head">
+            <div>
+              <h2>Añadir elaboración a la sesión</h2>
+              <p class="small">Puedes buscar por nombre y elegir en el desplegable. Busca directamente dentro del desplegable de elaboración. Pulsa ▾ para ver todas las opciones.</p>
+            </div>
+            <button id="classClearItemV41" type="button" class="btn ghost">Nueva elaboración</button>
+          </div>
+
+          <form id="classItemFormV41" class="form-grid class-form-grid">
+            <input id="classItemIdV41" type="hidden">
+
+            <label>Tipo
+              <select id="classRecipeTypeV41">
+                <option value="all">Todas</option>
+                <option value="bakery">Panadería</option>
+                <option value="culinary">Cocina / Pastelería</option>
+              </select>
+            </label>
+            <label class="full">Elaboración
+              <select id="classRecipeSelectV41"></select>
+              <span id="classRecipeEmptyV65" class="mini">Busca directamente en la barra del desplegable o pulsa ▾ para ver todas.</span>
+            </label>
+
+            <label>Modo de producción
+              <select id="classProductionModeV41">
+                <option value="flour">Según harinas totales</option>
+                <option value="raw_dough">Según masa total</option>
+                <option value="pieces">Según piezas</option>
+                <option value="servings">Según raciones</option>
+                <option value="yield">Según rendimiento técnico</option>
+              </select>
+              <span id="classProductionContractV621" class="mini contract-hint">Selecciona una elaboración para ver los modos permitidos.</span>
+            </label>
+
+            <label id="classFlourWrapV41">Harina total (g)
+              <input id="classFlourGV41" inputmode="decimal" value="1000">
+            </label>
+            <label id="classRawDoughWrapV41">Masa total cruda (g)
+              <input id="classRawDoughGV41" inputmode="decimal">
+            </label>
+            <label id="classPiecesWrapV41">Piezas
+              <input id="classPiecesV41" inputmode="numeric">
+            </label>
+            <label id="classPieceWeightWrapV41">Peso crudo por pieza (g)
+              <input id="classPieceWeightV41" inputmode="decimal">
+            </label>
+            <label id="classServingsWrapV41">Raciones
+              <input id="classServingsV41" inputmode="decimal">
+            </label>
+            <label id="classYieldWrapV621">Cantidad técnica
+              <input id="classYieldQtyV621" inputmode="decimal">
+              <span id="classYieldUnitV621" class="mini">kg/l/ud según rendimiento de la subelaboración.</span>
+            </label>
+            <input id="classItemSortV41" type="hidden" value="100">
+            <input id="classPrintA4V41" type="hidden" value="1">
+
+            <label class="full">Notas de producción
+              <textarea id="classItemNotesV41" rows="2" placeholder="Ej. dividir en piezas de 250 g, formado libre, cocción con vapor..."></textarea>
+            </label>
+            <div id="classQuantityHintV65" class="notice full"></div>
+
+            <div class="form-actions full">
+              <button id="classAddItemV41" type="button" class="btn primary">Guardar elaboración</button>
+              <button id="classDuplicateItemV65" type="button" class="btn ghost">Duplicar elaboración</button>
+              <button id="classDeleteItemV41" type="button" class="btn danger">Eliminar elaboración</button>
+            </div>
+          </form>
+        </details>
+
+        <details id="classItemsDetails" class="card class-fold class-fold-app class-workflow-step">
+          <summary><span><b>4 · Sesión</b><small>Revisa, edita o elimina las elaboraciones guardadas.</small></span></summary>
+          <p class="small">Haz clic en una elaboración para editarla. La decisión de imprimir fichas se resolverá en la sección de impresión.</p>
+          <div id="classItemsTableV41" class="wide"></div>
+        </details>
+
+        <details id="classOrderDetails" class="card class-fold class-fold-app class-workflow-step">
+          <summary><span><b>5 · Pedido</b><small>Comprueba necesidades agrupadas antes de imprimir.</small></span></summary>
+          <div id="classOrderPreviewV41" class="wide"></div>
+        </details>
+
+        <details id="classPrintDetails" class="card class-fold class-fold-app class-workflow-step">
+          <summary><span><b>6 · Imprimir</b><small>Genera la orden de producción, el pedido o entra en el panel de impresión.</small></span></summary>
+          <div class="class-print-actions">
+            <button type="button" class="btn success" onclick="document.querySelector('#classPrintSessionV41')?.click()">Imprimir sesión</button>
+            <button type="button" class="btn ghost" onclick="document.querySelector('#classPrintOrderV61')?.click()">Imprimir pedido</button>
+            <button type="button" class="btn primary" data-tab="print">Abrir Salida</button>
+          </div>
+        </details>
+      </section>
+
+
+
+      <section id="tab-selection" class="tab-section">
+        <div class="card workspace-hero-619 selection-hero-623">
+          <div class="section-head">
+            <div>
+              <h2>Práctica</h2>
+              <p class="small">Ajusta las elaboraciones seleccionadas, cantidades totales y datos docentes de esta práctica. La impresión se concentra en Salida.</p>
+            </div>
+            <div class="actions practice-main-actions-642">
+              <button type="button" class="btn primary" data-tab="order">Revisar pedido</button>
+              <button type="button" class="btn ghost" data-tab="print">Ir a salida</button>
+              <button id="selectionCreateSessionV623" type="button" class="btn ghost">Guardar práctica</button>
+              <button id="selectionClearV623" type="button" class="btn danger">Vaciar</button>
+            </div>
+          </div>
+          <div class="print-center-hint-642">
+            La práctica solo ajusta cantidades y datos docentes. Para generar documentos, abre la pestaña Salida.
+          </div>
+          <div class="sr-only print-compat-buttons-642" aria-hidden="true">
+            <button id="selectionPrintElaborationsV638" type="button">Ficha técnica</button>
+            <button id="selectionPrintOrderV638" type="button">Pedido</button>
+            <button id="selectionPrintBothV638" type="button">Ficha técnica + pedido</button>
+            <button id="selectionPrintTeachingV641" type="button">Ficha técnica completa</button>
+            <button id="selectionPrintTechnicalOrderV641" type="button">Pedido completo</button>
+            <button id="selectionPrintTeachingOrderV642" type="button">Ficha técnica completa + pedido completo</button>
+          </div>
+          <div id="selectionSummaryV623" class="kpi-grid"></div>
+          <div class="work-current-note-624"><b>Flujo recomendado:</b> añade elaboraciones, indica cuánto se va a producir, revisa pedido e imprime. Los datos de práctica son opcionales.</div>
+          <div class="practice-steps-628" aria-label="Pasos de preparación">
+            <div class="practice-step-628"><b>1 · Elaboraciones</b><span>Busca y añade fichas o fórmulas.</span></div>
+            <div class="practice-step-628"><b>2 · Cantidades</b><span>Cantidad total de esta práctica.</span></div>
+            <div class="practice-step-628"><b>3 · Pedido</b><span>Revisa necesidades agrupadas.</span></div>
+            <div class="practice-step-628"><b>4 · Salida</b><span>Vista previa, PDF o guardado documental.</span></div>
+          </div>
+          <details class="practice-plan-627 practice-meta-632 optional-practice-meta-634" open>
+            <summary><span><b>Datos de la práctica</b><small>Opcional: fecha, ciclo, módulo, grupo y docente para imprimir o guardar como sesión.</small></span></summary>
+            <div class="form-grid compact practice-meta-grid-632">
+              <label class="full">Nombre de la práctica
+                <input id="practiceTitleV632" placeholder="Ej. Masas fermentadas · práctica 3">
+              </label>
+              <label>Fecha
+                <input id="practiceDateV632" type="date">
+              </label>
+              <label>Ciclo
+                <select id="practiceCycleV632"></select>
+              </label>
+              <label>Módulo
+                <select id="practiceModuleV632"></select>
+              </label>
+              <label>Grupo académico
+                <input id="practiceGroupV632" placeholder="Ej. 1º Dirección de Cocina">
+              </label>
+              <label>Docente responsable
+                <input id="practiceResponsibleV632" placeholder="Docente responsable">
+              </label>
+              <label class="full">Notas docentes
+                <textarea id="practiceNotesV632" rows="2" placeholder="Mise en place, alergias, servicio, material, organización del aula…"></textarea>
+              </label>
+              <label class="full practice-print-data-toggle-638">
+                <input id="printIncludePracticeDataV637" type="checkbox"> Incluir estos datos en la impresión
+              </label>
+            </div>
+          </details>
+
+          <div class="practice-quick-add-6702">
+            <div class="section-head compact-head-6702">
+              <div>
+                <h3>Buscar y añadir elaboraciones</h3>
+                <p class="small">Añade fichas o fórmulas directamente a la práctica actual. Para revisar el catálogo completo, usa Biblioteca.</p>
+              </div>
+              <button type="button" class="btn ghost" data-tab="library">Abrir Biblioteca completa</button>
+            </div>
+            <div class="form-grid compact practice-search-grid-6702">
+              <label class="full">Buscar elaboración
+                <input id="practiceSearchV6702" type="search" placeholder="Ej. croquetas, torta de nata, pan, caldo…" autocomplete="off">
+              </label>
+              <label>Tipo
+                <select id="practiceSearchTypeV6702">
+                  <option value="all">Todas</option>
+                  <option value="culinary">Cocina/Pastelería</option>
+                  <option value="bakery">Panadería</option>
+                </select>
+              </label>
+              <label>Mostrar
+                <select id="practiceSearchLimitV6702">
+                  <option value="8">8 resultados</option>
+                  <option value="12" selected>12 resultados</option>
+                  <option value="20">20 resultados</option>
+                </select>
+              </label>
+              <div class="practice-search-actions-6702">
+                <button id="practiceSearchClearV6702" type="button" class="btn ghost">Limpiar búsqueda</button>
+              </div>
+            </div>
+            <div id="practiceSearchResultsV6702" class="practice-search-results-6702"></div>
+          </div>
+
+          <div class="hidden-compat-634" hidden>
+            <input id="practiceTeamCountV627" type="hidden" value="1">
+            <input id="practicePeoplePerTeamV627" type="hidden" value="1">
+            <input id="practiceStudentCountV627" type="hidden" value="">
+            <input id="practiceServingsPerPersonV627" type="hidden" value="">
+            <input id="practicePiecesPerPersonV627" type="hidden" value="">
+            <input id="practiceSafetyMarginV627" type="hidden" value="0">
+            <div id="practicePlanHintV627"></div>
+          </div>
+          <div class="selection-guidance-623">
+            <b>Siguiente paso:</b> busca una elaboración en esta pestaña, añádela y decide la cantidad total en el cuadro de producción.
+          </div>
+          <div class="actions practice-main-actions-636"><button type="button" class="btn primary" data-tab="library">Añadir desde Biblioteca</button><button type="button" class="btn ghost" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="audit">Revisar calidad</button></div>
+        </div>
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2>Elaboraciones de la práctica</h2>
+              <p class="small">Cada elaboración conserva su receta patrón. Aquí solo decides la producción concreta de esta práctica.</p>
+            </div>
+          </div>
+          <div id="selectionItemsV623" class="wide"></div>
+        </div>
+        <div id="printHistoryCardV623" class="card history-card-secondary">
+          <div class="section-head">
+            <div>
+              <h2>Historial de impresión</h2>
+              <p class="small">Registro automático de impresiones realizadas desde fichas, práctica actual, pedido o sesión.</p>
+            </div>
+          </div>
+          <div id="printHistoryV623" class="wide"></div>
+        </div>
+      </section>
+
+
+
+      <dialog id="printCenterDialogV642" class="quantity-dialog-626 print-center-dialog-642">
+        <form method="dialog" class="quantity-form-626 print-center-form-642">
+          <div class="section-head quantity-head-626">
+            <div>
+              <h2>Imprimir / exportar PDF</h2>
+              <p class="small">Escoge un documento simple o completo. La opción recomendada aparece marcada por defecto.</p>
+            </div>
+            <button id="printCenterCloseV642" type="button" class="btn ghost" aria-label="Cerrar">Cerrar</button>
+          </div>
+          <div id="printCenterSelectionSummaryV642" class="quantity-contract-626">Práctica actual.</div>
+          <div class="print-profile-section-642">
+            <h3>¿Qué quieres imprimir?</h3>
+            <p class="small">Documento simple</p>
+            <label class="print-profile-card-642 recommended-642">
+              <input type="radio" name="printProfileV642" value="both" checked>
+              <span><b>Ficha técnica + pedido</b><small>Opción recomendada: producción resumida y pedido limpio agrupado.</small></span>
+            </label>
+            <label class="print-profile-card-642">
+              <input type="radio" name="printProfileV642" value="elaborations">
+              <span><b>Ficha técnica</b><small>Solo producción: elaboraciones, cantidades e ingredientes.</small></span>
+            </label>
+            <label class="print-profile-card-642">
+              <input type="radio" name="printProfileV642" value="order">
+              <span><b>Pedido</b><small>Solo listado de compra agrupado por familias. Sin origen ni proveedor visible.</small></span>
+            </label>
+          </div>
+          <div class="print-profile-section-642 print-profile-complete-643">
+            <p class="small">Documento completo</p>
+            <label class="print-profile-card-642">
+              <input type="radio" name="printProfileV642" value="teaching">
+              <span><b>Ficha técnica completa</b><small>Escandallo/formulación, coste, alérgenos y proceso técnico.</small></span>
+            </label>
+            <label class="print-profile-card-642">
+              <input type="radio" name="printProfileV642" value="technical_order">
+              <span><b>Pedido completo</b><small>Incluye proveedor, zona, coste y origen/usado en.</small></span>
+            </label>
+            <label class="print-profile-card-642">
+              <input type="radio" name="printProfileV642" value="teaching_order">
+              <span><b>Ficha técnica completa + pedido completo</b><small>Dossier completo: fichas técnicas ampliadas y pedido completo al final.</small></span>
+            </label>
+          </div>
+          <div class="print-profile-section-642 print-subrecipe-mode-646">
+            <p class="small">Subelaboraciones en ficha técnica</p>
+            <label class="print-profile-card-642 recommended-642">
+              <input type="radio" name="printSubrecipeModeV646" value="expanded" checked>
+              <span><b>Desplegadas</b><small>Opción por defecto: muestra ingredientes internos debajo de cada subelaboración.</small></span>
+            </label>
+            <label class="print-profile-card-642">
+              <input type="radio" name="printSubrecipeModeV646" value="collapsed">
+              <span><b>Plegadas / resumidas</b><small>Muestra la subelaboración como línea propia, sin abrir sus ingredientes internos.</small></span>
+            </label>
+          </div>
+          <div class="print-profile-section-642 print-process-mode-649">
+            <p class="small">Proceso de elaboración</p>
+            <label class="print-profile-card-642 recommended-642">
+              <input type="radio" name="printProcessModeV649" value="show" checked>
+              <span><b>Mostrar proceso</b><small>Incluye pasos de elaboración, servicio/conservación y bloques panaderos cuando existan.</small></span>
+            </label>
+            <label class="print-profile-card-642">
+              <input type="radio" name="printProcessModeV649" value="hide">
+              <span><b>Ocultar proceso</b><small>Deja solo escandallo/formulación e ingredientes para una salida más compacta.</small></span>
+            </label>
+          </div>
+          <div class="form-actions quantity-actions-626 print-center-actions-642">
+            <button id="printCenterConfirmV642" type="button" class="btn primary">Vista previa / imprimir</button>
+            <button id="printCenterCancelV642" type="button" class="btn ghost">Cancelar</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="quantityDialogV626" class="quantity-dialog-626">
+        <form id="quantityFormV626" method="dialog" class="quantity-form-626">
+          <input id="qtyUidV626" type="hidden">
+          <input id="qtySelectionItemIdV626" type="hidden">
+          <input id="qtyItemTypeV626" type="hidden">
+          <input id="qtyCulinaryRecipeIdV626" type="hidden">
+          <input id="qtyBakeryRecipeIdV626" type="hidden">
+          <div class="section-head quantity-head-626">
+            <div>
+              <h2 id="qtyTitleV626">Cantidad de producción</h2>
+              <p id="qtySubtitleV626" class="small">Define cuánto se producirá en esta práctica. No modifica la ficha base.</p>
+            </div>
+            <button id="qtyCloseV626" type="button" class="btn ghost" aria-label="Cerrar">Cerrar</button>
+          </div>
+          <div id="qtyContractV626" class="quantity-contract-626">Selecciona un modo válido para la elaboración.</div>
+          <div class="quantity-scope-6272 quantity-direct-634">
+            <input id="qtyTeamCountV6272" type="hidden" value="1">
+            <input id="qtyPeoplePerTeamV6272" type="hidden" value="1">
+            <select id="qtyScopeV6272" hidden><option value="total" selected>Cantidad total</option></select>
+            <div id="qtyComputedV6272" class="notice practice-plan-hint-627">Cantidad total para esta práctica.</div>
+          </div>
+          <div class="form-grid quantity-grid-626">
+            <label>Producir por
+              <select id="qtyModeV626"></select>
+            </label>
+            <label id="qtyMainWrapV626">Cantidad
+              <input id="qtyMainQtyV626" inputmode="decimal" placeholder="Ej. 10">
+              <span id="qtyMainUnitV626" class="field-suffix-626"></span>
+            </label>
+            <label id="qtyFlourWrapV626">Harina total, g
+              <input id="qtyFlourGV626" inputmode="decimal" placeholder="Ej. 1000">
+            </label>
+            <label id="qtyRawDoughWrapV626">Masa total, g
+              <input id="qtyRawDoughGV626" inputmode="decimal" placeholder="Ej. 5000">
+            </label>
+            <label id="qtyPiecesWrapV626">Nº piezas
+              <input id="qtyPiecesV626" inputmode="decimal" placeholder="Ej. 20">
+            </label>
+            <label id="qtyPieceWeightWrapV626">Peso por pieza, g
+              <input id="qtyPieceWeightGV626" inputmode="decimal" placeholder="Ej. 250">
+            </label>
+            <label id="qtyLossWrapV626">Merma cocción, %
+              <input id="qtyBakingLossV626" inputmode="decimal" placeholder="Ej. 12">
+            </label>
+            <label class="full">Notas para esta producción
+              <textarea id="qtyNotesV626" rows="2" placeholder="Observaciones de aula, servicio, formado, lote, etc."></textarea>
+            </label>
+          </div>
+          <div class="quantity-help-626">
+            <b>Regla:</b> la cantidad pertenece a esta práctica. La elaboración base no se modifica.
+          </div>
+          <div class="form-actions quantity-actions-626">
+            <button id="qtyConfirmV626" type="button" class="btn primary">Añadir a la práctica</button>
+            <button id="qtyCancelV626" type="button" class="btn ghost">Cancelar</button>
+          </div>
+        </form>
+      </dialog>
+
+      <section id="tab-order" class="tab-section">
+        <div class="card order-hero-670">
+          <div class="section-head">
+            <div>
+              <h2>Pedido de la práctica actual</h2>
+              <p class="small">Revisión técnica de necesidades antes de imprimir: grupo de pedido, ingrediente, cantidad, unidad, coste, proveedor, zona y uso.</p>
+            </div>
+            <div class="actions">
+              <button id="orderPrintCurrentTechnicalV670" type="button" class="btn success">Imprimir pedido completo</button>
+              <button id="orderPrintCurrentSimpleV670" type="button" class="btn ghost">Imprimir pedido simple</button>
+              <button type="button" class="btn ghost" data-tab="print">Ir a salida</button>
+            </div>
+          </div>
+          <div id="orderSummaryV670" class="kpi-grid"></div>
+          <div class="order-guidance-619">
+            <b>Lectura recomendada:</b> revisa primero cantidades y unidades; después proveedor, zona y coste. El pedido se calcula desde la práctica actual, no desde una sesión histórica.
+          </div>
+          <div id="orderTable" class="wide order-table-619"></div>
+        </div>
+      </section>
+
+      <section id="tab-print" class="tab-section">
+        <div class="card panel-hero print-panel-618 output-hero-670">
+          <div class="section-head">
+            <div>
+              <h2>Salida · imprimir y exportar</h2>
+              <p class="small">Centro documental de la práctica actual. Genera fichas, pedido o dossier completo sin mezclarlo con la edición de cantidades.</p>
+            </div>
+            <button type="button" class="btn ghost" data-tab="selection">Volver a práctica</button>
+          </div>
+          <div class="print-mode-note-619">
+            <b>PDF limpio:</b> en el cuadro de impresión del navegador desactiva “Encabezados y pies” si aparecen fecha, URL o numeración externa.
+          </div>
+          <div class="print-profile-grid-618 print-profile-grid-619 output-grid-670">
+            <div class="print-profile-card-618 recommended-output-670">
+              <b>Dossier completo</b>
+              <span>Portada, fichas técnicas completas y pedido técnico final. Es la salida recomendada para aula-taller.</span>
+              <button id="outputPrintDossierV670" type="button" class="btn success">Vista previa / imprimir dossier</button>
+            </div>
+            <div class="print-profile-card-618">
+              <b>Solo fichas</b>
+              <span>Fichas técnicas completas de las elaboraciones seleccionadas, con proceso, APPCC y alérgenos.</span>
+              <button id="outputPrintSheetsV670" type="button" class="btn success">Imprimir fichas</button>
+            </div>
+            <div class="print-profile-card-618">
+              <b>Solo pedido</b>
+              <span>Pedido técnico completo con unidades, proveedor, zona, coste y uso en elaboraciones.</span>
+              <button id="outputPrintOrderV670" type="button" class="btn success">Imprimir pedido</button>
+            </div>
+            <div class="print-profile-card-618">
+              <b>Salida personalizada</b>
+              <span>Elige simple/completa, pedido, fichas y modo de subelaboraciones.</span>
+              <button id="selectionOpenPrintCenterV642" type="button" class="btn primary">Abrir opciones de salida</button>
+            </div>
+            <div class="print-profile-card-618">
+              <b>Guardar datos</b>
+              <span>Descarga una copia SQLite para conservar la práctica, moverla a otro equipo o compartirla.</span>
+              <button id="outputExportSqliteV670" type="button" class="btn ghost">Descargar copia SQLite</button>
+            </div>
+            <div class="print-profile-card-618">
+              <b>Datos y recuperación</b>
+              <span>Carga copias, restaura base inicial o exporta JSON técnico.</span>
+              <button type="button" class="btn ghost" data-tab="data">Abrir Datos</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-margins" class="tab-section">
+        <div class="card"><h2>Costes y márgenes</h2><div id="marginsTable" class="wide"></div></div>
+      </section>
+
+
+      <section id="tab-data" class="tab-section">
+        <div class="card data-hero-670">
+          <div class="section-head">
+            <div>
+              <h2>Datos y copias</h2>
+              <p class="small">La app pública carga una base inicial. Tus cambios viven en tu navegador y debes exportar una copia SQLite para conservarlos o compartirlos.</p>
+            </div>
+            <button type="button" class="btn ghost" data-tab="print">Ir a salida</button>
+          </div>
+          <div class="save-status-card">
+            <div id="saveIndicator" class="save-indicator saving">Preparando guardado…</div>
+            <div id="lastSavedInfo" class="small">Sin cambios todavía.</div>
+          </div>
+          <div class="button-stack data-actions-670">
+            <button id="exportSqlite" type="button" class="btn success">Descargar copia .sqlite</button>
+            <label class="btn ghost file-label">
+              Importar copia .sqlite
+              <input id="sqliteFile" type="file" accept=".sqlite,.db,application/octet-stream">
+            </label>
+            <button id="loadInitialDb" type="button" class="btn ghost">Usar base inicial</button>
+            <button id="exportJson" type="button" class="btn ghost">Descargar JSON técnico</button>
+          </div>
+          <div id="statusBox" class="status-box warn">La base todavía no se ha cargado.</div>
+          <details class="help-box">
+            <summary>Seguridad de los datos</summary>
+            <p>El trabajo diario se guarda automáticamente en el navegador, pero la copia <code>.sqlite</code> es el respaldo que permite conservar, trasladar o compartir datos.</p>
+            <p>Si otro docente quiere compartir fichas, puede enviarte su copia SQLite para revisión e integración curada.</p>
+          </details>
+        </div>
+      </section>
+
+      <section id="tab-audit" class="tab-section">
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2>Estado de la base</h2>
+              <p class="small">Resumen operativo para saber si la base es apta para preparar una práctica, imprimir o revisar datos.</p>
+            </div>
+            <button id="copyBaseDiagnosisV663" type="button" class="btn ghost">Copiar diagnóstico</button>
+          </div>
+          <div id="baseStatusAuditV663" class="base-status-card-v663 muted">
+            <div class="base-status-title-v663">Estado pendiente de cargar</div>
+            <div class="small">Pulsa recalcular auditoría si no se refresca automáticamente.</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2>Calidad de datos</h2>
+              <p class="small">Revisión de errores bloqueantes, avisos técnicos y notas antes de imprimir o usar costes como dato fiable.</p>
+            </div>
+            <button id="refreshAudit" type="button" class="btn ghost">Recalcular auditoría</button>
+          </div>
+          <div id="auditKpis" class="kpi-grid"></div>
+        </div>
+
+        <div class="card">
+          <h2>Incidencias detectadas</h2>
+          <p class="small">Prioriza primero errores, después avisos que afecten a coste o pedido. Las notas informativas no bloquean el uso docente.</p>
+          <div id="auditTable" class="wide audit-table-619"></div>
+        </div>
+      </section>
+
+      <section id="tab-sql" class="tab-section">
+        <div class="card">
+          <h2>SQL debug</h2>
+          <p class="small">Solo se permiten consultas <code>SELECT</code>.</p>
+          <textarea id="sqlInput" rows="5">SELECT name, type FROM sqlite_schema WHERE type IN ('table','view') ORDER BY type, name LIMIT 20;</textarea>
+          <div class="actions"><button id="runSql" type="button" class="btn primary">Ejecutar SELECT</button></div>
+          <pre id="sqlOutput"></pre>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="toastStack" class="toast-stack"></div>
+  <script>
+    console.log("SwiftRemo fase6.70.1 reorganización UX validada cargada");
+  </script>
+  <div id="swiftremoPrintPreview631" hidden></div>
+  <script type="module" src="./js/app.js?v=6702"></script>
+  <script type="module" src="./js/bakery-main-v3-7.js?v=6702"></script>
+  <script type="module" src="./js/preferments-v3-8.js?v=6702"></script>
+  <script type="module" src="./js/extras-v3-9.js?v=6702"></script>
+  <script type="module" src="./js/culinary-main-v5-1.js?v=6702"></script>
+  <script type="module" src="./js/session-v4-1.js?v=6702"></script>
+  <script type="module" src="./js/combobox-v6-9.js?v=6702"></script>
+  <script type="module">
+    import { printClassOrder } from "./js/print-service-v6-3.js?v=6702";
+    import { toast } from "./js/ui.js";
+    document.addEventListener("DOMContentLoaded", () => {
+      const btn = document.querySelector("#globalPrintOrderV61");
+      if (btn) btn.addEventListener("click", () => {
+        try { printClassOrder(window.SwiftRemoCore?.swiftDb, null); }
+        catch (err) { console.error(err); toast(err.message || "No se pudo imprimir el pedido global.", "err"); }
+      });
+    });
+  </script>
+</body>
+</html>

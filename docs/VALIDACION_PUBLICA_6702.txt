@@ -1,0 +1,10 @@
+OK index.html raíz presente
+OK app/sqlite.html presente
+OK db/swiftremo.sqlite presente
+OK app/wasm/sqlite3.wasm presente
+OK paquete público limpio sin scripts/sql/migration
+OK sin __pycache__ ni .pyc
+OK cache ?v=6702
+OK schema_version 6.70.2
+OK buscador rápido en Práctica
+OK datos de práctica integrados abiertos por defecto
