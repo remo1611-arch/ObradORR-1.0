@@ -1,1 +1,1 @@
-Validación pública 6.72.10: imports internos versionados; base pública sin media privada.
+Validación pública 6.72.11: imports internos versionados; base pública sin media privada.

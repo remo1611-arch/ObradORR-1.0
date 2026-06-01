@@ -1,5 +1,5 @@
-import { $, fmtNumber, table, toast } from "./ui.js?v=6730";
-import { printBakeryRecipe } from "./print-service-v6-3.js?v=6730";
+import { $, fmtNumber, table, toast } from "./ui.js?v=6731";
+import { printBakeryRecipe } from "./print-service-v6-3.js?v=6731";
 
 let db = null;
 

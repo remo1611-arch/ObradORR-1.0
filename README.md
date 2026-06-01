@@ -2,7 +2,7 @@
 
 Aplicación docente para aula-taller de Cocina, Pastelería y Panadería: prácticas, fichas técnicas, formulación panadera, pedidos e impresión A4.
 
-Versión pública: **Fase 6.72.10 · Corrección de caché total de módulos ES
+Versión pública: **Fase 6.72.11 · Corrección de caché total de módulos ES
 
 ## Uso
 
@@ -38,12 +38,12 @@ La base pública no incorpora fotografías privadas. Las fotos de paquetes local
 No deben publicarse fotografías privadas en GitHub ni usarse fotografías tomadas de internet sin licencia clara.
 
 
-Versión pública actual: `swiftremo_sql_fase6.72.10_cache_total_imports
+Versión pública actual: `swiftremo_sql_fase6.72.11_cache_total_imports
 
 
 ## Versión publicada
 
-Fase 6.72.10 · Corrección de caché total de módulos ES
+Fase 6.72.11 · Corrección de caché total de módulos ES
 
 
 ## Interfaz docente 6.72.3
@@ -51,6 +51,10 @@ Fase 6.72.10 · Corrección de caché total de módulos ES
 La navegación principal se organiza en cuatro dominios: **Taller / Histórico / Archivo técnico / Sistema**. Las pantallas internas heredadas se conservan como transición funcional hasta completar la sustitución por adaptadores.
 
 
-## Fase 6.72.10 · Corrección de caché total de módulos ES
+## Fase 6.72.11 · Corrección de caché total de módulos ES
 
 Paquetes privados con fotos BLOB y vínculos pendientes: las fotos pueden importarse antes que las fichas privadas y quedan conservadas en la base local.
+
+
+## Fase 6.72.11
+Corrección de crecimiento SQLite en memoria durante importación de paquetes privados: `sqlite3_deserialize()` usa ahora `SQLITE_DESERIALIZE_RESIZEABLE`.

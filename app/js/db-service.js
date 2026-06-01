@@ -39,9 +39,11 @@ export class SwiftDB {
     this.close();
     const p = this.sqlite3.wasm.allocFromTypedArray(bytes);
     this.db = new this.sqlite3.oo1.DB();
+    const flags = this.sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE
+      | this.sqlite3.capi.SQLITE_DESERIALIZE_RESIZEABLE;
     const rc = this.sqlite3.capi.sqlite3_deserialize(
       this.db.pointer, "main", p, bytes.byteLength, bytes.byteLength,
-      this.sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE
+      flags
     );
     this.db.checkRc(rc);
     this.exec("PRAGMA foreign_keys = ON;");

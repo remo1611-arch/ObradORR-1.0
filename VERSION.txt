@@ -1,1 +1,1 @@
-SwiftRemo SQL Fase 6.72.10 · corrección app.js onAfterNavigate
+swiftremo_sql_fase6.72.11_deserialize_resizable
