@@ -1,9 +1,0 @@
-OK index.html
-OK app/sqlite.html
-OK db/swiftremo.sqlite
-OK app/wasm/sqlite3.wasm
-OK node --check app/js/*.js
-OK node --check app/js/ui/*.js
-OK node --check app/js/domain/*.js
-OK schema_version 6.72.4
-OK paquete público limpio

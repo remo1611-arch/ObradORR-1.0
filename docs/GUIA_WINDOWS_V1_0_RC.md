@@ -1,4 +1,4 @@
-# SwiftRemo v1.0 RC1 · Flujo de trabajo desde Windows
+# SwiftRemo v1.0 RC2 · Flujo de trabajo desde Windows
 
 ## 1. Preparar carpeta de trabajo
 
@@ -6,16 +6,16 @@ PowerShell:
 
 ```powershell
 cd $env:USERPROFILE\Downloads
-Expand-Archive -LiteralPath ".\SwiftRemo_v1_0_RC1_WINDOWS_DATOS_COPIAS.zip" -DestinationPath ".\SwiftRemo_v1_0_RC1" -Force
-cd .\SwiftRemo_v1_0_RC1
+Expand-Archive -LiteralPath ".\SwiftRemo_v1_0_RC2_SISTEMA_NORMALIZADO.zip" -DestinationPath ".\SwiftRemo_v1_0_RC2" -Force
+cd .\SwiftRemo_v1_0_RC2
 ```
 
 CMD:
 
 ```bat
 cd /d %USERPROFILE%\Downloads
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -LiteralPath '.\SwiftRemo_v1_0_RC1_WINDOWS_DATOS_COPIAS.zip' -DestinationPath '.\SwiftRemo_v1_0_RC1' -Force"
-cd /d %USERPROFILE%\Downloads\SwiftRemo_v1_0_RC1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -LiteralPath '.\SwiftRemo_v1_0_RC2_SISTEMA_NORMALIZADO.zip' -DestinationPath '.\SwiftRemo_v1_0_RC2' -Force"
+cd /d %USERPROFILE%\Downloads\SwiftRemo_v1_0_RC2
 ```
 
 ## 2. Arrancar servidor local sin caché
@@ -30,7 +30,7 @@ python -m http.server $port --bind 127.0.0.1
 En otra ventana:
 
 ```powershell
-Start-Process "http://127.0.0.1:8787/app/sqlite.html?v=100rc1"
+Start-Process "http://127.0.0.1:8787/app/sqlite.html?v=100rc2"
 ```
 
 CMD:
@@ -42,7 +42,7 @@ python -m http.server 8787 --bind 127.0.0.1
 En otra ventana:
 
 ```bat
-start http://127.0.0.1:8787/app/sqlite.html?v=100rc1
+start http://127.0.0.1:8787/app/sqlite.html?v=100rc2
 ```
 
 ## 3. Validar estructura antes de publicar
@@ -85,12 +85,12 @@ PowerShell desde la carpeta del repositorio:
 ```powershell
 git status
 git add .
-git commit -m "SwiftRemo v1.0 RC1"
+git commit -m "SwiftRemo v1.0 RC2"
 git push
 ```
 
 Comprobar después:
 
 ```powershell
-Start-Process "https://remo1611-arch.github.io/SwiftRemo/app/sqlite.html?v=100rc1"
+Start-Process "https://remo1611-arch.github.io/SwiftRemo/app/sqlite.html?v=100rc2"
 ```

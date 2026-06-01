@@ -1,5 +1,0 @@
-Validación pública 6.72.6
-- Base pública sin datos privados de Carlos.
-- Esquema media privado disponible.
-- Importación privada conserva vínculos de foto pendientes.
-- No incluir paquetes NO_SUBIR_GITHUB en repositorio público.

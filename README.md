@@ -1,17 +1,28 @@
-# SwiftRemo v1.0 RC1
+# SwiftRemo v1.0 RC2
 
 Aplicación docente para aula-taller de Cocina, Pastelería y Panadería: prácticas, fichas técnicas, formulación panadera, pedidos, impresión A4 y gestión local de datos SQLite.
 
 ## Estado de esta versión
 
-**Versión pública:** `SwiftRemo v1.0 RC1 · Windows · Datos y copias · Paquetes privados BLOB`
+**Versión pública:** `SwiftRemo v1.0 RC2 · Sistema normalizado · Datos y copias`
 
-Esta RC parte de `SwiftRemo_v2_SQL_FASE6_72_13_ESTADO_FIJO_PAGINACION.zip` y mantiene la arquitectura por dominios:
+Esta RC aplica una refactorización completa de la pestaña **Sistema / Datos y copias** para que el flujo sea comprensible para un usuario no técnico.
+
+Dominios funcionales:
 
 - **Taller:** práctica activa del día.
 - **Histórico:** prácticas archivadas y documentación cerrada.
 - **Archivo técnico:** verdad maestra de elaboraciones, ingredientes y formulación.
-- **Sistema:** copias SQLite, importación/exportación, base inicial, paquetes privados y SQL técnico.
+- **Sistema:** datos, copias, recuperación, paquetes privados y SQL técnico.
+
+## Cambios principales de RC2
+
+- Sistema reordenado por decisiones de usuario: guardar, importar, reiniciar y privado.
+- Eliminada la duplicidad visual de acciones de copia.
+- Sustituida la lectura técnica inicial por instrucciones operativas claras.
+- Normalizado el bloque de paquetes privados y fotos BLOB como zona local privada.
+- Eliminados documentos públicos de fases antiguas que ensuciaban la RC.
+- Cache busting actualizado a `v=100rc2`.
 
 ## Publicación en GitHub Pages
 
@@ -29,10 +40,10 @@ La base pública incluida no contiene paquetes privados ni fotografías BLOB.
 
 La app pública carga una base inicial común. Cada usuario trabaja con su propia base local en el navegador.
 
-- La recuperación interna del navegador ayuda ante cierres accidentales.
 - La copia **SQLite descargada** es el respaldo real para conservar, trasladar o revisar trabajo.
 - Importar una copia `.sqlite` o `.db` sustituye la base local activa del navegador tras confirmación.
 - Reiniciar con la base pública limpia elimina la base local activa tras confirmación.
+- El JSON técnico es solo diagnóstico; no sustituye la copia SQLite.
 
 ## Paquetes privados y fotos BLOB
 

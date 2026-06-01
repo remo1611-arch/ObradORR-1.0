@@ -1,16 +1,16 @@
-import { SwiftDB } from "./db-service.js?v=100rc1";
-import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=100rc1";
-import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-3.js?v=100rc1";
-import { loadRecovery, saveRecovery, clearRecovery } from "./storage-service.js?v=100rc1";
-import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson } from "./ui.js?v=100rc1";
-import { createAppState } from "./ui/state.js?v=100rc1";
-import { createDomainShell } from "./ui/app-shell.js?v=100rc1";
-import { createWorkshopDomain } from "./domain/workshop.js?v=100rc1";
-import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=100rc1";
-import { createHistoryDomain } from "./domain/history.js?v=100rc1";
-import { createSystemBackupService } from "./domain/system-backup.js?v=100rc1";
-import { createPrintDomain } from "./domain/print.js?v=100rc1";
-import { createWorkshopView } from "./ui/workshop-view.js?v=100rc1";
+import { SwiftDB } from "./db-service.js?v=100rc2";
+import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=100rc2";
+import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-3.js?v=100rc2";
+import { loadRecovery, saveRecovery, clearRecovery } from "./storage-service.js?v=100rc2";
+import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson } from "./ui.js?v=100rc2";
+import { createAppState } from "./ui/state.js?v=100rc2";
+import { createDomainShell } from "./ui/app-shell.js?v=100rc2";
+import { createWorkshopDomain } from "./domain/workshop.js?v=100rc2";
+import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=100rc2";
+import { createHistoryDomain } from "./domain/history.js?v=100rc2";
+import { createSystemBackupService } from "./domain/system-backup.js?v=100rc2";
+import { createPrintDomain } from "./domain/print.js?v=100rc2";
+import { createWorkshopView } from "./ui/workshop-view.js?v=100rc2";
 
 const swiftDb = new SwiftDB();
 let repo = null;
@@ -2791,7 +2791,7 @@ function renderPrivateDataManager() {
     ORDER BY ds.visibility DESC, ds.name;
   `);
   box.innerHTML = `
-    <div class="private-kpi-grid">
+    <div class="system-private-kpi-rc2">
       <div class="kpi"><span>Fuentes privadas</span><b>${fmtNumber(stats.sources,0)}</b></div>
       <div class="kpi"><span>Fichas trazadas</span><b>${fmtNumber(stats.recipes,0)}</b></div>
       <div class="kpi"><span>Fotos BLOB</span><b>${fmtNumber(stats.media,0)}</b></div>

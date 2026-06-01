@@ -1,4 +1,4 @@
-import { WORKSHOP_STEPS, canUseOrder, canUseOutput, canArchive } from './workshop-flow.js?v=100rc1';
+import { WORKSHOP_STEPS, canUseOrder, canUseOutput, canArchive } from './workshop-flow.js?v=100rc2';
 function stepClass(active) {
   return active ? "workshop-step-pill active" : "workshop-step-pill";
 }
