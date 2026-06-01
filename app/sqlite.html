@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>SwiftRemo SQL · Aula taller</title>
-  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6661">
+  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6662">
 </head>
 <body>
   <header class="app-header">
@@ -25,6 +25,7 @@
   <nav class="top-nav">
     <div class="wrap nav-row">
       <button type="button" data-tab="panel" class="active">Inicio</button>
+      <button type="button" data-tab="library">Biblioteca</button>
       <button type="button" data-tab="selection">Práctica</button>
       <button type="button" data-tab="elaborations">Elaboraciones</button>
       <button type="button" data-tab="ingredients">Ingredientes</button>
@@ -42,6 +43,7 @@
       <p class="small">Zona secundaria para respaldo e importación. El trabajo diario se realiza desde <b>Práctica</b> y <b>Elaboraciones</b>. Descarga una copia <code>.sqlite</code> cuando quieras conservar o trasladar los datos.</p>
       <div class="side-workflow side-workflow-619">
         <button type="button" class="side-link" data-tab="selection">Preparar práctica</button>
+        <button type="button" class="side-link" data-tab="library">Biblioteca</button>
         <button type="button" class="side-link" data-tab="elaborations">Elaboraciones</button>
         <button type="button" class="side-link" data-tab="ingredients">Ingredientes</button>
         <button type="button" class="side-link" data-tab="audit">Calidad</button>
@@ -79,13 +81,14 @@
           <div class="section-head">
             <div>
               <h2>¿Qué quieres hacer?</h2>
-              <p class="small">Prepara una práctica, consulta elaboraciones, edita ingredientes o revisa la calidad de datos.</p>
+              <p class="small">Prepara una práctica, consulta la biblioteca, edita ingredientes o revisa la calidad de datos.</p>
             </div>
             <button type="button" class="btn primary" data-tab="selection">Preparar práctica</button>
           </div>
 
           <div class="command-grid-619">
             <button type="button" class="command-card-619 primary" data-tab="selection"><strong>Preparar práctica</strong><span>Elige elaboraciones, indica cantidad total, revisa pedido e imprime.</span></button>
+            <button type="button" class="command-card-619" data-tab="library"><strong>Ver biblioteca</strong><span>Consulta todos los ingredientes, fichas y fórmulas con paginación y detalle.</span></button>
             <button type="button" class="command-card-619" data-tab="elaborations"><strong>Buscar elaboración</strong><span>Consulta, edita, añade a práctica o imprime una ficha suelta.</span></button>
             <button type="button" class="command-card-619" data-tab="ingredients"><strong>Editar ingredientes</strong><span>Actualiza precios, alérgenos, proveedores, unidades y roles técnicos.</span></button>
             <button type="button" class="command-card-619" data-tab="audit"><strong>Revisar calidad</strong><span>Detecta precios 0, datos incompletos, contratos y avisos técnicos.</span></button>
@@ -102,6 +105,74 @@
           <h2>Resumen de práctica</h2>
           <p class="small">Estado de la práctica actual. Para fichas sueltas, entra en Elaboraciones e imprime directamente.</p>
           <div id="sessionSummary" class="wide"></div>
+        </div>
+      </section>
+
+      <section id="tab-library" class="tab-section">
+        <div class="card workspace-hero-619 library-hero-666b">
+          <div class="section-head">
+            <div>
+              <h2>Biblioteca docente</h2>
+              <p class="small">Consulta completa de ingredientes, fichas de cocina/pastelería y fórmulas panaderas. Esta vista es de revisión: para editar, abre la ficha correspondiente.</p>
+            </div>
+            <div class="actions">
+              <button id="libraryRefreshV666B" type="button" class="btn ghost">Actualizar</button>
+              <button type="button" class="btn primary" data-tab="selection">Preparar práctica</button>
+            </div>
+          </div>
+
+          <div class="filters-grid library-filters-666b">
+            <label>Catálogo
+              <select id="libraryKindV666B">
+                <option value="elaborations">Todas las elaboraciones</option>
+                <option value="ingredients">Ingredientes</option>
+                <option value="culinary">Fichas cocina/pastelería</option>
+                <option value="bakery">Fórmulas panaderas</option>
+              </select>
+            </label>
+            <label>Buscar
+              <input id="librarySearchV666B" placeholder="Nombre, familia, subfamilia, ingrediente, rol…">
+            </label>
+            <label>Estado
+              <select id="libraryStatusV666B">
+                <option value="active">Activos</option>
+                <option value="all">Todos</option>
+                <option value="inactive">Archivados / inactivos</option>
+              </select>
+            </label>
+            <label>Por página
+              <select id="libraryPageSizeV666B">
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="librarySummaryV666B" class="kpi-grid"></div>
+        </div>
+
+        <div class="card library-list-card-666b">
+          <div class="section-head">
+            <div>
+              <h2>Resultados paginados</h2>
+              <p class="small">Usa “Detalle” para revisar ingredientes, proceso, APPCC, rendimiento y líneas técnicas sin cambiar de práctica.</p>
+            </div>
+            <div id="libraryPagerTopV666B" class="library-pager-666b"></div>
+          </div>
+          <div id="libraryTableV666B" class="wide library-table-666b"></div>
+          <div id="libraryPagerBottomV666B" class="library-pager-666b bottom"></div>
+        </div>
+
+        <div class="card library-detail-card-666b">
+          <div class="section-head">
+            <div>
+              <h2>Detalle de biblioteca</h2>
+              <p class="small">Consulta técnica. La edición sigue estando en las pantallas de ingredientes, cocina/pastelería o panadería.</p>
+            </div>
+          </div>
+          <div id="libraryDetailV666B" class="library-detail-666b muted">Selecciona un registro para ver su detalle.</div>
         </div>
       </section>
 
@@ -1255,18 +1326,18 @@
 
   <div id="toastStack" class="toast-stack"></div>
   <script>
-    console.log("SwiftRemo fase6.66A paquete público protegido cargado");
+    console.log("SwiftRemo fase6.66B biblioteca visible con paginación cargada");
   </script>
   <div id="swiftremoPrintPreview631" hidden></div>
-  <script type="module" src="./js/app.js?v=6661"></script>
-  <script type="module" src="./js/bakery-main-v3-7.js?v=6661"></script>
-  <script type="module" src="./js/preferments-v3-8.js?v=6661"></script>
-  <script type="module" src="./js/extras-v3-9.js?v=6661"></script>
-  <script type="module" src="./js/culinary-main-v5-1.js?v=6661"></script>
-  <script type="module" src="./js/session-v4-1.js?v=6661"></script>
-  <script type="module" src="./js/combobox-v6-9.js?v=6661"></script>
+  <script type="module" src="./js/app.js?v=6662"></script>
+  <script type="module" src="./js/bakery-main-v3-7.js?v=6662"></script>
+  <script type="module" src="./js/preferments-v3-8.js?v=6662"></script>
+  <script type="module" src="./js/extras-v3-9.js?v=6662"></script>
+  <script type="module" src="./js/culinary-main-v5-1.js?v=6662"></script>
+  <script type="module" src="./js/session-v4-1.js?v=6662"></script>
+  <script type="module" src="./js/combobox-v6-9.js?v=6662"></script>
   <script type="module">
-    import { printClassOrder } from "./js/print-service-v6-1.js?v=6661";
+    import { printClassOrder } from "./js/print-service-v6-1.js?v=6662";
     import { toast } from "./js/ui.js";
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.querySelector("#globalPrintOrderV61");

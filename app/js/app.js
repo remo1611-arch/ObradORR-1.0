@@ -15,6 +15,7 @@ let practiceContextSaveTimer = null;
 const state = {
   filters: { search: "", active: "active", use: "all", view: "work" },
   elaborations: { search: "", type: "all", active: "active" },
+  library: { kind: "elaborations", search: "", active: "active", page: 1, pageSize: 50, selectedKey: "" },
   quantityDialog: { mode: "add", elaboration: null, selectionItem: null }
 };
 
@@ -110,6 +111,11 @@ function bindEvents() {
   bindIfExists("#elaborationSearchV625", "input", ev => { state.elaborations.search = ev.target.value; renderElaborations(); });
   bindIfExists("#elaborationTypeFilterV625", "change", ev => { state.elaborations.type = ev.target.value; renderElaborations(); });
   bindIfExists("#elaborationStatusFilterV625", "change", ev => { state.elaborations.active = ev.target.value; renderElaborations(); });
+  bindIfExists("#libraryKindV666B", "change", ev => { state.library.kind = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderLibraryV666B(); });
+  bindIfExists("#librarySearchV666B", "input", ev => { state.library.search = ev.target.value; state.library.page = 1; renderLibraryV666B(); });
+  bindIfExists("#libraryStatusV666B", "change", ev => { state.library.active = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderLibraryV666B(); });
+  bindIfExists("#libraryPageSizeV666B", "change", ev => { state.library.pageSize = Number(ev.target.value) || 50; state.library.page = 1; renderLibraryV666B(); });
+  bindIfExists("#libraryRefreshV666B", "click", () => renderLibraryV666B());
   $("#newIngredient").addEventListener("click", newIngredientForm);
   $("#clearIngredientForm").addEventListener("click", clearIngredientForm);
   $("#deactivateIngredient").addEventListener("click", deactivateSelectedIngredient);
@@ -164,6 +170,14 @@ function bindEvents() {
     if (openElab) { ev.preventDefault(); openUnifiedElaboration(openElab.dataset.openElaboration); return; }
     const addElab = ev.target.closest?.("[data-add-elaboration-work]");
     if (addElab) { ev.preventDefault(); addUnifiedElaborationToWork(addElab.dataset.addElaborationWork); return; }
+    const libPage = ev.target.closest?.("[data-library-page]");
+    if (libPage) { ev.preventDefault(); state.library.page = Number(libPage.dataset.libraryPage) || 1; renderLibraryV666B(); return; }
+    const libDetail = ev.target.closest?.("[data-library-detail]");
+    if (libDetail) { ev.preventDefault(); state.library.selectedKey = libDetail.dataset.libraryDetail || ""; renderLibraryV666B(); return; }
+    const libOpen = ev.target.closest?.("[data-library-open]");
+    if (libOpen) { ev.preventDefault(); openUnifiedElaboration(libOpen.dataset.libraryOpen); return; }
+    const libEditIng = ev.target.closest?.("[data-library-edit-ingredient]");
+    if (libEditIng) { ev.preventDefault(); loadIngredientForm(libEditIng.dataset.libraryEditIngredient); switchTab("ingredients"); return; }
   });
   bindScrollTargets();
   bindClassWorkflowAccordion();
@@ -377,6 +391,7 @@ function renderAll() {
     renderSessionSummary,
     renderPracticeMetaV632,
     renderPracticePlanV627,
+    renderLibraryV666B,
     renderElaborations,
     renderIngredients,
     renderSelection,
@@ -748,6 +763,304 @@ function renderPracticePlanV627() {
 
 function suggestedPracticeQuantityV627(mode, elab, item = null) {
   return null;
+}
+
+
+function foldTextV666B(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function librarySearchMatchV666B(row, q) {
+  if (!q) return true;
+  const haystack = foldTextV666B([
+    row.name, row.typeLabel, row.family, row.subfamily, row.statusLabel,
+    row.baseLabel, row.orderGroup, row.unit, row.roleLabel, row.productionLabel
+  ].join(" "));
+  return haystack.includes(q);
+}
+
+function libraryRowsV666B() {
+  if (!repo) return [];
+  const kind = state.library.kind || "elaborations";
+  const active = state.library.active || "active";
+  const q = foldTextV666B(state.library.search || "").trim();
+  let rows = [];
+
+  if (kind === "ingredients") {
+    rows = repo.ingredients({ search: "", active, use: "all" }).map(r => ({
+      key: `ingredient:${r.id}`,
+      sourceKind: "ingredient",
+      id: r.id,
+      name: r.name,
+      typeLabel: "Ingrediente",
+      family: r.family || "",
+      subfamily: r.subfamily || "",
+      unit: r.base_unit || "",
+      orderGroup: r.order_group || "",
+      roleLabel: r.bakery_role ? roleLabel(r.bakery_role) : "",
+      statusLabel: r.active ? "Activo" : "Inactivo",
+      active: Number(r.active) === 1,
+      baseLabel: [r.base_unit || "", r.order_group || ""].filter(Boolean).join(" · "),
+      cost: Number(r.cost_per_base_unit_after_waste || 0),
+      raw: r
+    }));
+  } else if (kind === "culinary") {
+    rows = repo.culinaryRecipes().map(r => ({
+      key: `culinary:${r.id}`,
+      uid: `culinary:${r.id}`,
+      sourceKind: "culinary",
+      id: r.id,
+      name: r.name,
+      typeLabel: "Cocina/Pastelería",
+      family: r.family || "",
+      subfamily: r.subfamily || "",
+      productionLabel: productionKindLabelV666B(r.production_kind),
+      statusLabel: statusLabel(r.status),
+      active: Number(r.active) === 1,
+      baseLabel: culinaryBaseLabelV666B(r),
+      cost: Number(r.total_cost || 0),
+      raw: r
+    }));
+  } else if (kind === "bakery") {
+    rows = repo.bakeryRecipes().map(r => ({
+      key: `bakery:${r.id}`,
+      uid: `bakery:${r.id}`,
+      sourceKind: "bakery",
+      id: r.id,
+      name: r.name,
+      typeLabel: "Panadería",
+      family: r.family || "",
+      subfamily: r.subfamily || "",
+      productionLabel: "Porcentaje panadero",
+      statusLabel: statusLabel(r.status),
+      active: Number(r.active) === 1,
+      baseLabel: bakeryBaseLabelV666B(r),
+      cost: Number(r.total_cost || r.ingredient_cost_total || 0),
+      hydration: Number(r.real_hydration_pct || 0),
+      raw: r
+    }));
+  } else {
+    rows = repo.unifiedElaborations({ search: "", type: "all", active }).map(r => ({
+      key: r.uid,
+      uid: r.uid,
+      sourceKind: r.source_type,
+      id: r.source_id,
+      name: r.name,
+      typeLabel: r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería",
+      family: r.family || "",
+      subfamily: r.subfamily || "",
+      productionLabel: r.production_label || r.production_model || "",
+      statusLabel: statusLabel(r.status),
+      active: Number(r.active) === 1,
+      baseLabel: r.base_label || "",
+      cost: Number(r.total_cost || 0),
+      raw: r
+    }));
+  }
+
+  if (kind !== "ingredients" && kind !== "elaborations") {
+    if (active === "active") rows = rows.filter(r => r.active);
+    if (active === "inactive") rows = rows.filter(r => !r.active);
+  }
+  if (q) rows = rows.filter(r => librarySearchMatchV666B(r, q));
+  return rows.sort((a, b) => Number(b.active) - Number(a.active) || String(a.name).localeCompare(String(b.name), "es"));
+}
+
+function productionKindLabelV666B(kind) {
+  return ({ final_servings: "Raciones", technical_yield: "Rendimiento técnico", dual: "Dual" })[kind] || kind || "Ficha";
+}
+
+function culinaryBaseLabelV666B(r) {
+  if (r.production_kind === "technical_yield") return "Rendimiento técnico";
+  const servings = Number(r.base_servings || 0) > 0 ? `${fmtNumber(r.base_servings, 0)} raciones` : "Sin raciones base";
+  const weight = Number(r.serving_weight_g || 0) > 0 ? `${fmtNumber(r.serving_weight_g, 0)} g/ración` : "sin gramaje";
+  return `${servings} · ${weight}`;
+}
+
+function bakeryBaseLabelV666B(r) {
+  const flour = Number(r.base_flour_g || 0) > 0 ? `${fmtNumber(r.base_flour_g, 0)} g harina` : "sin harina base";
+  const dough = Number(r.total_raw_dough_g || 0) > 0 ? `${fmtNumber(r.total_raw_dough_g, 0)} g masa` : "";
+  const hydration = Number(r.real_hydration_pct || 0) > 0 ? `${fmtNumber(r.real_hydration_pct, 1)} % hidratación` : "";
+  return [flour, dough, hydration].filter(Boolean).join(" · ");
+}
+
+function renderLibraryV666B() {
+  const tableEl = document.querySelector("#libraryTableV666B");
+  if (!tableEl || !repo) return;
+  const controls = {
+    kind: document.querySelector("#libraryKindV666B"),
+    search: document.querySelector("#librarySearchV666B"),
+    status: document.querySelector("#libraryStatusV666B"),
+    pageSize: document.querySelector("#libraryPageSizeV666B")
+  };
+  if (controls.kind && controls.kind.value !== state.library.kind) controls.kind.value = state.library.kind;
+  if (controls.search && controls.search.value !== state.library.search) controls.search.value = state.library.search;
+  if (controls.status && controls.status.value !== state.library.active) controls.status.value = state.library.active;
+  if (controls.pageSize && Number(controls.pageSize.value) !== Number(state.library.pageSize)) controls.pageSize.value = String(state.library.pageSize || 50);
+
+  const rows = libraryRowsV666B();
+  const size = Math.max(1, Number(state.library.pageSize || 50));
+  const totalPages = Math.max(1, Math.ceil(rows.length / size));
+  state.library.page = Math.min(Math.max(1, Number(state.library.page || 1)), totalPages);
+  const start = (state.library.page - 1) * size;
+  const pageRows = rows.slice(start, start + size);
+
+  renderLibrarySummaryV666B(rows);
+  const pager = libraryPagerHtmlV666B(rows.length, start, pageRows.length, totalPages);
+  const top = document.querySelector("#libraryPagerTopV666B");
+  const bottom = document.querySelector("#libraryPagerBottomV666B");
+  if (top) top.innerHTML = pager;
+  if (bottom) bottom.innerHTML = pager;
+
+  tableEl.innerHTML = table(libraryHeadersV666B(), pageRows, {
+    rowAttrs: r => r.key === state.library.selectedKey ? "class='selected-row'" : ""
+  });
+
+  const stillVisible = rows.some(r => r.key === state.library.selectedKey);
+  if (!stillVisible) state.library.selectedKey = "";
+  renderLibraryDetailV666B(state.library.selectedKey);
+}
+
+function renderLibrarySummaryV666B(rows) {
+  const el = document.querySelector("#librarySummaryV666B");
+  if (!el) return;
+  const all = rows.length;
+  const ingredients = rows.filter(r => r.sourceKind === "ingredient").length;
+  const culinary = rows.filter(r => r.sourceKind === "culinary").length;
+  const bakery = rows.filter(r => r.sourceKind === "bakery").length;
+  el.innerHTML = `
+    <div class="kpi"><span>Resultados</span><b>${fmtNumber(all, 0)}</b></div>
+    <div class="kpi"><span>Ingredientes</span><b>${fmtNumber(ingredients, 0)}</b></div>
+    <div class="kpi"><span>Cocina/Pastelería</span><b>${fmtNumber(culinary, 0)}</b></div>
+    <div class="kpi"><span>Panadería</span><b>${fmtNumber(bakery, 0)}</b></div>`;
+}
+
+function libraryPagerHtmlV666B(total, start, count, totalPages) {
+  const page = Number(state.library.page || 1);
+  const from = total ? start + 1 : 0;
+  const to = start + count;
+  const disabledPrev = page <= 1 ? "disabled" : "";
+  const disabledNext = page >= totalPages ? "disabled" : "";
+  return `
+    <span class="library-range-666b">Mostrando <b>${fmtNumber(from,0)}–${fmtNumber(to,0)}</b> de <b>${fmtNumber(total,0)}</b> · página ${fmtNumber(page,0)}/${fmtNumber(totalPages,0)}</span>
+    <button type="button" class="btn ghost mini-btn-666b" ${disabledPrev} data-library-page="1">Inicio</button>
+    <button type="button" class="btn ghost mini-btn-666b" ${disabledPrev} data-library-page="${page - 1}">Anterior</button>
+    <button type="button" class="btn ghost mini-btn-666b" ${disabledNext} data-library-page="${page + 1}">Siguiente</button>
+    <button type="button" class="btn ghost mini-btn-666b" ${disabledNext} data-library-page="${totalPages}">Final</button>`;
+}
+
+function libraryHeadersV666B() {
+  return [
+    { label: "Nombre", render: r => `<button type="button" class="link-btn" data-library-detail="${esc(r.key)}">${esc(r.name)}</button>` },
+    { label: "Tipo", render: r => esc(r.typeLabel) },
+    { label: "Familia", render: r => esc([r.family, r.subfamily].filter(Boolean).join(" · ")) },
+    { label: "Base técnica", render: r => esc(r.baseLabel || "—") },
+    { label: "Estado", render: r => badge(r.statusLabel || (r.active ? "Activo" : "Inactivo"), r.active ? "ok" : "off") },
+    { label: "Coste", render: r => Number.isFinite(r.cost) && r.cost > 0 ? fmtMoney(r.cost) : "—" },
+    { label: "Acciones", render: r => libraryActionsHtmlV666B(r) }
+  ];
+}
+
+function libraryActionsHtmlV666B(r) {
+  const detail = `<button type="button" class="btn ghost mini-btn-666b" data-library-detail="${esc(r.key)}">Detalle</button>`;
+  if (r.sourceKind === "ingredient") return detail;
+  return `${detail} <button type="button" class="btn ghost mini-btn-666b" data-library-open="${esc(r.uid)}">Editar</button> <button type="button" class="btn primary mini-btn-666b" data-add-elaboration-work="${esc(r.uid)}">Añadir</button>`;
+}
+
+function renderLibraryDetailV666B(key) {
+  const el = document.querySelector("#libraryDetailV666B");
+  if (!el) return;
+  if (!key) {
+    el.className = "library-detail-666b muted";
+    el.innerHTML = "Selecciona un registro para ver su detalle.";
+    return;
+  }
+  if (key.startsWith("ingredient:")) {
+    renderIngredientDetailV666B(el, key.slice("ingredient:".length));
+  } else {
+    renderElaborationDetailV666B(el, key);
+  }
+}
+
+function renderIngredientDetailV666B(el, id) {
+  const row = repo.ingredients({ search: "", active: "all", use: "all" }).find(r => r.id === id);
+  const raw = repo.ingredientById(id);
+  if (!row || !raw) {
+    el.className = "library-detail-666b err";
+    el.innerHTML = "No se encontró el ingrediente.";
+    return;
+  }
+  el.className = "library-detail-666b";
+  el.innerHTML = `
+    <div class="library-detail-head-666b">
+      <div>
+        <h3>${esc(row.name)}</h3>
+        <div class="library-detail-badges-666b">
+          ${badge(row.active ? "Activo" : "Inactivo", row.active ? "ok" : "off")}
+          ${row.use_culinary ? badge("Cocina/Pastelería", "ok") : ""}
+          ${row.use_bakery ? badge("Panadería", "warn") : ""}
+          ${row.bakery_role ? badge(roleLabel(row.bakery_role), "warn") : ""}
+        </div>
+      </div>
+      <button type="button" class="btn ghost" data-library-edit-ingredient="${esc(id)}">Editar en ingredientes</button>
+    </div>
+    <div class="library-detail-grid-666b">
+      <div><span>Familia</span><b>${esc(row.family || "—")}</b></div>
+      <div><span>Subfamilia</span><b>${esc(row.subfamily || "—")}</b></div>
+      <div><span>Unidad base</span><b>${esc(row.base_unit || "—")}</b></div>
+      <div><span>Grupo pedido</span><b>${esc(row.order_group || "—")}</b></div>
+      <div><span>Coste neto</span><b>${fmtMoney(row.cost_per_base_unit_after_waste || 0)}</b></div>
+      <div><span>Coef. hídrico</span><b>${fmtNumber(row.hydration_factor, 2) || "—"}</b></div>
+    </div>
+    <div class="library-text-block-666b"><b>Notas</b><p>${esc(raw.notes || "Sin notas.")}</p></div>`;
+}
+
+function renderElaborationDetailV666B(el, uid) {
+  const r = repo.unifiedElaborationByUid(uid);
+  if (!r) {
+    el.className = "library-detail-666b err";
+    el.innerHTML = "No se encontró la elaboración.";
+    return;
+  }
+  const lines = repo.unifiedElaborationLines(uid);
+  const steps = repo.unifiedElaborationSteps(uid);
+  el.className = "library-detail-666b";
+  el.innerHTML = `
+    <div class="library-detail-head-666b">
+      <div>
+        <h3>${esc(r.name)}</h3>
+        <div class="library-detail-badges-666b">
+          ${badge(r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería", r.source_type === "bakery" ? "warn" : "ok")}
+          ${badge(r.production_label || r.production_model || "Modelo", r.source_type === "bakery" ? "warn" : "off")}
+          ${badge(statusLabel(r.status), r.status === "validated" ? "ok" : r.status === "archived" ? "off" : "warn")}
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn ghost" data-library-open="${esc(uid)}">Abrir / editar</button>
+        <button type="button" class="btn primary" data-add-elaboration-work="${esc(uid)}">Añadir a práctica</button>
+      </div>
+    </div>
+    <div class="library-detail-grid-666b">
+      <div><span>Familia</span><b>${esc(r.family || "—")}</b></div>
+      <div><span>Subfamilia</span><b>${esc(r.subfamily || "—")}</b></div>
+      <div><span>Base</span><b>${esc(r.base_label || "—")}</b></div>
+      <div><span>Coste base</span><b>${fmtMoney(r.total_cost || 0)}</b></div>
+      <div><span>Ingredientes</span><b>${fmtNumber(lines.length, 0)}</b></div>
+      <div><span>Proceso</span><b>${fmtNumber(steps.length, 0)} bloque${steps.length === 1 ? "" : "s"}</b></div>
+    </div>
+    <h4>Ingredientes / líneas técnicas</h4>
+    <div class="wide">${table([
+      { label: "Línea", render: x => esc(x.line_name || "—") },
+      { label: "Cantidad", render: x => x.baker_pct !== null && x.baker_pct !== undefined ? `${fmtNumber(x.baker_pct, 3)} %` : [fmtNumber(x.quantity, 3), x.unit].filter(Boolean).join(" ") || "—" },
+      { label: "Rol/fase", render: x => esc([x.baker_role ? roleLabel(x.baker_role) : "", x.phase || ""].filter(Boolean).join(" · ")) },
+      { label: "Coste", render: x => fmtMoney(x.estimated_cost || 0) },
+      { label: "Nota", render: x => esc(x.technical_note || "") }
+    ], lines)}</div>
+    <h4>Proceso / APPCC</h4>
+    <div class="library-steps-666b">${steps.length ? steps.map(st => `<article><b>${esc(st.phase || "Paso")} ${fmtNumber(st.step_order,0)}</b><p>${esc(st.instruction || "")}</p>${st.notes ? `<small>${esc(st.notes)}</small>` : ""}</article>`).join("") : "<p class='small'>Sin proceso estructurado disponible.</p>"}</div>`;
 }
 
 function renderElaborations() {

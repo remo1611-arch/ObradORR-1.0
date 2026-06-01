@@ -2,7 +2,7 @@
 
 Aplicación docente para aula-taller de Cocina, Pastelería y Panadería: prácticas, fichas técnicas, formulación panadera, pedidos e impresión A4.
 
-Versión pública: **Fase 6.66A · Protección mínima y paquete público limpio**.
+Versión pública: **Fase 6.66B · Biblioteca visible con paginación**.
 
 ## Uso
 

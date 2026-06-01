@@ -1,4 +1,4 @@
-# SwiftRemo · publicación pública 6.66A
+# SwiftRemo · publicación pública 6.66B
 
 Paquete mínimo para GitHub Pages.
 
