@@ -1,10 +1,10 @@
-# SwiftRemo v1.0 RC2
+# SwiftRemo v1.0 RC3
 
 Aplicación docente para aula-taller de Cocina, Pastelería y Panadería: prácticas, fichas técnicas, formulación panadera, pedidos, impresión A4 y gestión local de datos SQLite.
 
 ## Estado de esta versión
 
-**Versión pública:** `SwiftRemo v1.0 RC2 · Sistema normalizado · Datos y copias`
+**Versión pública:** `SwiftRemo v1.0 RC3 · Sistema refundido · gestión de datos clara`
 
 Esta RC aplica una refactorización completa de la pestaña **Sistema / Datos y copias** para que el flujo sea comprensible para un usuario no técnico.
 
@@ -15,14 +15,13 @@ Dominios funcionales:
 - **Archivo técnico:** verdad maestra de elaboraciones, ingredientes y formulación.
 - **Sistema:** datos, copias, recuperación, paquetes privados y SQL técnico.
 
-## Cambios principales de RC2
+## Cambios principales de RC3
 
-- Sistema reordenado por decisiones de usuario: guardar, importar, reiniciar y privado.
-- Eliminada la duplicidad visual de acciones de copia.
-- Sustituida la lectura técnica inicial por instrucciones operativas claras.
-- Normalizado el bloque de paquetes privados y fotos BLOB como zona local privada.
-- Eliminados documentos públicos de fases antiguas que ensuciaban la RC.
-- Cache busting actualizado a `v=100rc2`.
+- Pestaña Sistema refundida como pantalla de gestión de datos por intención de usuario.
+- Sustitución de tarjetas ambiguas por acordeones nativos desplegables: guardar, recuperar, reiniciar y material privado local.
+- Reducción del término SQLite en la interfaz visible; se mantiene solo como nota técnica de formato.
+- Separación clara entre base pública y material privado local.
+- Cache busting actualizado a `v=100rc3`.
 
 ## Publicación en GitHub Pages
 
@@ -45,7 +44,7 @@ La app pública carga una base inicial común. Cada usuario trabaja con su propi
 - Reiniciar con la base pública limpia elimina la base local activa tras confirmación.
 - El JSON técnico es solo diagnóstico; no sustituye la copia SQLite.
 
-## Paquetes privados y fotos BLOB
+## Material privado local y fotos integradas
 
 La RC mantiene soporte para paquetes privados SQLite y fotografías integradas como BLOB optimizado. Lo importado queda en el navegador local y en la copia privada descargada; no se incorpora a la base pública del repositorio.
 

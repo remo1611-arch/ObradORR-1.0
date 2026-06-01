@@ -1,4 +1,4 @@
-# SwiftRemo v1.0 RC2 · Flujo de trabajo desde Windows
+# SwiftRemo v1.0 RC3 · Flujo de trabajo desde Windows
 
 ## 1. Preparar carpeta de trabajo
 
@@ -6,16 +6,16 @@ PowerShell:
 
 ```powershell
 cd $env:USERPROFILE\Downloads
-Expand-Archive -LiteralPath ".\SwiftRemo_v1_0_RC2_SISTEMA_NORMALIZADO.zip" -DestinationPath ".\SwiftRemo_v1_0_RC2" -Force
-cd .\SwiftRemo_v1_0_RC2
+Expand-Archive -LiteralPath ".\SwiftRemo_v1_0_RC3_SISTEMA_NORMALIZADO.zip" -DestinationPath ".\SwiftRemo_v1_0_RC3" -Force
+cd .\SwiftRemo_v1_0_RC3
 ```
 
 CMD:
 
 ```bat
 cd /d %USERPROFILE%\Downloads
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -LiteralPath '.\SwiftRemo_v1_0_RC2_SISTEMA_NORMALIZADO.zip' -DestinationPath '.\SwiftRemo_v1_0_RC2' -Force"
-cd /d %USERPROFILE%\Downloads\SwiftRemo_v1_0_RC2
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -LiteralPath '.\SwiftRemo_v1_0_RC3_SISTEMA_NORMALIZADO.zip' -DestinationPath '.\SwiftRemo_v1_0_RC3' -Force"
+cd /d %USERPROFILE%\Downloads\SwiftRemo_v1_0_RC3
 ```
 
 ## 2. Arrancar servidor local sin caché
@@ -30,7 +30,7 @@ python -m http.server $port --bind 127.0.0.1
 En otra ventana:
 
 ```powershell
-Start-Process "http://127.0.0.1:8787/app/sqlite.html?v=100rc2"
+Start-Process "http://127.0.0.1:8787/app/sqlite.html?v=100rc3"
 ```
 
 CMD:
@@ -42,7 +42,7 @@ python -m http.server 8787 --bind 127.0.0.1
 En otra ventana:
 
 ```bat
-start http://127.0.0.1:8787/app/sqlite.html?v=100rc2
+start http://127.0.0.1:8787/app/sqlite.html?v=100rc3
 ```
 
 ## 3. Validar estructura antes de publicar
@@ -74,7 +74,7 @@ if exist app\wasm\sqlite3.wasm echo OK sqlite3.wasm
 1. Abrir `Sistema > Datos y copias`.
 2. Descargar una copia completa `.sqlite` antes de importar o reiniciar.
 3. Importar copias de trabajo solo cuando se quiera sustituir la base local activa.
-4. Importar paquetes privados solo desde `Paquetes privados y fotos BLOB`.
+4. Importar paquetes privados solo desde `Material privado local y fotos integradas`.
 5. Descargar la copia privada local tras integrar paquetes o fotos.
 6. No subir a GitHub copias privadas ni paquetes con datos de terceros.
 
@@ -85,12 +85,12 @@ PowerShell desde la carpeta del repositorio:
 ```powershell
 git status
 git add .
-git commit -m "SwiftRemo v1.0 RC2"
+git commit -m "SwiftRemo v1.0 RC3"
 git push
 ```
 
 Comprobar después:
 
 ```powershell
-Start-Process "https://remo1611-arch.github.io/SwiftRemo/app/sqlite.html?v=100rc2"
+Start-Process "https://remo1611-arch.github.io/SwiftRemo/app/sqlite.html?v=100rc3"
 ```

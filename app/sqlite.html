@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>SwiftRemo SQL · Aula taller</title>
-  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=100rc2">
+  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=100rc3">
 </head>
 <body>
   <header class="app-header">
@@ -113,21 +113,23 @@
       </section>
 
       <section id="tab-system" class="tab-section">
-        <div class="card shell-area-card-672 shell-system-672">
+        <div class="card shell-area-card-672 shell-system-672 system-home-rc3">
           <div class="section-head">
             <div>
               <h2>Sistema</h2>
-              <p class="small">Copias, importación/exportación, base inicial, recuperación, versión y herramientas técnicas. Las acciones de infraestructura viven aquí.</p>
+              <p class="small">Mantenimiento de la aplicación: guardar tu trabajo, recuperar una copia, volver a la base pública y revisar el estado técnico.</p>
             </div>
             <div class="actions">
-              <button type="button" class="btn primary" data-tab="system-data">Datos y copias</button>
-              <button type="button" class="btn ghost" data-tab="system-sql">SQL técnico</button>
+              <button type="button" class="btn primary" data-tab="system-data">Gestionar datos</button>
+              <button type="button" class="btn ghost" data-tab="archive-review">Estado de la base</button>
+              <button type="button" class="btn ghost" data-tab="system-sql">Consulta técnica</button>
             </div>
           </div>
-          <div class="shell-step-grid-672">
-            <button type="button" class="command-card-619 primary" data-tab="system-data"><strong>Copias SQLite</strong><span>Descargar, importar, restaurar base inicial o exportar JSON técnico.</span></button>
-            <button type="button" class="command-card-619" data-tab="system-sql"><strong>SQL técnico</strong><span>Consulta puntual para diagnóstico, no para flujo docente ordinario.</span></button>
-            <button type="button" class="command-card-619" data-tab="archive-review"><strong>Estado de base</strong><span>Comprobar versión, calidad y metadatos antes de publicar.</span></button>
+          <div class="system-home-grid-rc3">
+            <button type="button" class="system-home-card-rc3 primary" data-tab="system-data"><strong>Guardar, recuperar o reiniciar</strong><span>Acciones normales de seguridad y traslado de trabajo.</span></button>
+            <button type="button" class="system-home-card-rc3" data-tab="system-data"><strong>Material privado local</strong><span>Importación de paquetes autorizados y fotos sin subirlas al repositorio.</span></button>
+            <button type="button" class="system-home-card-rc3" data-tab="archive-review"><strong>Comprobar base</strong><span>Calidad de datos, versión y diagnóstico antes de publicar.</span></button>
+            <button type="button" class="system-home-card-rc3 technical" data-tab="system-sql"><strong>Consulta técnica</strong><span>Solo para diagnóstico puntual con consultas SELECT.</span></button>
           </div>
         </div>
       </section>
@@ -1365,151 +1367,146 @@
       </section>
 
 
-      <section id="view-system-data" class="tab-section system-screen-rc2">
-        <div class="card system-hero-rc2">
-          <div class="section-head system-titlebar-rc2">
+      <section id="view-system-data" class="tab-section system-screen-rc3">
+        <div class="card system-hero-rc3">
+          <div class="section-head system-titlebar-rc3">
             <div>
-              <p class="eyebrow-rc2">Sistema</p>
-              <h2>Datos, copias y recuperación</h2>
-              <p class="small">Pantalla de mantenimiento de SwiftRemo. Aquí se guardan copias, se importan bases, se vuelve a la base pública y se gestionan paquetes privados locales.</p>
+              <p class="eyebrow-rc3">Sistema</p>
+              <h2>Gestión de datos</h2>
+              <p class="small">Una sola pantalla para decidir qué hacer con tu trabajo: guardarlo, recuperarlo, reiniciar la base pública o integrar material privado local.</p>
             </div>
-            <div class="actions system-title-actions-rc2">
-              <button id="exportSqlite" type="button" class="btn success">Guardar copia SQLite</button>
+            <div class="actions system-title-actions-rc3">
+              <button id="exportSqlite" type="button" class="btn success">Descargar copia completa</button>
               <button type="button" class="btn ghost" data-tab="workshop-practice">Volver a Taller</button>
             </div>
           </div>
 
-          <div class="system-status-row-rc2" aria-label="Estado de guardado y base">
-            <div class="system-status-card-rc2">
-              <span class="system-status-label-rc2">Estado local</span>
+          <div class="system-status-row-rc3" aria-label="Estado de guardado y base">
+            <div class="system-status-card-rc3">
+              <span class="system-status-label-rc3">Guardado local</span>
               <div id="saveIndicator" class="save-indicator saving">Preparando guardado…</div>
               <div id="lastSavedInfo" class="small">Sin cambios todavía.</div>
             </div>
-            <div id="statusBox" class="system-status-card-rc2 status-box warn">La base todavía no se ha cargado.</div>
+            <div id="statusBox" class="system-status-card-rc3 status-box warn">La base todavía no se ha cargado.</div>
           </div>
         </div>
 
-        <div class="system-decision-grid-rc2">
-          <article class="card system-module-rc2 primary">
-            <div class="system-module-head-rc2">
-              <span class="step-badge-rc2">A</span>
-              <div>
-                <h3>Guardar o mover mi trabajo</h3>
-                <p class="small">La copia SQLite es el archivo principal de seguridad. Contiene fichas, prácticas, ajustes locales y, si existen, datos privados integrados.</p>
+        <div class="system-accordion-list-rc3" aria-label="Acciones de gestión de datos">
+          <details class="card system-accordion-rc3 primary" open>
+            <summary>
+              <span class="step-badge-rc3">1</span>
+              <span><b>Guardar mi trabajo</b><small>Descarga un archivo completo para conservarlo, moverlo a otro equipo o enviarlo para revisión.</small></span>
+            </summary>
+            <div class="system-panel-body-rc3">
+              <div class="system-action-grid-rc3">
+                <button id="exportPrivateSqlite" type="button" class="btn primary">Descargar copia completa</button>
+                <button id="exportJson" type="button" class="btn ghost">Descargar informe técnico JSON</button>
               </div>
+              <p class="microcopy-rc3"><b>Recomendación:</b> usa “Descargar copia completa” antes de importar, reiniciar, cambiar de ordenador o publicar una nueva versión. El formato técnico puede ser <code>.sqlite</code> o <code>.db</code>, pero el usuario solo necesita tratarlo como su copia de trabajo.</p>
             </div>
-            <div class="system-button-stack-rc2">
-              <button id="exportPrivateSqlite" type="button" class="btn primary">Descargar copia completa local</button>
-              <button id="exportJson" type="button" class="btn ghost">Descargar JSON técnico</button>
-            </div>
-            <p class="microcopy-rc2"><b>Uso normal:</b> descarga la copia SQLite antes de importar, reiniciar, cambiar de equipo o publicar una revisión.</p>
-          </article>
+          </details>
 
-          <article class="card system-module-rc2">
-            <div class="system-module-head-rc2">
-              <span class="step-badge-rc2">B</span>
-              <div>
-                <h3>Continuar desde una copia</h3>
-                <p class="small">Carga una base SQLite o DB de trabajo. Esta operación sustituye la base local del navegador tras confirmación.</p>
-              </div>
-            </div>
-            <label class="btn ghost file-label system-file-button-rc2">
-              Importar copia SQLite / DB
-              <input id="sqliteFile" type="file" accept=".sqlite,.db,application/octet-stream">
-            </label>
-            <p class="microcopy-rc2">No uses esta opción para publicar una base pública sin revisarla antes. Sirve para recuperar o trasladar trabajo.</p>
-          </article>
-
-          <article class="card system-module-rc2 danger">
-            <div class="system-module-head-rc2">
-              <span class="step-badge-rc2">C</span>
-              <div>
-                <h3>Volver a la base pública limpia</h3>
-                <p class="small">Descarta la base local del navegador y carga la base incluida en GitHub Pages.</p>
-              </div>
-            </div>
-            <button id="loadInitialDb" type="button" class="btn danger">Reiniciar con base pública limpia</button>
-            <p class="microcopy-rc2"><b>Atención:</b> no incluye paquetes privados, fotos BLOB ni cambios locales no exportados.</p>
-          </article>
-        </div>
-
-        <div class="card system-private-rc2">
-          <div class="section-head system-titlebar-rc2">
-            <div>
-              <p class="eyebrow-rc2">Zona local privada</p>
-              <h2>Paquetes privados y fotos BLOB</h2>
-              <p class="small">Integra material privado solo en el navegador y en las copias SQLite que descargues. Esta zona no debe formar parte de la base pública del repositorio.</p>
-            </div>
-          </div>
-
-          <div class="system-warning-strip-rc2">
-            <b>No subir a GitHub.</b>
-            <span>Si una copia contiene fichas privadas, trazabilidad de terceros o imágenes BLOB, mantenla fuera del repositorio público.</span>
-          </div>
-
-          <div class="system-private-layout-rc2">
-            <section class="system-private-box-rc2">
-              <h3>1. Identificar origen</h3>
-              <div class="system-form-grid-rc2">
-                <div>
-                  <label for="privateSourceName">Nombre visible</label>
-                  <input id="privateSourceName" value="Paquete privado local" placeholder="Ej.: colaborador autorizado" autocomplete="off">
-                </div>
-                <div>
-                  <label for="privateSourceSlug">ID técnico</label>
-                  <input id="privateSourceSlug" value="paquete_privado_local" autocomplete="off" class="mono-input" data-autofilled="1">
-                </div>
-              </div>
-              <p class="microcopy-rc2">El origen queda registrado en <code>data_sources</code> y <code>entity_sources</code> para poder auditar de dónde procede cada elemento.</p>
-            </section>
-
-            <section class="system-private-box-rc2">
-              <h3>2. Importar paquete privado</h3>
-              <label class="btn ghost file-label system-file-button-rc2">
-                Importar paquete privado SQLite / DB
-                <input id="privateSqliteFile" type="file" accept=".sqlite,.db,application/octet-stream">
+          <details class="card system-accordion-rc3">
+            <summary>
+              <span class="step-badge-rc3">2</span>
+              <span><b>Recuperar una copia</b><small>Continúa desde una copia guardada anteriormente. Sustituye la base local del navegador tras confirmación.</small></span>
+            </summary>
+            <div class="system-panel-body-rc3">
+              <label class="btn ghost file-label system-file-button-rc3">
+                Seleccionar copia guardada
+                <input id="sqliteFile" type="file" accept=".sqlite,.db,application/octet-stream">
               </label>
-              <p class="microcopy-rc2">Fusiona tablas compatibles con <code>INSERT OR IGNORE</code>. No debería sobrescribir fichas ya existentes.</p>
-            </section>
+              <p class="microcopy-rc3">Esta acción es para recuperar o trasladar trabajo. No la uses para preparar la base pública final sin revisar antes el contenido.</p>
+            </div>
+          </details>
 
-            <section class="system-private-box-rc2 wide">
-              <h3>3. Añadir fotos como BLOB</h3>
-              <div class="system-form-grid-rc2">
-                <div>
-                  <label for="privatePhotoKind">Tipo de elaboración</label>
-                  <select id="privatePhotoKind">
-                    <option value="all">Todas</option>
-                    <option value="culinary">Fichas cocina/pastelería</option>
-                    <option value="bakery">Formulación panadera</option>
-                  </select>
-                </div>
-                <div>
-                  <label for="privatePhotoRecipe">Ficha / formulación</label>
-                  <select id="privatePhotoRecipe"><option value="">Base pendiente de cargar…</option></select>
-                </div>
-              </div>
-              <div class="system-button-row-rc2">
-                <label class="btn ghost file-label system-file-button-rc2">
-                  Integrar fotos como BLOB
-                  <input id="privatePhotoFiles" type="file" accept="image/*" multiple>
-                </label>
-                <span class="small">Redimensiona a un lado largo máximo de 1600 px y guarda preferentemente en WebP.</span>
-              </div>
-            </section>
-          </div>
+          <details class="card system-accordion-rc3 danger">
+            <summary>
+              <span class="step-badge-rc3">3</span>
+              <span><b>Reiniciar con la base pública</b><small>Vuelve a la base incluida en la app publicada y descarta la base local del navegador.</small></span>
+            </summary>
+            <div class="system-panel-body-rc3">
+              <button id="loadInitialDb" type="button" class="btn danger">Reiniciar base local</button>
+              <p class="microcopy-rc3"><b>Atención:</b> antes de reiniciar descarga una copia completa. Esta acción no conserva cambios locales, paquetes privados ni imágenes integradas.</p>
+            </div>
+          </details>
 
-          <div id="privateDataStatus" class="private-status-rc system-private-status-rc2">
-            <p class="small">Base privada pendiente de cargar.</p>
-          </div>
+          <details class="card system-accordion-rc3 private">
+            <summary>
+              <span class="step-badge-rc3">4</span>
+              <span><b>Material privado local</b><small>Integra fichas o fotos autorizadas solo en tu navegador y en tus copias descargadas.</small></span>
+            </summary>
+            <div class="system-panel-body-rc3">
+              <div class="system-warning-strip-rc3">
+                <b>No subir a GitHub.</b>
+                <span>Si una copia contiene fichas privadas, trazabilidad de terceros o imágenes integradas, mantenla fuera del repositorio público.</span>
+              </div>
+
+              <div class="system-private-layout-rc3">
+                <section class="system-private-box-rc3">
+                  <h3>Origen del material</h3>
+                  <div class="system-form-grid-rc3">
+                    <div>
+                      <label for="privateSourceName">Nombre visible</label>
+                      <input id="privateSourceName" value="Paquete privado local" placeholder="Ej.: colaborador autorizado" autocomplete="off">
+                    </div>
+                    <div>
+                      <label for="privateSourceSlug">ID técnico</label>
+                      <input id="privateSourceSlug" value="paquete_privado_local" autocomplete="off" class="mono-input" data-autofilled="1">
+                    </div>
+                  </div>
+                  <p class="microcopy-rc3">El origen queda registrado para auditar de dónde procede cada ficha o imagen.</p>
+                </section>
+
+                <section class="system-private-box-rc3">
+                  <h3>Importar paquete privado</h3>
+                  <label class="btn ghost file-label system-file-button-rc3">
+                    Seleccionar paquete local
+                    <input id="privateSqliteFile" type="file" accept=".sqlite,.db,application/octet-stream">
+                  </label>
+                  <p class="microcopy-rc3">Fusiona tablas compatibles sin publicar el material en la base pública.</p>
+                </section>
+
+                <section class="system-private-box-rc3 wide">
+                  <h3>Añadir fotos integradas</h3>
+                  <div class="system-form-grid-rc3">
+                    <div>
+                      <label for="privatePhotoKind">Tipo de elaboración</label>
+                      <select id="privatePhotoKind">
+                        <option value="all">Todas</option>
+                        <option value="culinary">Fichas cocina/pastelería</option>
+                        <option value="bakery">Formulación panadera</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="privatePhotoRecipe">Ficha / formulación</label>
+                      <select id="privatePhotoRecipe"><option value="">Base pendiente de cargar…</option></select>
+                    </div>
+                  </div>
+                  <div class="system-button-row-rc3">
+                    <label class="btn ghost file-label system-file-button-rc3">
+                      Seleccionar fotos
+                      <input id="privatePhotoFiles" type="file" accept="image/*" multiple>
+                    </label>
+                    <span class="small">Se redimensionan antes de guardarse en la copia local.</span>
+                  </div>
+                </section>
+              </div>
+
+              <div id="privateDataStatus" class="private-status-rc system-private-status-rc3">
+                <p class="small">Material privado pendiente de cargar.</p>
+              </div>
+            </div>
+          </details>
         </div>
 
-        <div class="card system-help-rc2">
-          <h2>Regla simple</h2>
-          <div class="system-rules-rc2">
-            <p><b>Guardar:</b> descarga una copia SQLite completa.</p>
-            <p><b>Importar:</b> sustituye la base local del navegador.</p>
-            <p><b>Reiniciar:</b> vuelve a la base pública limpia.</p>
-            <p><b>Privado:</b> se conserva solo en tu navegador y en tus copias descargadas.</p>
+        <div class="card system-help-rc3">
+          <h2>Regla rápida</h2>
+          <div class="system-rules-rc3">
+            <p><b>Descargar copia completa</b><span>Guarda todo el trabajo local.</span></p>
+            <p><b>Recuperar una copia</b><span>Sustituye la base local actual.</span></p>
+            <p><b>Reiniciar</b><span>Vuelve a la base pública limpia.</span></p>
+            <p><b>Privado</b><span>No se sube al repositorio.</span></p>
           </div>
         </div>
       </section>
@@ -1602,16 +1599,16 @@
     })();
   </script>
   <div id="swiftremoPrintPreview631" hidden></div>
-  <script type="module" src="./js/app.js?v=100rc2"></script>
-  <script type="module" src="./js/bakery-main-v3-7.js?v=100rc2"></script>
-  <script type="module" src="./js/preferments-v3-8.js?v=100rc2"></script>
-  <script type="module" src="./js/extras-v3-9.js?v=100rc2"></script>
-  <script type="module" src="./js/culinary-main-v5-1.js?v=100rc2"></script>
-  <script type="module" src="./js/history-engine.js?v=100rc2"></script>
-  <script type="module" src="./js/combobox-v6-9.js?v=100rc2"></script>
+  <script type="module" src="./js/app.js?v=100rc3"></script>
+  <script type="module" src="./js/bakery-main-v3-7.js?v=100rc3"></script>
+  <script type="module" src="./js/preferments-v3-8.js?v=100rc3"></script>
+  <script type="module" src="./js/extras-v3-9.js?v=100rc3"></script>
+  <script type="module" src="./js/culinary-main-v5-1.js?v=100rc3"></script>
+  <script type="module" src="./js/history-engine.js?v=100rc3"></script>
+  <script type="module" src="./js/combobox-v6-9.js?v=100rc3"></script>
   <script type="module">
-    import { printClassOrder } from "./js/print-service-v6-3.js?v=100rc2";
-    import { toast } from "./js/ui.js?v=100rc2";
+    import { printClassOrder } from "./js/print-service-v6-3.js?v=100rc3";
+    import { toast } from "./js/ui.js?v=100rc3";
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.querySelector("#globalPrintOrderV61");
       if (btn) btn.addEventListener("click", () => {
