@@ -27,7 +27,7 @@ assets/photos/README_FOTOS.md
 assets/photos/recipes/.gitkeep
 db/swiftremo.sqlite
 docs/README_PUBLICACION.md
-docs/VALIDACION_PUBLICA_666B.txt
+docs/VALIDACION_PUBLICA_666C.txt
 docs/VERSION.txt
 index.html
 robots.txt

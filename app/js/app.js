@@ -115,7 +115,7 @@ function bindEvents() {
   bindIfExists("#librarySearchV666B", "input", ev => { state.library.search = ev.target.value; state.library.page = 1; renderLibraryV666B(); });
   bindIfExists("#libraryStatusV666B", "change", ev => { state.library.active = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderLibraryV666B(); });
   bindIfExists("#libraryPageSizeV666B", "change", ev => { state.library.pageSize = Number(ev.target.value) || 50; state.library.page = 1; renderLibraryV666B(); });
-  bindIfExists("#libraryRefreshV666B", "click", () => renderLibraryV666B());
+  bindIfExists("#libraryClearFiltersV666C", "click", clearLibraryFiltersV666C);
   $("#newIngredient").addEventListener("click", newIngredientForm);
   $("#clearIngredientForm").addEventListener("click", clearIngredientForm);
   $("#deactivateIngredient").addEventListener("click", deactivateSelectedIngredient);
@@ -885,6 +885,17 @@ function bakeryBaseLabelV666B(r) {
   const dough = Number(r.total_raw_dough_g || 0) > 0 ? `${fmtNumber(r.total_raw_dough_g, 0)} g masa` : "";
   const hydration = Number(r.real_hydration_pct || 0) > 0 ? `${fmtNumber(r.real_hydration_pct, 1)} % hidratación` : "";
   return [flour, dough, hydration].filter(Boolean).join(" · ");
+}
+
+function clearLibraryFiltersV666C() {
+  state.library.kind = "elaborations";
+  state.library.search = "";
+  state.library.active = "active";
+  state.library.page = 1;
+  state.library.pageSize = 50;
+  state.library.selectedKey = "";
+  renderLibraryV666B();
+  toast("Filtros de biblioteca limpiados.", "ok");
 }
 
 function renderLibraryV666B() {

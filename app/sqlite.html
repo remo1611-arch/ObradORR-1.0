@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>SwiftRemo SQL · Aula taller</title>
-  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6662">
+  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6663">
 </head>
 <body>
   <header class="app-header">
@@ -116,7 +116,7 @@
               <p class="small">Consulta completa de ingredientes, fichas de cocina/pastelería y fórmulas panaderas. Esta vista es de revisión: para editar, abre la ficha correspondiente.</p>
             </div>
             <div class="actions">
-              <button id="libraryRefreshV666B" type="button" class="btn ghost">Actualizar</button>
+              <button id="libraryClearFiltersV666C" type="button" class="btn ghost">Limpiar filtros</button>
               <button type="button" class="btn primary" data-tab="selection">Preparar práctica</button>
             </div>
           </div>
@@ -376,7 +376,7 @@
               <button id="bakeryNewRecipeV40" type="button" class="btn ghost">Nueva formulación</button>
               <button id="bakeryAddSelectionV623" type="button" class="btn ghost">Añadir a práctica</button>
               <button id="bakeryPrintRecipeV40" type="button" class="btn success">Imprimir ficha</button>
-              <button id="bakeryReloadV37" type="button" class="btn ghost">Actualizar panadería</button>
+              <button id="bakeryReloadV37" type="button" class="btn ghost">Recalcular fórmula</button>
             </div>
           </div>
 
@@ -1291,7 +1291,7 @@
           </div>
           <div id="baseStatusAuditV663" class="base-status-card-v663 muted">
             <div class="base-status-title-v663">Estado pendiente de cargar</div>
-            <div class="small">Pulsa actualizar auditoría si no se refresca automáticamente.</div>
+            <div class="small">Pulsa recalcular auditoría si no se refresca automáticamente.</div>
           </div>
         </div>
         <div class="card">
@@ -1300,7 +1300,7 @@
               <h2>Calidad de datos</h2>
               <p class="small">Revisión de errores bloqueantes, avisos técnicos y notas antes de imprimir o usar costes como dato fiable.</p>
             </div>
-            <button id="refreshAudit" type="button" class="btn ghost">Actualizar auditoría</button>
+            <button id="refreshAudit" type="button" class="btn ghost">Recalcular auditoría</button>
           </div>
           <div id="auditKpis" class="kpi-grid"></div>
         </div>
@@ -1326,18 +1326,18 @@
 
   <div id="toastStack" class="toast-stack"></div>
   <script>
-    console.log("SwiftRemo fase6.66B biblioteca visible con paginación cargada");
+    console.log("SwiftRemo fase6.66C limpieza UX de botones ambiguos cargada");
   </script>
   <div id="swiftremoPrintPreview631" hidden></div>
-  <script type="module" src="./js/app.js?v=6662"></script>
-  <script type="module" src="./js/bakery-main-v3-7.js?v=6662"></script>
-  <script type="module" src="./js/preferments-v3-8.js?v=6662"></script>
-  <script type="module" src="./js/extras-v3-9.js?v=6662"></script>
-  <script type="module" src="./js/culinary-main-v5-1.js?v=6662"></script>
-  <script type="module" src="./js/session-v4-1.js?v=6662"></script>
-  <script type="module" src="./js/combobox-v6-9.js?v=6662"></script>
+  <script type="module" src="./js/app.js?v=6663"></script>
+  <script type="module" src="./js/bakery-main-v3-7.js?v=6663"></script>
+  <script type="module" src="./js/preferments-v3-8.js?v=6663"></script>
+  <script type="module" src="./js/extras-v3-9.js?v=6663"></script>
+  <script type="module" src="./js/culinary-main-v5-1.js?v=6663"></script>
+  <script type="module" src="./js/session-v4-1.js?v=6663"></script>
+  <script type="module" src="./js/combobox-v6-9.js?v=6663"></script>
   <script type="module">
-    import { printClassOrder } from "./js/print-service-v6-1.js?v=6662";
+    import { printClassOrder } from "./js/print-service-v6-1.js?v=6663";
     import { toast } from "./js/ui.js";
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.querySelector("#globalPrintOrderV61");
