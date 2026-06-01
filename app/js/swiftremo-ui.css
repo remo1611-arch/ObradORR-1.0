@@ -1130,3 +1130,58 @@ input:focus,select:focus,textarea:focus{
 .practice-search-count-6702 {
   font-weight: 700;
 }
+
+
+/* Fase 6.70.4 · Interfaz guiada por estado */
+.workflow-host-6704 { margin-top: .85rem; }
+.workflow-state-card-6704 {
+  display: grid;
+  gap: .7rem;
+  padding: .9rem;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 16px;
+  background: #f8fafc;
+}
+.workflow-state-card-6704.ready { background: #f4fbf6; border-color: #b9dfc4; }
+.workflow-state-card-6704.empty { background: #fff8ed; border-color: #efd09b; }
+.workflow-state-card-6704 b { display: block; margin-bottom: .15rem; }
+.workflow-state-card-6704 span { color: var(--muted, #5f6b7a); font-size: .92rem; }
+.workflow-steps-6704 { display: flex; flex-wrap: wrap; gap: .4rem; }
+.workflow-step-pill-6704 {
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 999px;
+  padding: .28rem .58rem;
+  font-size: .82rem;
+  color: var(--muted, #5f6b7a);
+  background: #fff;
+}
+.workflow-step-pill-6704.active {
+  border-color: #78c28a;
+  background: #eef9f0;
+  color: #185c2b;
+  font-weight: 700;
+}
+.workflow-disabled-6704,
+.command-card-619.workflow-disabled-6704 {
+  opacity: .48;
+  cursor: not-allowed !important;
+  filter: grayscale(.25);
+}
+.hidden-by-workflow-6704 { display: none !important; }
+.workflow-card-disabled-6704 {
+  opacity: .62;
+  background: #f7f7f7;
+}
+.workflow-card-disabled-6704::after {
+  content: "Añade una elaboración para activar esta salida";
+  display: block;
+  margin-top: .45rem;
+  font-size: .78rem;
+  color: var(--muted, #5f6b7a);
+}
+body[data-workflow-state="empty"] .practice-main-actions-642 { gap: .45rem; }
+@media (max-width: 760px) {
+  .workflow-state-card-6704 { padding: .8rem; }
+  .workflow-state-card-6704 .actions { display: grid; grid-template-columns: 1fr; }
+  .workflow-steps-6704 { gap: .3rem; }
+}

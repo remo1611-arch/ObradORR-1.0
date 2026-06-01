@@ -1,0 +1,8 @@
+VALIDACION PUBLICA FASE 6.70.4
+
+OK interfaz guiada por estado añadida
+OK getWorkflowStateV6704 como fuente única de flujo
+OK Pedido/Salida bloqueados sin elaboraciones
+OK acciones finales ocultas cuando no proceden
+OK cache ?v=6704
+OK sin modificación intencional del esquema SQL ni de datos culinarios/panaderos

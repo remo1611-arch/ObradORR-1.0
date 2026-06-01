@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>SwiftRemo SQL · Aula taller</title>
-  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6703">
+  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6704">
 </head>
 <body>
   <header class="app-header">
@@ -48,8 +48,8 @@
 
           <div class="command-grid-619 command-grid-670">
             <button type="button" class="command-card-619 primary" data-tab="selection"><strong>1 · Práctica</strong><span>Busca elaboraciones, añade fichas o fórmulas y define la producción.</span></button>
-            <button type="button" class="command-card-619" data-tab="order"><strong>2 · Pedido</strong><span>Revisa necesidades, unidades, costes, zonas y proveedor.</span></button>
-            <button type="button" class="command-card-619" data-tab="print"><strong>3 · Salida</strong><span>Genera fichas, pedido o dossier completo para imprimir o guardar PDF.</span></button>
+            <button type="button" class="command-card-619" data-tab="order" data-requires-work-items="1"><strong>2 · Pedido</strong><span>Revisa necesidades, unidades, costes, zonas y proveedor.</span></button>
+            <button type="button" class="command-card-619" data-tab="print" data-requires-work-items="1"><strong>3 · Salida</strong><span>Genera fichas, pedido o dossier completo para imprimir o guardar PDF.</span></button>
             <button type="button" class="command-card-619" data-tab="library"><strong>4 · Biblioteca</strong><span>Catálogo avanzado para revisar fichas, fórmulas e ingredientes.</span></button>
             <button type="button" class="command-card-619" data-tab="data"><strong>5 · Datos</strong><span>Guarda, carga o exporta copias SQLite y JSON técnico.</span></button>
             <button type="button" class="command-card-619" data-tab="audit"><strong>Calidad</strong><span>Comprueba estado de la base e incidencias antes de usar en clase.</span></button>
@@ -60,6 +60,7 @@
             <div class="small">Se mostrará cuando SQLite esté disponible.</div>
           </div>
           <div id="panelQualitySummary" class="quality-strip muted">Calidad pendiente de cargar. Si tarda, entra en Revisar calidad.</div>
+          <div id="workflowPanelV6704" class="workflow-host-6704"></div>
         </div>
         <div class="card compact-guidance-619">
           <h2>Resumen de práctica</h2>
@@ -959,7 +960,7 @@
           <div class="class-print-actions">
             <button type="button" class="btn success" onclick="document.querySelector('#classPrintSessionV41')?.click()">Imprimir sesión</button>
             <button type="button" class="btn ghost" onclick="document.querySelector('#classPrintOrderV61')?.click()">Imprimir pedido</button>
-            <button type="button" class="btn primary" data-tab="print">Abrir Salida</button>
+            <button type="button" class="btn primary" data-tab="print" data-requires-work-items="1">Abrir Salida</button>
           </div>
         </details>
       </section>
@@ -974,8 +975,8 @@
               <p class="small">Ajusta las elaboraciones seleccionadas, cantidades totales y datos docentes de esta práctica. La impresión se concentra en Salida.</p>
             </div>
             <div class="actions practice-main-actions-642">
-              <button type="button" class="btn primary" data-tab="order">Revisar pedido</button>
-              <button type="button" class="btn ghost" data-tab="print">Ir a salida</button>
+              <button type="button" class="btn primary" data-tab="order" data-requires-work-items="1">Revisar pedido</button>
+              <button type="button" class="btn ghost" data-tab="print" data-requires-work-items="1">Ir a salida</button>
               <button id="selectionCreateSessionV623" type="button" class="btn ghost">Archivar como sesión</button>
               <button id="selectionClearV623" type="button" class="btn danger">Vaciar</button>
             </div>
@@ -993,6 +994,7 @@
           </div>
           <div id="selectionSummaryV623" class="kpi-grid"></div>
           <div class="work-current-note-624"><b>Flujo recomendado:</b> añade elaboraciones, indica cuánto se va a producir, revisa pedido e imprime. Los datos de práctica son opcionales.</div>
+          <div id="workflowPracticeV6704" class="workflow-host-6704"></div>
           <div class="practice-steps-628" aria-label="Pasos de preparación">
             <div class="practice-step-628"><b>1 · Elaboraciones</b><span>Busca y añade fichas o fórmulas.</span></div>
             <div class="practice-step-628"><b>2 · Cantidades</b><span>Cantidad total de esta práctica.</span></div>
@@ -1236,13 +1238,14 @@
             <div class="actions">
               <button id="orderPrintCurrentTechnicalV670" type="button" class="btn success">Imprimir pedido completo</button>
               <button id="orderPrintCurrentSimpleV670" type="button" class="btn ghost">Imprimir pedido simple</button>
-              <button type="button" class="btn ghost" data-tab="print">Ir a salida</button>
+              <button type="button" class="btn ghost" data-tab="print" data-requires-work-items="1">Ir a salida</button>
             </div>
           </div>
           <div id="orderSummaryV670" class="kpi-grid"></div>
           <div class="order-guidance-619">
             <b>Lectura recomendada:</b> revisa primero cantidades y unidades; después proveedor, zona y coste. El pedido se calcula desde la práctica actual, no desde una sesión histórica.
           </div>
+          <div id="orderStateHintV6704" class="workflow-host-6704"></div>
           <div id="orderTable" class="wide order-table-619"></div>
         </div>
       </section>
@@ -1259,6 +1262,7 @@
           <div class="print-mode-note-619">
             <b>PDF limpio:</b> en el cuadro de impresión del navegador desactiva “Encabezados y pies” si aparecen fecha, URL o numeración externa.
           </div>
+          <div id="outputStateHintV6704" class="workflow-host-6704"></div>
           <div class="print-profile-grid-618 print-profile-grid-619 output-grid-670">
             <div class="print-profile-card-618 recommended-output-670">
               <b>Dossier completo</b>
@@ -1306,7 +1310,7 @@
               <h2>Datos y copias</h2>
               <p class="small">La app pública carga una base inicial. Tus cambios viven en tu navegador y debes exportar una copia SQLite para conservarlos o compartirlos.</p>
             </div>
-            <button type="button" class="btn ghost" data-tab="print">Ir a salida</button>
+            <button type="button" class="btn ghost" data-tab="print" data-requires-work-items="1">Ir a salida</button>
           </div>
           <div class="save-status-card">
             <div id="saveIndicator" class="save-indicator saving">Preparando guardado…</div>
@@ -1377,18 +1381,18 @@
 
   <div id="toastStack" class="toast-stack"></div>
   <script>
-    console.log("SwiftRemo fase6.70.1 reorganización UX validada cargada");
+    console.log("SwiftRemo fase6.70.4 interfaz guiada por estado cargada");
   </script>
   <div id="swiftremoPrintPreview631" hidden></div>
-  <script type="module" src="./js/app.js?v=6703"></script>
-  <script type="module" src="./js/bakery-main-v3-7.js?v=6703"></script>
-  <script type="module" src="./js/preferments-v3-8.js?v=6703"></script>
-  <script type="module" src="./js/extras-v3-9.js?v=6703"></script>
-  <script type="module" src="./js/culinary-main-v5-1.js?v=6703"></script>
-  <script type="module" src="./js/session-v4-1.js?v=6703"></script>
-  <script type="module" src="./js/combobox-v6-9.js?v=6703"></script>
+  <script type="module" src="./js/app.js?v=6704"></script>
+  <script type="module" src="./js/bakery-main-v3-7.js?v=6704"></script>
+  <script type="module" src="./js/preferments-v3-8.js?v=6704"></script>
+  <script type="module" src="./js/extras-v3-9.js?v=6704"></script>
+  <script type="module" src="./js/culinary-main-v5-1.js?v=6704"></script>
+  <script type="module" src="./js/session-v4-1.js?v=6704"></script>
+  <script type="module" src="./js/combobox-v6-9.js?v=6704"></script>
   <script type="module">
-    import { printClassOrder } from "./js/print-service-v6-3.js?v=6703";
+    import { printClassOrder } from "./js/print-service-v6-3.js?v=6704";
     import { toast } from "./js/ui.js";
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.querySelector("#globalPrintOrderV61");

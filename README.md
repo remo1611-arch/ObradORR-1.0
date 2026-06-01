@@ -43,4 +43,4 @@ Versión pública actual: `swiftremo_sql_fase6.70.1_reorganizacion_ux_flujo_doce
 
 ## Versión publicada
 
-Fase 6.70.3 · Manejo docente real.
+Fase 6.70.4 · Interfaz guiada por estado.

@@ -378,6 +378,11 @@ function afterDbLoaded(message, saveLabel = "Guardado", savedAt = null) {
 
 function switchTab(tab) {
   if (!tab) return;
+  if ((tab === "order" || tab === "print") && repo && !getWorkflowStateV6704().hasItems) {
+    toast("Primero añade al menos una elaboración a la práctica.", "warn");
+    focusPracticeSearchV6703();
+    return;
+  }
   const target = $(`#tab-${tab}`);
   if (!target) {
     console.warn(`[SwiftRemo] Pestaña no encontrada: ${tab}`);
@@ -426,7 +431,8 @@ function renderAll() {
     renderSelection,
     renderOrder,
     renderMargins,
-    renderAudit
+    renderAudit,
+    renderWorkflowStateV6704
   ].forEach(fn => {
     try { fn(); }
     catch (err) {
@@ -587,24 +593,24 @@ function renderPanelQualitySummary() {
 function renderSessionSummary() {
   const box = document.querySelector("#sessionSummary");
   if (!box || !repo) return;
-  const s = repo.workSelectionSummary?.() || {};
-  const count = Number(s.total_items || 0);
-  if (!count) {
+  const wf = getWorkflowStateV6704();
+  if (!wf.hasItems) {
     box.innerHTML = `
-      <div class="empty-state empty-state-6271">
+      <div class="empty-state empty-state-6271 workflow-empty-panel-6704">
         <b>No hay práctica activa.</b>
-        <span>Empieza en <button type="button" class="link-button" data-tab="selection">Práctica</button> o busca una elaboración para imprimir una ficha suelta.</span>
+        <span>El siguiente paso real es abrir Práctica, buscar una elaboración y definir la cantidad de producción.</span>
+        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Crear práctica</button><button type="button" class="btn ghost" data-tab="library">Consultar biblioteca</button></div>
       </div>`;
     return;
   }
   box.innerHTML = `
     <div class="kpi-grid">
-      <div class="kpi"><span>Elaboraciones</span><b>${fmtNumber(s.total_items || 0,0)}</b></div>
-      <div class="kpi"><span>Panadería</span><b>${fmtNumber(s.bakery_items || 0,0)}</b></div>
-      <div class="kpi"><span>Cocina/Pastelería</span><b>${fmtNumber(s.culinary_items || 0,0)}</b></div>
-      <div class="kpi"><span>Coste base aprox.</span><b>${fmtMoney(s.estimated_base_cost || 0)}</b></div>
+      <div class="kpi"><span>Elaboraciones</span><b>${fmtNumber(wf.itemCount || 0,0)}</b></div>
+      <div class="kpi"><span>Panadería</span><b>${fmtNumber(wf.bakeryItems || 0,0)}</b></div>
+      <div class="kpi"><span>Cocina/Pastelería</span><b>${fmtNumber(wf.culinaryItems || 0,0)}</b></div>
+      <div class="kpi"><span>Coste base aprox.</span><b>${fmtMoney(wf.estimatedCost || 0)}</b></div>
     </div>
-    <div class="actions"><button type="button" class="btn primary" data-tab="selection">Continuar práctica</button></div>`;
+    <div class="actions"><button type="button" class="btn primary" data-tab="selection">Continuar práctica</button><button type="button" class="btn ghost" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Preparar salida</button></div>`;
 }
 
 
@@ -1065,10 +1071,92 @@ function ensureWorkSelectionNotEmptyV6703(message = "Primero añade al menos una
   return false;
 }
 
-function updatePracticeActionStateV6703() {
-  const hasItems = hasWorkSelectionItemsV6703();
-  const selectors = [
-    "#selectionCreateSessionV623",
+function getWorkflowStateV6704() {
+  const empty = {
+    hasDb: !!repo,
+    hasItems: false,
+    itemCount: 0,
+    bakeryItems: 0,
+    culinaryItems: 0,
+    orderLineCount: 0,
+    estimatedCost: 0,
+    orderCost: 0,
+    stage: "empty",
+    nextAction: "Añadir elaboración",
+    nextHelp: "Busca una elaboración y define la cantidad de producción."
+  };
+  if (!repo) return empty;
+  try {
+    const summary = typeof repo.workSelectionSummary === "function" ? repo.workSelectionSummary() : {};
+    const items = typeof repo.workSelectionItems === "function" ? repo.workSelectionItems() : [];
+    const orderRows = typeof repo.workSelectionOrder === "function" ? repo.workSelectionOrder("WORK_CURRENT") : [];
+    const itemCount = Number(summary.total_items ?? items.length ?? 0) || 0;
+    const orderCost = orderRows.reduce((acc, r) => acc + Number(r.estimated_cost_total || 0), 0);
+    const hasItems = itemCount > 0;
+    return {
+      hasDb: true,
+      hasItems,
+      itemCount,
+      bakeryItems: Number(summary.bakery_items || 0) || 0,
+      culinaryItems: Number(summary.culinary_items || 0) || 0,
+      orderLineCount: orderRows.length,
+      estimatedCost: Number(summary.estimated_base_cost || 0) || 0,
+      orderCost,
+      stage: hasItems ? (orderRows.length ? "ready" : "selection") : "empty",
+      nextAction: hasItems ? "Revisar pedido" : "Añadir elaboración",
+      nextHelp: hasItems
+        ? "La práctica ya tiene elaboraciones. Revisa el pedido y prepara la salida documental."
+        : "La práctica está vacía. Añade primero una elaboración desde el buscador."
+    };
+  } catch (err) {
+    console.warn("[SwiftRemo] No se pudo calcular el estado de flujo", err);
+    return empty;
+  }
+}
+
+function workflowStepClassV6704(active) {
+  return active ? "workflow-step-pill-6704 active" : "workflow-step-pill-6704";
+}
+
+function workflowStepsHtmlV6704(wf) {
+  const has = wf.hasItems;
+  return `
+    <div class="workflow-steps-6704" aria-label="Estado del flujo de práctica">
+      <span class="${workflowStepClassV6704(true)}">1 · Práctica</span>
+      <span class="${workflowStepClassV6704(has)}">2 · Pedido</span>
+      <span class="${workflowStepClassV6704(has)}">3 · Salida</span>
+      <span class="${workflowStepClassV6704(has)}">4 · Archivo</span>
+    </div>`;
+}
+
+function workflowSummaryHtmlV6704(wf, context = "panel") {
+  if (!wf.hasItems) {
+    return `
+      <div class="workflow-state-card-6704 empty">
+        <div>
+          <b>Práctica vacía</b>
+          <span>Solo se muestran las acciones útiles para empezar. Pedido, salida e impresión se activarán al añadir la primera elaboración.</span>
+        </div>
+        ${workflowStepsHtmlV6704(wf)}
+        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="library">Abrir biblioteca</button></div>
+      </div>`;
+  }
+  return `
+    <div class="workflow-state-card-6704 ready">
+      <div>
+        <b>Práctica preparada para continuar</b>
+        <span>${fmtNumber(wf.itemCount,0)} elaboración(es) · ${fmtNumber(wf.orderLineCount,0)} línea(s) de pedido · coste estimado ${fmtMoney(wf.orderCost || wf.estimatedCost || 0)}.</span>
+      </div>
+      ${workflowStepsHtmlV6704(wf)}
+      <div class="actions"><button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Preparar salida</button></div>
+    </div>`;
+}
+
+function applyWorkflowButtonStateV6704(wf) {
+  const disabledSelectors = [
+    "button[data-tab='order']",
+    "button[data-tab='print']",
+    "button[data-requires-work-items='1']",
     "#orderPrintCurrentTechnicalV670",
     "#orderPrintCurrentSimpleV670",
     "#outputPrintDossierV670",
@@ -1080,17 +1168,56 @@ function updatePracticeActionStateV6703() {
     "#selectionPrintBothV638",
     "#selectionPrintTeachingV641",
     "#selectionPrintTechnicalOrderV641",
-    "#selectionPrintTeachingOrderV642",
-    ".practice-main-actions-642 [data-tab='order']",
-    ".practice-main-actions-642 [data-tab='print']",
-    ".practice-main-actions-636 [data-tab='order']"
+    "#selectionPrintTeachingOrderV642"
   ];
-  document.querySelectorAll(selectors.join(",")).forEach(btn => {
-    btn.disabled = !hasItems;
-    btn.classList.toggle("is-disabled-by-empty-practice-6703", !hasItems);
-    if (!hasItems) btn.title = "Primero añade al menos una elaboración a la práctica.";
+  document.querySelectorAll(disabledSelectors.join(",")).forEach(btn => {
+    btn.disabled = !wf.hasItems;
+    btn.setAttribute("aria-disabled", wf.hasItems ? "false" : "true");
+    btn.classList.toggle("is-disabled-by-empty-practice-6703", !wf.hasItems);
+    btn.classList.toggle("workflow-disabled-6704", !wf.hasItems);
+    if (!wf.hasItems) btn.title = "Primero añade al menos una elaboración a la práctica.";
     else btn.removeAttribute("title");
   });
+
+  const hideWhenEmpty = [
+    "#selectionCreateSessionV623",
+    "#selectionClearV623"
+  ];
+  document.querySelectorAll(hideWhenEmpty.join(",")).forEach(btn => {
+    btn.classList.toggle("hidden-by-workflow-6704", !wf.hasItems);
+  });
+
+  document.querySelectorAll("#outputPrintDossierV670, #outputPrintSheetsV670, #outputPrintOrderV670, #selectionOpenPrintCenterV642").forEach(btn => {
+    const card = btn.closest(".print-profile-card-618");
+    if (card) card.classList.toggle("workflow-card-disabled-6704", !wf.hasItems);
+  });
+  document.body.dataset.workflowState = wf.stage;
+}
+
+function renderWorkflowStateV6704() {
+  if (!repo) return;
+  const wf = getWorkflowStateV6704();
+  const panel = document.querySelector("#workflowPanelV6704");
+  if (panel) panel.innerHTML = workflowSummaryHtmlV6704(wf, "panel");
+  const practice = document.querySelector("#workflowPracticeV6704");
+  if (practice) practice.innerHTML = workflowSummaryHtmlV6704(wf, "practice");
+  const order = document.querySelector("#orderStateHintV6704");
+  if (order) {
+    order.innerHTML = wf.hasItems
+      ? `<div class="workflow-state-card-6704 ready"><b>Pedido disponible</b><span>Revisa cantidades, unidades, proveedor, zona y coste antes de imprimir.</span></div>`
+      : `<div class="workflow-state-card-6704 empty"><b>Pedido bloqueado</b><span>El pedido se genera automáticamente cuando la práctica tiene elaboraciones.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
+  }
+  const output = document.querySelector("#outputStateHintV6704");
+  if (output) {
+    output.innerHTML = wf.hasItems
+      ? `<div class="workflow-state-card-6704 ready"><b>Salida preparada</b><span>Elige dossier, fichas, pedido u opciones avanzadas para la práctica actual.</span></div>`
+      : `<div class="workflow-state-card-6704 empty"><b>Salida no disponible todavía</b><span>Añade al menos una elaboración para activar la impresión y la exportación documental.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
+  }
+  applyWorkflowButtonStateV6704(wf);
+}
+
+function updatePracticeActionStateV6703() {
+  renderWorkflowStateV6704();
 }
 
 function renderPracticeSearchV6702() {
@@ -1894,10 +2021,17 @@ async function deleteSelectionItem(id) {
 
 async function clearSelection() {
   try {
-    if (!confirm("¿Vaciar la práctica actual? No se borran fichas ni sesiones.")) return;
+    const wf = getWorkflowStateV6704();
+    if (!wf.hasItems) {
+      toast("No hay elaboraciones que vaciar.", "warn");
+      focusPracticeSearchV6703();
+      return;
+    }
+    if (!confirm(`Vas a vaciar una práctica con ${fmtNumber(wf.itemCount,0)} elaboración(es). No se borran fichas, fórmulas, biblioteca ni sesiones archivadas.`)) return;
     repo.clearWorkSelection();
     renderSelection();
     renderOrder();
+    renderWorkflowStateV6704();
     await autosave({ backup: false, reason: "vaciar práctica actual" });
     toast("Práctica actual vaciada.", "warn");
   } catch (err) { console.error(err); toast(err.message, "err"); }
