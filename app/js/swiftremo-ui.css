@@ -1088,3 +1088,19 @@ input:focus,select:focus,textarea:focus{
 .quality-box-667.err{border-color:#e7afa7;background:#fff0ed}
 .quality-box-667.info{border-color:#cfd7e5;background:#f7f9fc}
 @media(max-width:900px){.quality-grid-667{grid-template-columns:1fr}}
+
+
+/* Fase 6.70.1 · Reorganización UX por flujo docente validada */
+.main-grid-670{grid-template-columns:1fr!important;}
+.content-670{min-width:0;width:100%;}
+.nav-row-670 button[data-tab="order"]{background:#eef7fb;border-color:#bfd9e8;color:#315a70;}
+.nav-row-670 button[data-tab="print"]{background:#edf5fa;border-color:#bbd1df;color:#355c74;}
+.nav-row-670 button[data-tab="data"]{background:#f6f1fb;border-color:#d7c7ee;color:#5b3f7a;}
+.command-grid-670{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+.order-hero-670{border-left:8px solid #4b6f86;}
+.output-hero-670{border-left:8px solid #355c74;}
+.data-hero-670{border-left:8px solid #5b3f7a;}
+.output-grid-670{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));}
+.recommended-output-670{outline:3px solid rgba(47,115,95,.18);}
+.data-actions-670{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+@media(max-width:720px){.command-grid-670,.output-grid-670,.data-actions-670{grid-template-columns:1fr}.nav-row-670 button{min-width:max-content}}

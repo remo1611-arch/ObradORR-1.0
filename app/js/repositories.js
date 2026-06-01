@@ -643,14 +643,69 @@ export class Repository {
     return this.db.query("SELECT * FROM v_work_selection_summary WHERE selection_id='WORK_CURRENT';")[0] ?? { selection_id: 'WORK_CURRENT', total_items: 0, bakery_items: 0, culinary_items: 0, estimated_base_cost: 0 };
   }
 
-  workSelectionItems() {
+  workSelectionItems(selectionId = 'WORK_CURRENT') {
     this.ensureWorkSelection();
     return this.db.query(`
       SELECT *
       FROM v_work_selection_items_print
-      WHERE selection_id='WORK_CURRENT'
+      WHERE selection_id=$id
       ORDER BY sort_order, item_name;
-    `);
+    `, { $id: selectionId });
+  }
+
+  workSelectionOrder(selectionId = 'WORK_CURRENT') {
+    this.ensureWorkSelection();
+    const rows = this.workSelectionItems(selectionId);
+    if (!rows.length) return [];
+    const tempId = `TMP_UI_ORDER_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+    this.db.exec("DELETE FROM class_sessions WHERE id=$id;", { $id: tempId });
+    this.db.exec(`
+      INSERT INTO class_sessions(id,title,practice_date,cycle_id,module_id,group_name,responsible,notes,total_students,servings_per_person,pieces_per_student,safety_margin_pct)
+      VALUES($id,$title,DATE('now'),NULL,NULL,NULL,NULL,'Pedido temporal de práctica actual',NULL,NULL,NULL,0);
+    `, { $id: tempId, $title: 'Práctica actual' });
+    let order = 10;
+    try {
+      for (const r of rows) {
+        this.db.exec(`
+          INSERT INTO class_session_items (
+            id, session_id, item_type, culinary_recipe_id, bakery_recipe_id,
+            production_mode, main_qty, servings, pieces, piece_weight_g,
+            flour_g, raw_dough_g, print_a4, sort_order, notes
+          ) VALUES (
+            $id, $session_id, $item_type, $culinary_recipe_id, $bakery_recipe_id,
+            $production_mode, $main_qty, $servings, $pieces, $piece_weight_g,
+            $flour_g, $raw_dough_g, 1, $sort_order, $notes
+          );
+        `, {
+          $id: `${tempId}_${order}`,
+          $session_id: tempId,
+          $item_type: r.item_type,
+          $culinary_recipe_id: r.culinary_recipe_id,
+          $bakery_recipe_id: r.bakery_recipe_id,
+          $production_mode: r.production_mode,
+          $main_qty: r.main_qty,
+          $servings: r.servings,
+          $pieces: r.pieces,
+          $piece_weight_g: r.piece_weight_g,
+          $flour_g: r.flour_g,
+          $raw_dough_g: r.raw_dough_g,
+          $sort_order: order,
+          $notes: r.notes || ''
+        });
+        order += 10;
+      }
+      return this.db.query(`
+        SELECT order_group, supplier, storage_zone, ingredient, unit,
+               CASE WHEN unit IN ('kg','l') THEN ROUND(total_required_g/1000.0,3) ELSE ROUND(total_required_g,3) END AS purchase_quantity,
+               CASE WHEN unit='kg' THEN 'kg' WHEN unit='l' THEN 'l' ELSE COALESCE(unit,'g') END AS purchase_unit,
+               estimated_cost_total, used_in
+        FROM v_class_order_grouped
+        WHERE session_id=$id
+        ORDER BY order_group, ingredient;
+      `, { $id: tempId });
+    } finally {
+      this.db.exec("DELETE FROM class_sessions WHERE id=$id;", { $id: tempId });
+    }
   }
 
   addWorkSelectionItem(data) {

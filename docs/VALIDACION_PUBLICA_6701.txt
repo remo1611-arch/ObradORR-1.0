@@ -1,0 +1,18 @@
+Validación pública Fase 6.70.1 · Reorganización UX por flujo docente validada
+
+OK index.html raíz presente
+OK app/sqlite.html presente
+OK db/swiftremo.sqlite presente
+OK app/wasm/sqlite3.wasm presente
+OK paquete público limpio sin scripts/sql/migration
+OK cache ?v=6701
+OK metadata schema_version = swiftremo_sql_fase6.70.1_reorganizacion_ux_flujo_docente_validada
+OK release_label = Fase 6.70.1 · Reorganización UX por flujo docente validada
+OK ingredients = 743
+OK culinary_recipes = 206
+OK bakery_recipes = 99
+OK pestañas principales: Inicio, Biblioteca, Práctica, Pedido, Salida, Datos, Calidad
+OK Pedido calcula desde práctica actual mediante workSelectionOrder()
+OK Salida concentra impresión/exportación documental
+OK Datos concentra copias SQLite/JSON e importación
+OK node --check app/js/*.js ejecutado sin errores

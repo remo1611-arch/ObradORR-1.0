@@ -128,6 +128,12 @@ function bindEvents() {
   bindIfExists("#printQuickSession", "click", () => document.querySelector("#classPrintSessionV41")?.click());
   bindIfExists("#printQuickOrder", "click", () => document.querySelector("#globalPrintOrderV61")?.click());
   bindIfExists("#printQuickSelectionV623", "click", () => printSelectionBothV638());
+  bindIfExists("#orderPrintCurrentTechnicalV670", "click", () => printSelectionTechnicalOrderV641());
+  bindIfExists("#orderPrintCurrentSimpleV670", "click", () => printSelectionDirectV638({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido simple desde pestaña pedido" }));
+  bindIfExists("#outputPrintDossierV670", "click", () => printSelectionTeachingOrderV642());
+  bindIfExists("#outputPrintSheetsV670", "click", () => printSelectionTeachingV641());
+  bindIfExists("#outputPrintOrderV670", "click", () => printSelectionTechnicalOrderV641());
+  bindIfExists("#outputExportSqliteV670", "click", () => exportSqlite());
   bindIfExists("#selectionPrintElaborationsV638", "click", () => printSelectionDirectV638({ includeElaborations: true, includeOrder: false, reason: "historial impresión elaboraciones práctica" }));
   bindIfExists("#selectionPrintOrderV638", "click", () => printSelectionDirectV638({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido práctica" }));
   bindIfExists("#selectionPrintBothV638", "click", () => printSelectionBothV638());
@@ -1687,13 +1693,13 @@ function renderSelection() {
       <div class="empty-action-card-628">
         <b>Práctica sin elaboraciones.</b>
         <span>Añade elaboraciones desde la biblioteca única y define la cantidad total de cada una.</span>
-        <div class="actions"><button type="button" class="btn primary" data-tab="elaborations">Buscar elaboraciones</button></div>
+        <div class="actions"><button type="button" class="btn primary" data-tab="library">Buscar en Biblioteca</button></div>
       </div>`;
     itemsEl.innerHTML = `
       <div class="empty-action-card-628">
         <b>No has añadido elaboraciones.</b>
         <span>Las cantidades se decidirán al añadir cada elaboración: cantidad total de esta práctica.</span>
-        <div class="actions"><button type="button" class="btn primary" data-tab="elaborations">Añadir elaboración</button></div>
+        <div class="actions"><button type="button" class="btn primary" data-tab="library">Añadir desde Biblioteca</button></div>
       </div>`;
   } else {
     summaryEl.classList.remove("empty-practice-summary");
@@ -1938,15 +1944,38 @@ function selectionQuantityLabel(r) {
 function printSourceLabel(v) { return ({ recipe:"Ficha", selection:"Práctica actual", session:"Sesión", order:"Pedido" })[v] || v || "—"; }
 
 function renderOrder() {
-  $("#orderTable").innerHTML = table([
+  const tableEl = document.querySelector("#orderTable");
+  const summaryEl = document.querySelector("#orderSummaryV670");
+  if (!tableEl || !repo) return;
+  const rows = typeof repo.workSelectionOrder === "function" ? repo.workSelectionOrder("WORK_CURRENT") : repo.order();
+  const summary = repo.workSelectionSummary ? repo.workSelectionSummary() : { total_items: 0, estimated_base_cost: 0 };
+  const totalCost = rows.reduce((acc, r) => acc + Number(r.estimated_cost_total || 0), 0);
+  if (summaryEl) {
+    summaryEl.innerHTML = `
+      <div class="kpi"><span>Elaboraciones</span><b>${fmtNumber(summary.total_items || 0,0)}</b></div>
+      <div class="kpi"><span>Líneas pedido</span><b>${fmtNumber(rows.length,0)}</b></div>
+      <div class="kpi"><span>Coste pedido</span><b>${fmtMoney(totalCost)}</b></div>
+      <div class="kpi"><span>Origen</span><b>Práctica actual</b></div>`;
+  }
+  if (!rows.length) {
+    tableEl.innerHTML = `
+      <div class="empty-action-card-628">
+        <b>Pedido vacío.</b>
+        <span>Añade elaboraciones desde Biblioteca y define cantidades en Práctica para calcular el pedido.</span>
+        <div class="actions"><button type="button" class="btn primary" data-tab="library">Ir a Biblioteca</button><button type="button" class="btn ghost" data-tab="selection">Ir a Práctica</button></div>
+      </div>`;
+    return;
+  }
+  tableEl.innerHTML = table([
     { label: "Grupo", key: "order_group" },
     { label: "Ingrediente", key: "ingredient" },
     { label: "Cantidad", render: r => fmtNumber(r.purchase_quantity, 3) },
     { label: "Unidad", key: "purchase_unit" },
     { label: "Coste", render: r => fmtMoney(r.estimated_cost_total) },
-    { label: "Usado en", key: "used_in" },
-    { label: "Almacén", key: "storage_zone" }
-  ], repo.order());
+    { label: "Proveedor", render: r => r.supplier || "—" },
+    { label: "Almacén", render: r => r.storage_zone || "—" },
+    { label: "Usado en", key: "used_in" }
+  ], rows);
 }
 
 function renderMargins() {
