@@ -1,1 +1,1 @@
-swiftremo_sql_fase6.72.12_fix_appjs_y_sqlite_resizeable
+swiftremo_sql_fase6.72.13_estado_fijo_paginacion_elaboraciones

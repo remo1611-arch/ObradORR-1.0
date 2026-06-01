@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>SwiftRemo SQL · Aula taller</title>
-  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6732">
+  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6733">
 </head>
 <body>
   <header class="app-header">
@@ -18,12 +18,12 @@
         <p class="subtitle">Taller · Histórico · Archivo técnico · Sistema</p>
         <p class="subtitle" style="font-size:.82rem;opacity:.82">© Remo José Pereira González · Uso docente personal autorizado · Sin licencia abierta de redistribución o explotación comercial.</p>
       </div>
-      <div id="dbState" class="state-pill state-loading">Preparando…</div>
     </div>
   </header>
 
   <nav class="top-nav">
     <div class="wrap nav-row nav-row-670 nav-row-672">
+      <div id="dbState" class="state-pill state-loading" aria-live="polite">Preparando…</div>
       <button type="button" data-tab="workshop" data-shell-area="workshop" class="active">Taller</button>
       <button type="button" data-tab="history" data-shell-area="history">Histórico</button>
       <button type="button" data-tab="technical-archive" data-shell-area="technical-archive">Archivo técnico</button>
@@ -177,10 +177,10 @@
             </label>
             <label>Por página
               <select id="archivePageSize">
-                <option value="25">25</option>
+                <option value="10">10</option>
                 <option value="50" selected>50</option>
                 <option value="100">100</option>
-                <option value="200">200</option>
+                <option value="all">Todas</option>
               </select>
             </label>
           </div>
@@ -245,6 +245,14 @@
                 <option value="inactive">Inactivas</option>
               </select>
             </label>
+            <label>Por página
+              <select id="elaborationPageSizeV625">
+                <option value="10">10</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="all">Todas</option>
+              </select>
+            </label>
           </div>
           <div id="elaborationsSummaryV625" class="kpi-grid"></div>
         </div>
@@ -255,7 +263,9 @@
               <p class="small">Añade a la práctica para pedir o imprimir sin sesión. Abre la elaboración si necesitas editarla.</p>
             </div>
           </div>
+          <div id="elaborationsPagerTopV625" class="library-pager-666b elaborations-pager-6733"></div>
           <div id="elaborationsListV625" class="elaboration-card-grid-625"></div>
+          <div id="elaborationsPagerBottomV625" class="library-pager-666b elaborations-pager-6733 bottom"></div>
         </div>
       </section>
 
@@ -1112,16 +1122,19 @@
               </label>
               <label>Mostrar
                 <select id="workshopSearchLimit">
-                  <option value="8">8 resultados</option>
-                  <option value="12" selected>12 resultados</option>
-                  <option value="20">20 resultados</option>
+                  <option value="10" selected>10 resultados</option>
+                  <option value="50">50 resultados</option>
+                  <option value="100">100 resultados</option>
+                  <option value="all">Todas</option>
                 </select>
               </label>
               <div class="practice-search-actions-6702">
                 <button id="workshopSearchClear" type="button" class="btn ghost">Limpiar búsqueda</button>
               </div>
             </div>
+            <div id="workshopSearchPager" class="library-pager-666b practice-search-pager-6733"></div>
             <div id="workshopSearchResults" class="practice-search-results-6702"></div>
+            <div id="workshopSearchPagerBottom" class="library-pager-666b practice-search-pager-6733 bottom"></div>
           </div>
 
           <div class="hidden-compat-634" hidden>
@@ -1530,16 +1543,16 @@
     })();
   </script>
   <div id="swiftremoPrintPreview631" hidden></div>
-  <script type="module" src="./js/app.js?v=6732"></script>
-  <script type="module" src="./js/bakery-main-v3-7.js?v=6732"></script>
-  <script type="module" src="./js/preferments-v3-8.js?v=6732"></script>
-  <script type="module" src="./js/extras-v3-9.js?v=6732"></script>
-  <script type="module" src="./js/culinary-main-v5-1.js?v=6732"></script>
-  <script type="module" src="./js/history-engine.js?v=6732"></script>
-  <script type="module" src="./js/combobox-v6-9.js?v=6732"></script>
+  <script type="module" src="./js/app.js?v=6733"></script>
+  <script type="module" src="./js/bakery-main-v3-7.js?v=6733"></script>
+  <script type="module" src="./js/preferments-v3-8.js?v=6733"></script>
+  <script type="module" src="./js/extras-v3-9.js?v=6733"></script>
+  <script type="module" src="./js/culinary-main-v5-1.js?v=6733"></script>
+  <script type="module" src="./js/history-engine.js?v=6733"></script>
+  <script type="module" src="./js/combobox-v6-9.js?v=6733"></script>
   <script type="module">
-    import { printClassOrder } from "./js/print-service-v6-3.js?v=6732";
-    import { toast } from "./js/ui.js?v=6732";
+    import { printClassOrder } from "./js/print-service-v6-3.js?v=6733";
+    import { toast } from "./js/ui.js?v=6733";
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.querySelector("#globalPrintOrderV61");
       if (btn) btn.addEventListener("click", () => {

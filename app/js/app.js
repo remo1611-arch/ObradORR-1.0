@@ -1,16 +1,16 @@
-import { SwiftDB } from "./db-service.js?v=6732";
-import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=6732";
-import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-3.js?v=6732";
-import { loadRecovery, saveRecovery, clearRecovery } from "./storage-service.js?v=6732";
-import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson } from "./ui.js?v=6732";
-import { createAppState } from "./ui/state.js?v=6732";
-import { createDomainShell } from "./ui/app-shell.js?v=6732";
-import { createWorkshopDomain } from "./domain/workshop.js?v=6732";
-import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=6732";
-import { createHistoryDomain } from "./domain/history.js?v=6732";
-import { createSystemBackupService } from "./domain/system-backup.js?v=6732";
-import { createPrintDomain } from "./domain/print.js?v=6732";
-import { createWorkshopView } from "./ui/workshop-view.js?v=6732";
+import { SwiftDB } from "./db-service.js?v=6733";
+import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=6733";
+import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-3.js?v=6733";
+import { loadRecovery, saveRecovery, clearRecovery } from "./storage-service.js?v=6733";
+import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson } from "./ui.js?v=6733";
+import { createAppState } from "./ui/state.js?v=6733";
+import { createDomainShell } from "./ui/app-shell.js?v=6733";
+import { createWorkshopDomain } from "./domain/workshop.js?v=6733";
+import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=6733";
+import { createHistoryDomain } from "./domain/history.js?v=6733";
+import { createSystemBackupService } from "./domain/system-backup.js?v=6733";
+import { createPrintDomain } from "./domain/print.js?v=6733";
+import { createWorkshopView } from "./ui/workshop-view.js?v=6733";
 
 const swiftDb = new SwiftDB();
 let repo = null;
@@ -30,9 +30,9 @@ let practiceContextSaveTimer = null;
 
 const state = {
   filters: { search: "", active: "active", use: "all", view: "work" },
-  elaborations: { search: "", type: "all", active: "active" },
+  elaborations: { search: "", type: "all", active: "active", page: 1, pageSize: 50 },
   library: { kind: "elaborations", search: "", active: "active", quality: "all", page: 1, pageSize: 50, selectedKey: "" },
-  workshopSearch: { search: "", type: "all", limit: 12 },
+  workshopSearch: { search: "", type: "all", page: 1, pageSize: 10 },
   quantityDialog: { mode: "add", elaboration: null, workshopItem: null }
 };
 
@@ -135,18 +135,19 @@ function bindEvents() {
   $("#ingredientActiveFilter").addEventListener("change", ev => { state.filters.active = ev.target.value; renderIngredients(); });
   $("#ingredientUseFilter").addEventListener("change", ev => { state.filters.use = ev.target.value; renderIngredients(); });
   bindIfExists("#ingredientViewMode", "change", ev => { state.filters.view = ev.target.value; renderIngredients(); });
-  bindIfExists("#elaborationSearchV625", "input", ev => { state.elaborations.search = ev.target.value; renderElaborations(); });
-  bindIfExists("#elaborationTypeFilterV625", "change", ev => { state.elaborations.type = ev.target.value; renderElaborations(); });
-  bindIfExists("#elaborationStatusFilterV625", "change", ev => { state.elaborations.active = ev.target.value; renderElaborations(); });
+  bindIfExists("#elaborationSearchV625", "input", ev => { state.elaborations.search = ev.target.value; state.elaborations.page = 1; renderElaborations(); });
+  bindIfExists("#elaborationTypeFilterV625", "change", ev => { state.elaborations.type = ev.target.value; state.elaborations.page = 1; renderElaborations(); });
+  bindIfExists("#elaborationStatusFilterV625", "change", ev => { state.elaborations.active = ev.target.value; state.elaborations.page = 1; renderElaborations(); });
+  bindIfExists("#elaborationPageSizeV625", "change", ev => { state.elaborations.pageSize = readPageSizeValue(ev.target.value, 50); state.elaborations.page = 1; renderElaborations(); });
   bindIfExists("#archiveKind", "change", ev => { state.library.kind = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderArchiveCatalog(); });
   bindIfExists("#archiveSearch", "input", ev => { state.library.search = ev.target.value; state.library.page = 1; renderArchiveCatalog(); });
   bindIfExists("#archiveStatus", "change", ev => { state.library.active = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderArchiveCatalog(); });
   bindIfExists("#archiveQuality", "change", ev => { state.library.quality = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderArchiveCatalog(); });
-  bindIfExists("#archivePageSize", "change", ev => { state.library.pageSize = Number(ev.target.value) || 50; state.library.page = 1; renderArchiveCatalog(); });
-  bindIfExists("#workshopSearchInput", "input", ev => { ensureWorkshopSearchState().search = ev.target.value || ""; renderWorkshopSearch(); });
-  bindIfExists("#workshopSearchType", "change", ev => { ensureWorkshopSearchState().type = ev.target.value || "all"; renderWorkshopSearch(); });
-  bindIfExists("#workshopSearchLimit", "change", ev => { ensureWorkshopSearchState().limit = Number(ev.target.value) || 12; renderWorkshopSearch(); });
-  bindIfExists("#workshopSearchClear", "click", () => { state.workshopSearch = { search: "", type: "all", limit: 12 }; const q = document.querySelector("#workshopSearchInput"); if (q) q.value = ""; const t = document.querySelector("#workshopSearchType"); if (t) t.value = "all"; const l = document.querySelector("#workshopSearchLimit"); if (l) l.value = "12"; renderWorkshopSearch(); });
+  bindIfExists("#archivePageSize", "change", ev => { state.library.pageSize = readPageSizeValue(ev.target.value, 50); state.library.page = 1; renderArchiveCatalog(); });
+  bindIfExists("#workshopSearchInput", "input", ev => { const ps = ensureWorkshopSearchState(); ps.search = ev.target.value || ""; ps.page = 1; renderWorkshopSearch(); });
+  bindIfExists("#workshopSearchType", "change", ev => { const ps = ensureWorkshopSearchState(); ps.type = ev.target.value || "all"; ps.page = 1; renderWorkshopSearch(); });
+  bindIfExists("#workshopSearchLimit", "change", ev => { const ps = ensureWorkshopSearchState(); ps.pageSize = readPageSizeValue(ev.target.value, 10); ps.page = 1; renderWorkshopSearch(); });
+  bindIfExists("#workshopSearchClear", "click", () => { state.workshopSearch = { search: "", type: "all", page: 1, pageSize: 10 }; const q = document.querySelector("#workshopSearchInput"); if (q) q.value = ""; const typ = document.querySelector("#workshopSearchType"); if (typ) typ.value = "all"; const l = document.querySelector("#workshopSearchLimit"); if (l) l.value = "10"; renderWorkshopSearch(); });
   bindIfExists("#archiveClearFilters", "click", clearArchiveFilters);
   bindIfExists("#archiveCopyReview", "click", copyArchiveReviewReport);
   $("#newIngredient").addEventListener("click", newIngredientForm);
@@ -233,6 +234,10 @@ function bindEvents() {
     if (addElab) { ev.preventDefault(); addUnifiedElaborationToWork(addElab.dataset.addElaborationWork); return; }
     const libPage = ev.target.closest?.("[data-library-page]");
     if (libPage) { ev.preventDefault(); state.library.page = Number(libPage.dataset.libraryPage) || 1; renderArchiveCatalog(); return; }
+    const workshopPage = ev.target.closest?.("[data-workshop-search-page]");
+    if (workshopPage) { ev.preventDefault(); const ps = ensureWorkshopSearchState(); ps.page = Number(workshopPage.dataset.workshopSearchPage) || 1; renderWorkshopSearch(); return; }
+    const elaborationPage = ev.target.closest?.("[data-elaboration-page]");
+    if (elaborationPage) { ev.preventDefault(); state.elaborations.page = Number(elaborationPage.dataset.elaborationPage) || 1; renderElaborations(); return; }
     const libDetail = ev.target.closest?.("[data-library-detail]");
     if (libDetail) { ev.preventDefault(); state.library.selectedKey = libDetail.dataset.libraryDetail || ""; renderArchiveCatalog(); return; }
     const libOpen = ev.target.closest?.("[data-library-open]");
@@ -1084,6 +1089,36 @@ function bakeryBaseLabel(r) {
   return [flour, dough, hydration].filter(Boolean).join(" · ");
 }
 
+function readPageSizeValue(value, fallback = 50) {
+  return String(value) === "all" ? "all" : (Math.max(1, Number(value) || fallback));
+}
+
+function pageWindow(total, rawPageSize, currentPage, fallback = 50) {
+  const all = String(rawPageSize) === "all";
+  const size = all ? Math.max(total, 1) : Math.max(1, Number(rawPageSize) || fallback);
+  const totalPages = all ? 1 : Math.max(1, Math.ceil(total / size));
+  const page = all ? 1 : Math.min(Math.max(1, Number(currentPage) || 1), totalPages);
+  const start = all ? 0 : (page - 1) * size;
+  const count = all ? total : Math.min(size, Math.max(total - start, 0));
+  return { all, size, totalPages, page, start, count };
+}
+
+function pagerHtml6733({ total, start, count, page, totalPages, all, attr, label = "registros" }) {
+  const from = total ? start + 1 : 0;
+  const to = start + count;
+  if (all) {
+    return `<span class="library-range-666b">Mostrando <b>todas</b>: <b>${fmtNumber(total,0)}</b> ${esc(label)}</span>`;
+  }
+  const disabledPrev = page <= 1 ? "disabled" : "";
+  const disabledNext = page >= totalPages ? "disabled" : "";
+  return `
+    <span class="library-range-666b">Mostrando <b>${fmtNumber(from,0)}–${fmtNumber(to,0)}</b> de <b>${fmtNumber(total,0)}</b> · página ${fmtNumber(page,0)}/${fmtNumber(totalPages,0)}</span>
+    <button type="button" class="btn ghost mini-btn-666b" ${disabledPrev} ${attr}="1">Inicio</button>
+    <button type="button" class="btn ghost mini-btn-666b" ${disabledPrev} ${attr}="${page - 1}">Anterior</button>
+    <button type="button" class="btn ghost mini-btn-666b" ${disabledNext} ${attr}="${page + 1}">Siguiente</button>
+    <button type="button" class="btn ghost mini-btn-666b" ${disabledNext} ${attr}="${totalPages}">Final</button>`;
+}
+
 function clearArchiveFilters() {
   state.library.kind = "elaborations";
   state.library.search = "";
@@ -1097,10 +1132,12 @@ function clearArchiveFilters() {
 }
 
 function ensureWorkshopSearchState() {
-  if (!state.workshopSearch) state.workshopSearch = { search: "", type: "all", limit: 12 };
+  if (!state.workshopSearch) state.workshopSearch = { search: "", type: "all", page: 1, pageSize: 10 };
   state.workshopSearch.search = String(state.workshopSearch.search || "");
   state.workshopSearch.type = state.workshopSearch.type || "all";
-  state.workshopSearch.limit = Number(state.workshopSearch.limit || 12) || 12;
+  if (state.workshopSearch.pageSize === undefined) state.workshopSearch.pageSize = state.workshopSearch.limit !== undefined ? readPageSizeValue(state.workshopSearch.limit, 10) : 10;
+  state.workshopSearch.pageSize = readPageSizeValue(state.workshopSearch.pageSize, 10);
+  state.workshopSearch.page = Math.max(1, Number(state.workshopSearch.page || 1) || 1);
   return state.workshopSearch;
 }
 
@@ -1317,9 +1354,18 @@ function renderWorkshopSearch() {
   const ps = ensureWorkshopSearchState();
   const q = String(ps.search || "").trim();
   const type = ps.type || "all";
-  const limit = Math.max(4, Math.min(30, Number(ps.limit || 12)));
-  const rows = repo.unifiedElaborations({ search: q, type, active: "active" }).slice(0, limit);
-  const totalLabel = !q ? `Sugerencias activas · ${fmtNumber(rows.length, 0)}` : rows.length ? `${fmtNumber(rows.length, 0)} resultado${rows.length === 1 ? "" : "s"}` : "Sin resultados";
+  const allRows = repo.unifiedElaborations({ search: q, type, active: "active" });
+  const win = pageWindow(allRows.length, ps.pageSize, ps.page, 10);
+  ps.page = win.page;
+  const rows = allRows.slice(win.start, win.start + win.count);
+  const label = !q
+    ? `Sugerencias activas · ${fmtNumber(allRows.length, 0)} elaboración${allRows.length === 1 ? "" : "es"}`
+    : allRows.length ? `${fmtNumber(allRows.length, 0)} resultado${allRows.length === 1 ? "" : "s"}` : "Sin resultados";
+  const pager = allRows.length ? pagerHtml6733({ total: allRows.length, start: win.start, count: rows.length, page: win.page, totalPages: win.totalPages, all: win.all, attr: "data-workshop-search-page", label: "elaboraciones" }) : "";
+  const pagerTop = document.querySelector("#workshopSearchPager");
+  const pagerBottom = document.querySelector("#workshopSearchPagerBottom");
+  if (pagerTop) pagerTop.innerHTML = pager;
+  if (pagerBottom) pagerBottom.innerHTML = pager;
   if (!rows.length && !q) {
     box.innerHTML = `
       <div class="practice-search-empty-6702">
@@ -1337,7 +1383,7 @@ function renderWorkshopSearch() {
     return;
   }
   box.innerHTML = `
-    <div class="practice-search-count-6702">${esc(totalLabel)} · añadir desde aquí no modifica la ficha maestra.</div>
+    <div class="practice-search-count-6702">${esc(label)} · añadir desde aquí no modifica la ficha maestra.</div>
     <div class="practice-search-list-6702">
       ${rows.map(r => `
         <article class="practice-search-card-6702">
@@ -1367,17 +1413,15 @@ function renderArchiveCatalog() {
   if (controls.search && controls.search.value !== state.library.search) controls.search.value = state.library.search;
   if (controls.status && controls.status.value !== state.library.active) controls.status.value = state.library.active;
   if (controls.quality && controls.quality.value !== state.library.quality) controls.quality.value = state.library.quality || "all";
-  if (controls.pageSize && Number(controls.pageSize.value) !== Number(state.library.pageSize)) controls.pageSize.value = String(state.library.pageSize || 50);
+  if (controls.pageSize && String(controls.pageSize.value) !== String(state.library.pageSize || 50)) controls.pageSize.value = String(state.library.pageSize || 50);
 
   const rows = archiveRows();
-  const size = Math.max(1, Number(state.library.pageSize || 50));
-  const totalPages = Math.max(1, Math.ceil(rows.length / size));
-  state.library.page = Math.min(Math.max(1, Number(state.library.page || 1)), totalPages);
-  const start = (state.library.page - 1) * size;
-  const pageRows = rows.slice(start, start + size);
+  const win = pageWindow(rows.length, state.library.pageSize, state.library.page, 50);
+  state.library.page = win.page;
+  const pageRows = rows.slice(win.start, win.start + win.count);
 
   renderArchiveSummary(rows);
-  const pager = archivePagerHtml(rows.length, start, pageRows.length, totalPages);
+  const pager = archivePagerHtml(rows.length, win.start, pageRows.length, win.totalPages);
   const top = document.querySelector("#archivePagerTop");
   const bottom = document.querySelector("#archivePagerBottom");
   if (top) top.innerHTML = pager;
@@ -1411,17 +1455,9 @@ function renderArchiveSummary(rows) {
 }
 
 function archivePagerHtml(total, start, count, totalPages) {
+  const all = String(state.library.pageSize) === "all";
   const page = Number(state.library.page || 1);
-  const from = total ? start + 1 : 0;
-  const to = start + count;
-  const disabledPrev = page <= 1 ? "disabled" : "";
-  const disabledNext = page >= totalPages ? "disabled" : "";
-  return `
-    <span class="library-range-666b">Mostrando <b>${fmtNumber(from,0)}–${fmtNumber(to,0)}</b> de <b>${fmtNumber(total,0)}</b> · página ${fmtNumber(page,0)}/${fmtNumber(totalPages,0)}</span>
-    <button type="button" class="btn ghost mini-btn-666b" ${disabledPrev} data-library-page="1">Inicio</button>
-    <button type="button" class="btn ghost mini-btn-666b" ${disabledPrev} data-library-page="${page - 1}">Anterior</button>
-    <button type="button" class="btn ghost mini-btn-666b" ${disabledNext} data-library-page="${page + 1}">Siguiente</button>
-    <button type="button" class="btn ghost mini-btn-666b" ${disabledNext} data-library-page="${totalPages}">Final</button>`;
+  return pagerHtml6733({ total, start, count, page, totalPages, all, attr: "data-library-page", label: "registros" });
 }
 
 function archiveHeaders() {
@@ -1586,6 +1622,8 @@ function renderElaborations() {
   const listEl = document.querySelector("#elaborationsListV625");
   const summaryEl = document.querySelector("#elaborationsSummaryV625");
   if (!listEl || !summaryEl || !repo) return;
+  const controls = { pageSize: document.querySelector("#elaborationPageSizeV625") };
+  if (controls.pageSize && String(controls.pageSize.value) !== String(state.elaborations.pageSize || 50)) controls.pageSize.value = String(state.elaborations.pageSize || 50);
   const rows = repo.unifiedElaborations(state.elaborations);
   const total = rows.length;
   const bakery = rows.filter(r => r.source_type === "bakery").length;
@@ -1596,15 +1634,22 @@ function renderElaborations() {
     <div class="kpi"><span>Cocina/Pastelería</span><b>${fmtNumber(culinary,0)}</b></div>
     <div class="kpi"><span>Panadería</span><b>${fmtNumber(bakery,0)}</b></div>
     <div class="kpi"><span>Subelaboraciones</span><b>${fmtNumber(technical,0)}</b></div>`;
+  const win = pageWindow(rows.length, state.elaborations.pageSize, state.elaborations.page, 50);
+  state.elaborations.page = win.page;
+  const pageRows = rows.slice(win.start, win.start + win.count);
+  const pager = rows.length ? pagerHtml6733({ total: rows.length, start: win.start, count: pageRows.length, page: win.page, totalPages: win.totalPages, all: win.all, attr: "data-elaboration-page", label: "elaboraciones" }) : "";
+  const top = document.querySelector("#elaborationsPagerTopV625");
+  const bottom = document.querySelector("#elaborationsPagerBottomV625");
+  if (top) top.innerHTML = pager;
+  if (bottom) bottom.innerHTML = pager;
   if (!rows.length) {
     listEl.innerHTML = "<p class='small'>Sin elaboraciones con estos filtros.</p>";
     return;
   }
-  const visible = rows.slice(0, 120);
-  const note = rows.length > visible.length
-    ? `<div class="view-hint-618 strong">Mostrando ${visible.length} de ${rows.length}. Usa el buscador para acotar.</div>`
-    : `<div class="view-hint-618 strong">Mostrando ${rows.length} elaboración${rows.length === 1 ? "" : "es"}.</div>`;
-  listEl.innerHTML = note + visible.map(renderElaborationCard).join("");
+  const note = win.all
+    ? `<div class="view-hint-618 strong">Mostrando todas las elaboraciones: ${fmtNumber(rows.length,0)}.</div>`
+    : `<div class="view-hint-618 strong">Mostrando ${fmtNumber(win.start + 1,0)}–${fmtNumber(win.start + pageRows.length,0)} de ${fmtNumber(rows.length,0)}.</div>`;
+  listEl.innerHTML = note + pageRows.map(renderElaborationCard).join("");
 }
 
 function renderElaborationCard(r) {

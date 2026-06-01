@@ -1276,3 +1276,13 @@ body[data-workflow-state="empty"] #tab-order .order-guidance-619{display:none;}
   .private-kpi-grid { grid-template-columns: 1fr; }
   .private-actions-6725 .btn { width: 100%; text-align: center; }
 }
+
+/* fase 6.72.13 · estado fijo y paginación de elaboraciones */
+.nav-row .state-pill{flex:0 0 auto;align-self:center;margin-right:4px;white-space:nowrap;box-shadow:0 4px 14px rgba(40,92,80,.08);}
+.nav-row .state-pill.state-loading{background:#fff8de;border-color:#ecd287;color:#7b5600;}
+.nav-row .state-pill.state-clean{background:#effaf3;border-color:#b9ddc8;color:#237447;}
+.nav-row .state-pill.state-saving,.nav-row .state-pill.state-dirty{background:#fff8de;border-color:#ecd287;color:#7b5600;}
+.nav-row .state-pill.state-error{background:#fff0ed;border-color:#e7afa7;color:#a03527;}
+.practice-search-pager-6733,.elaborations-pager-6733{margin:10px 0;}
+.practice-search-pager-6733:empty,.elaborations-pager-6733:empty{display:none;}
+@media(max-width:640px){.nav-row .state-pill{position:sticky;left:0;z-index:2;background:var(--white);}.library-pager-666b{gap:6px;}.library-range-666b{flex-basis:100%;}}

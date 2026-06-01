@@ -1,0 +1,5 @@
+Validación fase 6.72.13
+- node --check módulos JS: OK.
+- PRAGMA integrity_check: ok.
+- Base pública sin datos privados.
+- Cambios de UI: estado fijo y paginación.
