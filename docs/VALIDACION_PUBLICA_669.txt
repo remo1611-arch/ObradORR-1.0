@@ -1,9 +1,0 @@
-Fase 6.69 · validación pulido de impresión técnica
-OK paquete público limpio mantenido
-OK sin scripts/sql/migration
-OK sin __pycache__ ni .pyc
-OK cache ?v=6690
-OK metadatos SQLite 6.69
-OK fichas culinarias con unidad visible en impresión
-OK normalización de alérgenos en impresión
-OK aviso de encabezados/pies del navegador en vista previa

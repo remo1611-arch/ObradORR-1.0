@@ -580,7 +580,7 @@ function bakeryTeachingSheet(db, item, lines, { processMode = "show" } = {}) {
         ${box("Agua en masa estimada", fmtPct(validation.real_hydration_pct))}
         ${box("Coste", fmtMoney(totalCost))}
       </div>
-      ${preferment.preferment_type ? `<p class="teaching-note"><b>Prefermento:</b> ${esc(preferment.preferment_type)} · harina prefermentada ${esc(fmtPct(preferment.actual_preferment_flour_pct))} · hidratación ${esc(fmtPct(preferment.actual_preferment_hydration_pct))}.</p>` : ""}
+      ${bakeryPrefermentTeachingNote(preferment)}
       <h2>Formulación por bloques</h2>
       ${bakeryStructuredBlocks(db, item, lines, { includeCost: true, includeAllergens: true })}
       ${processMode === "hide" ? "" : (process.length ? processBlocks(process) : processBlockFromText("Proceso", recipe.notes))}
@@ -588,6 +588,18 @@ function bakeryTeachingSheet(db, item, lines, { processMode = "show" } = {}) {
     </section>`;
 }
 
+
+
+function bakeryPrefermentTeachingNote(preferment = {}) {
+  const type = String(preferment.preferment_type || "").trim();
+  const flourPct = Number(preferment.actual_preferment_flour_pct || 0);
+  const hydrationPct = Number(preferment.actual_preferment_hydration_pct || 0);
+  if (!type && !flourPct) return "";
+  if (flourPct <= 0.0001 || /m[eé]todo directo|levadura directa/i.test(type)) {
+    return `<p class="teaching-note"><b>Método:</b> Método directo · sin prefermento.</p>`;
+  }
+  return `<p class="teaching-note"><b>Prefermento:</b> ${esc(type || "Prefermento")} · harina prefermentada ${esc(fmtPct(flourPct))} · hidratación ${esc(fmtPct(hydrationPct))}.</p>`;
+}
 
 function bakeryStructuredBlocks(db, item, itemLines = [], { includeCost = false, includeAllergens = false } = {}) {
   const recipe = one(db, "SELECT base_flour_g FROM bakery_recipes WHERE id=$id;", { $id: item.bakery_recipe_id }) || {};
@@ -1262,7 +1274,11 @@ function allergenCanonicalLabel(value) {
   if (t === "leche" || t === "lacteos" || t === "lacteos/leche") return "Leche";
   if (t === "huevo" || t === "huevos") return "Huevos";
   if (t === "sulfitos" || t === "sulfito") return "Sulfitos";
-  if (t === "frutos de cascara" || t === "frutos secos") return "Frutos de cáscara";
+  if (t === "soia" || t === "soja") return "Soja";
+  if (t === "sesamo" || t === "sesamo (posible)") return raw.toLowerCase().includes("posible") ? "Sésamo (posible)" : "Sésamo";
+  if (t === "frutos de cascara" || t === "frutos secos" || t === "frutos de casca rixa") return "Frutos de cáscara";
+  if (t === "amendoa" || t === "almendra") return "Frutos de cáscara (almendra)";
+  if (t === "abelas" || t === "avellana") return "Frutos de cáscara (avellana)";
   return raw.charAt(0).toLocaleUpperCase("es") + raw.slice(1);
 }
 function allergenSortKey(value) {

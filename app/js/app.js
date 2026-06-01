@@ -1,6 +1,6 @@
 import { SwiftDB } from "./db-service.js";
 import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js";
-import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-1.js";
+import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-2.js";
 import { loadRecovery, saveRecovery, clearRecovery } from "./storage-service.js";
 import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson } from "./ui.js";
 

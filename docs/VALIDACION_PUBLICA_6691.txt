@@ -1,0 +1,13 @@
+OK node --check app/js/*.js
+OK paquete público limpio mantenido
+OK sin scripts/sql/migration
+OK sin __pycache__ ni .pyc
+OK cache ?v=6691
+OK metadata schema_version 6.69.1
+OK print-service-v6-2 activo
+OK print-service-v6-1 retirado del paquete público
+OK v_ingredients_allergens canónica y ordenada
+OK duplicidad Gluten + Gluten (trigo) eliminada en origen
+OK ingredients = 743
+OK culinary_recipes = 206
+OK bakery_recipes = 99

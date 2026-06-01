@@ -1,5 +1,5 @@
 import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js";
-import { printClassSession, printClassOrder } from "./print-service-v6-1.js";
+import { printClassSession, printClassOrder } from "./print-service-v6-2.js";
 import { slugSessionIdFromTitle, slugSessionItemId } from "./repositories.js";
 
 let selectedSessionId = null;

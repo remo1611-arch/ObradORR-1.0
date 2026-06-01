@@ -13,7 +13,7 @@ app/js/culinary-main-v5-1.js
 app/js/db-service.js
 app/js/extras-v3-9.js
 app/js/preferments-v3-8.js
-app/js/print-service-v6-1.js
+app/js/print-service-v6-2.js
 app/js/repositories.js
 app/js/session-v4-1.js
 app/js/storage-service.js
@@ -28,9 +28,9 @@ assets/photos/recipes/.gitkeep
 db/swiftremo.sqlite
 docs/MANIFEST_PUBLIC_FILES.txt
 docs/MANIFEST_PUBLIC_SHA256.txt
-docs/README_FASE6_69_PULIDO_IMPRESION_TECNICA.md
+docs/README_FASE6_69_1_CORRECCION_BASE_IMPRESION.md
 docs/README_PUBLICACION.md
-docs/VALIDACION_PUBLICA_669.txt
+docs/VALIDACION_PUBLICA_6691.txt
 docs/VERSION.txt
 index.html
 robots.txt

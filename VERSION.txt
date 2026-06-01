@@ -1,1 +1,1 @@
-swiftremo_sql_fase6.69_pulido_impresion_tecnica
+swiftremo_sql_fase6.69.1_correccion_base_impresion

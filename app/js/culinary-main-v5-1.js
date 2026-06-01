@@ -1,5 +1,5 @@
 import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js";
-import { printCulinaryRecipe } from "./print-service-v6-1.js";
+import { printCulinaryRecipe } from "./print-service-v6-2.js";
 import { slugCulinaryRecipeIdFromName, slugCulinaryLineId } from "./repositories.js";
 
 let selectedRecipeId = null;
