@@ -1,1 +1,1 @@
-swiftremo_sql_fase6.68_mejora_dirigida_fichas
+swiftremo_sql_fase6.69_pulido_impresion_tecnica

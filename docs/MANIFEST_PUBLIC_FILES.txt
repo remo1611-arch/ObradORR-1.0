@@ -28,10 +28,9 @@ assets/photos/recipes/.gitkeep
 db/swiftremo.sqlite
 docs/MANIFEST_PUBLIC_FILES.txt
 docs/MANIFEST_PUBLIC_SHA256.txt
-docs/MEJORA_DIRIGIDA_FICHAS_668.csv
-docs/README_FASE6_68_MEJORA_DIRIGIDA_FICHAS.md
+docs/README_FASE6_69_PULIDO_IMPRESION_TECNICA.md
 docs/README_PUBLICACION.md
-docs/VALIDACION_PUBLICA_668.txt
+docs/VALIDACION_PUBLICA_669.txt
 docs/VERSION.txt
 index.html
 robots.txt

@@ -73,6 +73,8 @@ const PRINT_STYLE = `
   .recipe-table.cols-5 th:nth-child(4), .recipe-table.cols-5 td:nth-child(4) { width: 12%; }
   .recipe-table.cols-5 th:nth-child(5), .recipe-table.cols-5 td:nth-child(5) { width: 24%; }
   .technical-order-table { font-size: 8.2px; }
+  .repeat-title th { background:#ffffff; color:#374151; font-size:9.4px; font-weight:800; text-transform:none; letter-spacing:.01em; }
+  .unit-col { white-space: nowrap; }
   .process-list { margin: 4px 0 8px 18px; padding: 0; }
   .process-list li { margin: 2px 0; break-inside: avoid; page-break-inside: avoid; }
   .compact-muted { font-size: 8.8px; color: #6b7280; }
@@ -217,7 +219,7 @@ export function printCulinaryRecipe(db, recipeId) {
     WHERE clc.recipe_id=$id
     ORDER BY clc.sort_order, clc.ingredient;
   `, { $id: recipeId });
-  const allergens = uniqueText(lines.flatMap(l => splitSemi(l.allergens))).join("; ");
+  const allergens = normalizeAllergens(lines.flatMap(l => splitSemi(l.allergens))).join("; ");
 
   const html = docHtml(`${recipe.name} · ficha culinaria`, `
     <section class="sheet">
@@ -500,7 +502,7 @@ export function printWorkSelectionTeachingSheetsWithOrder(db, selectionId = "WOR
           ${box("Cocina/Pastelería", fmtNumber(items.filter(i => i.item_type === "culinary").length,0))}
           ${box("Coste estimado", fmtMoney(totalCost))}
         </div>
-        <p class="teaching-note">Dossier completo: incluye fichas técnicas con coste, alérgenos y proceso; al final incorpora el pedido completo con proveedor, zona, coste y origen/usado en.</p>
+        <p class="teaching-note">Dossier completo: incluye fichas técnicas con coste, unidades visibles, alérgenos y proceso; al final incorpora el pedido completo con proveedor, zona, coste y origen/usado en.</p>
         <h2>Elaboraciones incluidas</h2>
         ${productionItemsTable(items)}
       </section>`;
@@ -529,7 +531,7 @@ function culinaryTeachingSheet(db, item, lines, { subrecipeMode = "expanded", pr
     WHERE cr.id=$id;
   `, { $id: item.culinary_recipe_id }) || {};
   const totalCost = sumRows(lines, "estimated_cost");
-  const allergens = uniqueText(lines.flatMap(l => splitSemi(l.allergens))).join("; ");
+  const allergens = normalizeAllergens(lines.flatMap(l => splitSemi(l.allergens))).join("; ");
   const perServing = item.servings ? totalCost / Number(item.servings || 1) : null;
   const detailRows = culinaryRecipeDetailRows(db, item, { subrecipeMode });
   return `
@@ -539,7 +541,7 @@ function culinaryTeachingSheet(db, item, lines, { subrecipeMode = "expanded", pr
         ${box("Producción", itemQty(item))}
         ${box("Coste total", fmtMoney(totalCost))}
         ${box("Coste/ración", perServing ? fmtMoney(perServing) : "—")}
-        ${box("Alérgenos", allergens ? fmtNumber(splitSemi(allergens).length,0) : "Sin declarar")}
+        ${box("Alérgenos", allergens ? fmtNumber(splitSemi(allergens).length,0) : "Sin alérgenos declarables")}
       </div>
       <h2>Escandallo / formulación</h2>
       ${culinaryDetailTable(detailRows, { includeCost: true, includeAllergens: true })}
@@ -567,7 +569,7 @@ function bakeryTeachingSheet(db, item, lines, { processMode = "show" } = {}) {
     ORDER BY CASE block WHEN 'preferment' THEN 1 WHEN 'final_dough' THEN 2 WHEN 'other' THEN 3 WHEN 'baking' THEN 4 ELSE 5 END, step_number;
   `, { $id: item.bakery_recipe_id });
   const totalCost = sumRows(lines, "estimated_cost");
-  const allergens = uniqueText(lines.flatMap(l => splitSemi(l.allergens))).join("; ") || allergensForBakery(db, item.bakery_recipe_id);
+  const allergens = normalizeAllergens(lines.flatMap(l => splitSemi(l.allergens))).join("; ") || allergensForBakery(db, item.bakery_recipe_id);
   const effectiveFlour = lines.find(l => Number(l.effective_flour_g || 0) > 0)?.effective_flour_g || item.flour_g;
   return `
     <section class="sheet teaching-sheet">
@@ -622,7 +624,7 @@ function bakeryStructuredBlocks(db, item, itemLines = [], { includeCost = false,
         pctLabel: bakeryExtraPctLabel(r),
         quantity: orderQuantity(requiredG, sessionLine?.unit || r.unit || "g"),
         cost: fmtMoney(Number(sessionLine?.estimated_cost || bakeryCostFromRequired(r, requiredG))),
-        allergens: r.allergens || ""
+        allergens: normalizeAllergens(splitSemi(r.allergens)).join("; ")
       });
     }
   }
@@ -639,7 +641,7 @@ function bakeryBlockRow(row, requiredG, pct, includeCost, includeAllergens) {
     pctLabel: pct != null ? `${fmtNumber(pct,2)} %` : "—",
     quantity: orderQuantity(requiredG, row.unit || "g"),
     cost: fmtMoney(bakeryCostFromRequired(row, requiredG)),
-    allergens: row.allergens || ""
+    allergens: normalizeAllergens(splitSemi(row.allergens)).join("; ")
   };
 }
 
@@ -698,8 +700,10 @@ function culinaryRecipeDetailRows(db, item, { subrecipeMode = "expanded" } = {})
       depth: 0,
       ingredient: isSub && subrecipeMode === "expanded" ? `${r.line_name} · subtotal` : r.line_name,
       quantity: formatRecipeLineQuantity(Number(r.quantity || 0) * multiplier, r.unit),
+      quantityValue: formatRecipeLineNumber(Number(r.quantity || 0) * multiplier),
+      unit: displayUnit(r.unit),
       cost: fmtMoney(Number(r.estimated_cost || 0) * multiplier),
-      allergens: isSub ? (allergenByRoot[r.line_id] || "") : (r.allergens || "")
+      allergens: isSub ? (allergenByRoot[r.line_id] || "") : normalizeAllergens(splitSemi(r.allergens)).join("; ")
     });
     if (isSub && subrecipeMode === "expanded") {
       for (const child of (childByRoot[r.line_id] || [])) {
@@ -708,8 +712,10 @@ function culinaryRecipeDetailRows(db, item, { subrecipeMode = "expanded" } = {})
           depth: Math.max(1, Number(child.depth || 1)),
           ingredient: child.ingredient,
           quantity: formatRecipeLineQuantity(Number(child.quantity || 0) * multiplier, child.unit),
+          quantityValue: formatRecipeLineNumber(Number(child.quantity || 0) * multiplier),
+          unit: displayUnit(child.unit),
           cost: fmtMoney(Number(child.estimated_cost || 0) * multiplier),
-          allergens: child.allergens || ""
+          allergens: normalizeAllergens(splitSemi(child.allergens)).join("; ")
         });
       }
     }
@@ -733,8 +739,7 @@ function culinarySubrecipeAllergens(db, recipeId) {
   `, { $id: recipeId });
   const map = {};
   for (const r of rows) {
-    const values = new Set(splitSemi(map[r.root_line_id]).concat(splitSemi(r.allergens)));
-    map[r.root_line_id] = Array.from(values).filter(Boolean).sort((a,b)=>a.localeCompare(b,"es")).join("; ");
+    map[r.root_line_id] = normalizeAllergens(splitSemi(map[r.root_line_id]).concat(splitSemi(r.allergens))).join("; ");
   }
   return map;
 }
@@ -757,7 +762,7 @@ function culinaryExpandedChildren(db, recipeId) {
 
 function culinaryDetailTable(rows, { includeCost = false, includeAllergens = false } = {}) {
   if (!rows.length) return `<p class="muted">Sin datos.</p>`;
-  const headers = ["Ingrediente", "Cantidad"];
+  const headers = ["Ingrediente", "Cantidad", "Unidad"];
   const numeric = [1];
   if (includeCost) { headers.push("Coste"); numeric.push(headers.length - 1); }
   if (includeAllergens) headers.push("Alérgenos");
@@ -766,11 +771,15 @@ function culinaryDetailTable(rows, { includeCost = false, includeAllergens = fal
     const depth = Math.min(Math.max(Number(r.depth || 0), 0), 3);
     const prefix = r.kind === "child" ? `${"— ".repeat(depth || 1)}` : "";
     const firstCell = `${prefix}${r.ingredient}`;
-    const cells = [{ text: firstCell }, { text: r.quantity }];
+    const cells = [
+      { text: firstCell },
+      { text: r.quantityValue || quantityNumberFromLabel(r.quantity) },
+      { text: r.unit || quantityUnitFromLabel(r.quantity), cls: "unit-col" }
+    ];
     if (includeCost) cells.push({ text: r.cost });
-    if (includeAllergens) cells.push({ text: r.allergens || "" });
+    if (includeAllergens) cells.push({ text: normalizeAllergens(splitSemi(r.allergens)).join("; ") });
     const cls = r.kind === "subrecipe" ? "subrecipe-row" : r.kind === "child" ? `subrecipe-child depth-${depth}` : "";
-    return `<tr class="${cls}">${cells.map((cell, i) => `<td class="${numeric.includes(i) ? "num" : ""}">${esc(cell.text)}</td>`).join("")}</tr>`;
+    return `<tr class="${cls}">${cells.map((cell, i) => `<td class="${[numeric.includes(i) ? "num" : "", cell.cls || ""].filter(Boolean).join(" ")}">${esc(cell.text)}</td>`).join("")}</tr>`;
   }).join("");
   const colClass = `cols-${headers.length}`;
   return `<table class="recipe-table ${colClass}"><thead>${head.replace(/^<thead>|<\/thead>$/g, "")}</thead><tbody>${body}</tbody></table>`;
@@ -924,7 +933,7 @@ function orderSection(order, pageBreak = false, title = "Pedido agrupado", { tec
   const supplierNotice = noSupplier
     ? `<div class="warn">${technical ? `Proveedor no asignado en ${fmtNumber(noSupplier,0)} línea(s). En el pedido técnico se identifica como “Sin proveedor asignado”.` : `Proveedor no asignado en ${fmtNumber(noSupplier,0)} línea(s). La columna de proveedor se mantiene oculta en el pedido limpio para mejorar la lectura.`}</div>`
     : "";
-  const technicalTable = technical ? technicalOrderTable(order, true) : "";
+  const technicalTable = technical ? technicalOrderTable(order, true, { repeatTitle: `${technical ? "Pedido técnico" : "Pedido"} · ${fmtNumber(order.length,0)} líneas · Coste estimado ${fmtMoney(total)}` }) : "";
   const cleanBlocks = technical ? "" : cleanOrderFamilyBlocks(order);
   return `
     <section class="sheet order-sheet ${pageBreak ? "page-break" : ""}">
@@ -940,7 +949,7 @@ function orderSection(order, pageBreak = false, title = "Pedido agrupado", { tec
     </section>`;
 }
 
-function technicalOrderTable(order, showSupplier) {
+function technicalOrderTable(order, showSupplier, { repeatTitle = "" } = {}) {
   const headers = showSupplier
     ? ["Grupo", "Ingrediente", "Cantidad", "Unidad", "Proveedor", "Zona", "Coste", "Usado en"]
     : ["Grupo", "Ingrediente", "Cantidad", "Unidad", "Zona", "Coste", "Usado en"];
@@ -949,7 +958,8 @@ function technicalOrderTable(order, showSupplier) {
     const tail = [r.storage_zone || "", fmtMoney(r.estimated_cost_total), formatUsedIn(r.used_in || "")];
     return showSupplier ? [...base, r.supplier || "Sin proveedor asignado", ...tail] : [...base, ...tail];
   });
-  return tableHtml(headers, rows, showSupplier ? [2,6] : [2,5], "technical-order-table");
+  const html = tableHtml(headers, rows, showSupplier ? [2,6] : [2,5], "technical-order-table");
+  return repeatTitle ? html.replace("<thead><tr>", `<thead><tr class="repeat-title"><th colspan="${headers.length}">${esc(repeatTitle)} · continuación de tabla</th></tr><tr>`) : html;
 }
 
 function cleanOrderFamilyBlocks(order) {
@@ -1169,6 +1179,7 @@ function openPrintWindow(html) {
       .swiftremo-print-preview-631{position:fixed;inset:0;z-index:9999;background:#0f172a99;display:grid;grid-template-rows:auto 1fr;}
       .swiftremo-print-toolbar-631{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 12px;background:#fff;border-bottom:1px solid #d7dce2;box-shadow:0 4px 16px #0002;}
       .swiftremo-print-toolbar-631 strong{font-size:14px;color:#111827;}
+      .swiftremo-print-toolbar-631 .print-hint-669{font-size:12px;color:#4b5563;margin-left:10px;}
       .swiftremo-print-toolbar-631 .actions{display:flex;gap:8px;flex-wrap:wrap;}
       .swiftremo-print-toolbar-631 button{border:1px solid #1f6feb;background:#1f6feb;color:#fff;padding:8px 12px;border-radius:10px;font-weight:700;}
       .swiftremo-print-toolbar-631 button.secondary{background:#fff;color:#1f2937;border-color:#cfd6dd;}
@@ -1176,7 +1187,7 @@ function openPrintWindow(html) {
       .swiftremo-print-frame-631{width:100%;height:100%;border:0;background:#fff;}
     </style>
     <div class="swiftremo-print-toolbar-631">
-      <strong>Vista previa imprimible</strong>
+      <div><strong>Vista previa imprimible</strong><span class="print-hint-669">Para PDF limpio, desactiva “Encabezados y pies” del navegador.</span></div>
       <div class="actions">
         <button type="button" data-print-now disabled>Preparando vista…</button>
         <button type="button" class="secondary" data-print-close>Volver</button>
@@ -1218,6 +1229,47 @@ function orderQuantity(requiredBaseValue, unit = "g") {
   if (u === "g" || u === "ml") return mass(n, u);
   return `${fmtNumber(n, 3)} ${u}`;
 }
+
+function formatRecipeLineNumber(quantity) {
+  const n = Number(quantity);
+  return Number.isFinite(n) ? fmtNumber(n, 3) : "";
+}
+function displayUnit(unit = "g") {
+  return String(unit || "g").trim() || "g";
+}
+function quantityNumberFromLabel(label) {
+  const t = String(label || "").trim();
+  const m = /^(.+?)\s+([A-Za-zÁÉÍÓÚÑáéíóúñ.%]+)$/.exec(t);
+  return m ? m[1] : t;
+}
+function quantityUnitFromLabel(label) {
+  const t = String(label || "").trim();
+  const m = /^(.+?)\s+([A-Za-zÁÉÍÓÚÑáéíóúñ.%]+)$/.exec(t);
+  return m ? m[2] : "";
+}
+function normalizeAllergens(values) {
+  const mapped = (Array.isArray(values) ? values : splitSemi(values)).map(allergenCanonicalLabel).filter(Boolean);
+  const hasSpecificGluten = mapped.some(v => /^Gluten \(/i.test(v));
+  const filtered = mapped.filter(v => !(hasSpecificGluten && v === "Gluten"));
+  return Array.from(new Set(filtered)).sort((a,b) => allergenSortKey(a).localeCompare(allergenSortKey(b), "es"));
+}
+function allergenCanonicalLabel(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const t = raw.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ");
+  if (t === "gluten") return "Gluten";
+  if (/^gluten\s*\(\s*trigo\s*\)$/.test(t) || t === "trigo") return "Gluten (trigo)";
+  if (t === "leche" || t === "lacteos" || t === "lacteos/leche") return "Leche";
+  if (t === "huevo" || t === "huevos") return "Huevos";
+  if (t === "sulfitos" || t === "sulfito") return "Sulfitos";
+  if (t === "frutos de cascara" || t === "frutos secos") return "Frutos de cáscara";
+  return raw.charAt(0).toLocaleUpperCase("es") + raw.slice(1);
+}
+function allergenSortKey(value) {
+  const order = { "Gluten (trigo)": "01", "Gluten": "02", "Huevos": "03", "Leche": "04", "Sulfitos": "05" };
+  return `${order[value] || "99"}_${value}`;
+}
+
 function fmtPct(value) { const n = Number(value); return Number.isFinite(n) ? `${fmtNumber(n,2)} %` : "—"; }
 function splitSemi(text) { return String(text || "").split(";").map(s => s.trim()).filter(Boolean); }
 function uniqueText(values) { return Array.from(new Set(values.filter(Boolean))).sort((a,b) => a.localeCompare(b, "es")); }
@@ -1228,7 +1280,7 @@ function allergensForBakery(db, recipeId) {
     LEFT JOIN v_ingredients_allergens via ON via.ingredient_id=brl.ingredient_id
     WHERE brl.recipe_id=$id;
   `, { $id: recipeId });
-  return uniqueText(rows.flatMap(r => splitSemi(r.allergens))).join("; ");
+  return normalizeAllergens(rows.flatMap(r => splitSemi(r.allergens))).join("; ");
 }
 function groupBy(rows, keyFn) {
   const out = {};
