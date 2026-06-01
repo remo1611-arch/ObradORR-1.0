@@ -53,3 +53,5 @@
 80	docs/VERSION.txt
 2509	index.html
 26	robots.txt
+
+docs/README_FASE6_72_7_CORRECCION_CACHE_ARRANQUE.md

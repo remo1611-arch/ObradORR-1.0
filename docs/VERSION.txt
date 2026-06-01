@@ -1,1 +1,1 @@
-SwiftRemo SQL · FASE 6.72.6 · paquetes privados BLOB con vínculos pendientes
+SwiftRemo SQL Fase 6.72.7 · corrección caché GitHub Pages y diagnóstico de arranque
