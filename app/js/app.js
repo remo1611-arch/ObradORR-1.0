@@ -16,6 +16,7 @@ const state = {
   filters: { search: "", active: "active", use: "all", view: "work" },
   elaborations: { search: "", type: "all", active: "active" },
   library: { kind: "elaborations", search: "", active: "active", quality: "all", page: 1, pageSize: 50, selectedKey: "" },
+  practiceSearch: { search: "", type: "all", limit: 12 },
   quantityDialog: { mode: "add", elaboration: null, selectionItem: null }
 };
 
@@ -116,9 +117,9 @@ function bindEvents() {
   bindIfExists("#libraryStatusV666B", "change", ev => { state.library.active = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderLibraryV666B(); });
   bindIfExists("#libraryQualityV667", "change", ev => { state.library.quality = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderLibraryV666B(); });
   bindIfExists("#libraryPageSizeV666B", "change", ev => { state.library.pageSize = Number(ev.target.value) || 50; state.library.page = 1; renderLibraryV666B(); });
-  bindIfExists("#practiceSearchV6702", "input", ev => { state.practiceSearch.search = ev.target.value || ""; renderPracticeSearchV6702(); });
-  bindIfExists("#practiceSearchTypeV6702", "change", ev => { state.practiceSearch.type = ev.target.value || "all"; renderPracticeSearchV6702(); });
-  bindIfExists("#practiceSearchLimitV6702", "change", ev => { state.practiceSearch.limit = Number(ev.target.value) || 12; renderPracticeSearchV6702(); });
+  bindIfExists("#practiceSearchV6702", "input", ev => { ensurePracticeSearchStateV6703().search = ev.target.value || ""; renderPracticeSearchV6702(); });
+  bindIfExists("#practiceSearchTypeV6702", "change", ev => { ensurePracticeSearchStateV6703().type = ev.target.value || "all"; renderPracticeSearchV6702(); });
+  bindIfExists("#practiceSearchLimitV6702", "change", ev => { ensurePracticeSearchStateV6703().limit = Number(ev.target.value) || 12; renderPracticeSearchV6702(); });
   bindIfExists("#practiceSearchClearV6702", "click", () => { state.practiceSearch = { search: "", type: "all", limit: 12 }; const q = document.querySelector("#practiceSearchV6702"); if (q) q.value = ""; const t = document.querySelector("#practiceSearchTypeV6702"); if (t) t.value = "all"; const l = document.querySelector("#practiceSearchLimitV6702"); if (l) l.value = "12"; renderPracticeSearchV6702(); });
   bindIfExists("#libraryClearFiltersV666C", "click", clearLibraryFiltersV666C);
   bindIfExists("#libraryCopyReviewV667", "click", copyLibraryReviewReportV667);
@@ -168,6 +169,21 @@ function bindEvents() {
     bindIfExists("#" + id, "change", () => { if (id === "practiceCycleV632") refreshPracticeModulesV632(true); if (id === "practiceModuleV632") applyPracticeModuleDefaultGroupV632(); savePracticeMetaV632(); });
   });
   document.addEventListener("click", ev => {
+    const libDetailPre = ev.target.closest?.("[data-library-detail]");
+    if (libDetailPre) {
+      ev.preventDefault();
+      state.library.kind = "elaborations";
+      state.library.selectedKey = libDetailPre.dataset.libraryDetail || "";
+      switchTab("library");
+      renderLibraryV666B();
+      return;
+    }
+    const focusPracticeSearch = ev.target.closest?.("[data-focus-practice-search]");
+    if (focusPracticeSearch) {
+      ev.preventDefault();
+      focusPracticeSearchV6703();
+      return;
+    }
     const tabButton = ev.target.closest?.("[data-tab]");
     if (tabButton && !tabButton.dataset.tabBound) {
       ev.preventDefault();
@@ -732,6 +748,7 @@ function renderPracticeMetaV632() {
   const includeDataEl = document.querySelector("#printIncludePracticeDataV637");
   const stored = loadPracticeMetaV632() || {};
   if (includeDataEl && typeof stored.printIncludePracticeDataV637 === "boolean") includeDataEl.checked = stored.printIncludePracticeDataV637;
+  else if (includeDataEl) includeDataEl.checked = true;
 }
 
 function populatePracticeMetaSelectorsV632() {
@@ -1018,16 +1035,74 @@ function clearLibraryFiltersV666C() {
   toast("Filtros de biblioteca limpiados.", "ok");
 }
 
+function ensurePracticeSearchStateV6703() {
+  if (!state.practiceSearch) state.practiceSearch = { search: "", type: "all", limit: 12 };
+  state.practiceSearch.search = String(state.practiceSearch.search || "");
+  state.practiceSearch.type = state.practiceSearch.type || "all";
+  state.practiceSearch.limit = Number(state.practiceSearch.limit || 12) || 12;
+  return state.practiceSearch;
+}
+
+function focusPracticeSearchV6703() {
+  switchTab("selection");
+  window.setTimeout(() => {
+    const q = document.querySelector("#practiceSearchV6702");
+    if (!q) return;
+    q.focus();
+    q.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 80);
+}
+
+function hasWorkSelectionItemsV6703() {
+  try { return !!repo && typeof repo.workSelectionItems === "function" && repo.workSelectionItems().length > 0; }
+  catch { return false; }
+}
+
+function ensureWorkSelectionNotEmptyV6703(message = "Primero añade al menos una elaboración a la práctica.") {
+  if (hasWorkSelectionItemsV6703()) return true;
+  toast(message, "warn");
+  focusPracticeSearchV6703();
+  return false;
+}
+
+function updatePracticeActionStateV6703() {
+  const hasItems = hasWorkSelectionItemsV6703();
+  const selectors = [
+    "#selectionCreateSessionV623",
+    "#orderPrintCurrentTechnicalV670",
+    "#orderPrintCurrentSimpleV670",
+    "#outputPrintDossierV670",
+    "#outputPrintSheetsV670",
+    "#outputPrintOrderV670",
+    "#selectionOpenPrintCenterV642",
+    "#selectionPrintElaborationsV638",
+    "#selectionPrintOrderV638",
+    "#selectionPrintBothV638",
+    "#selectionPrintTeachingV641",
+    "#selectionPrintTechnicalOrderV641",
+    "#selectionPrintTeachingOrderV642",
+    ".practice-main-actions-642 [data-tab='order']",
+    ".practice-main-actions-642 [data-tab='print']",
+    ".practice-main-actions-636 [data-tab='order']"
+  ];
+  document.querySelectorAll(selectors.join(",")).forEach(btn => {
+    btn.disabled = !hasItems;
+    btn.classList.toggle("is-disabled-by-empty-practice-6703", !hasItems);
+    if (!hasItems) btn.title = "Primero añade al menos una elaboración a la práctica.";
+    else btn.removeAttribute("title");
+  });
+}
 
 function renderPracticeSearchV6702() {
   const box = document.querySelector("#practiceSearchResultsV6702");
   if (!box || !repo) return;
-  const q = String(state.practiceSearch?.search || "").trim();
-  const type = state.practiceSearch?.type || "all";
-  const limit = Math.max(4, Math.min(30, Number(state.practiceSearch?.limit || 12)));
+  const ps = ensurePracticeSearchStateV6703();
+  const q = String(ps.search || "").trim();
+  const type = ps.type || "all";
+  const limit = Math.max(4, Math.min(30, Number(ps.limit || 12)));
   const rows = repo.unifiedElaborations({ search: q, type, active: "active" }).slice(0, limit);
-  const totalLabel = rows.length ? `${fmtNumber(rows.length, 0)} resultado${rows.length === 1 ? "" : "s"}` : "Sin resultados";
-  if (!q && type === "all") {
+  const totalLabel = !q ? `Sugerencias activas · ${fmtNumber(rows.length, 0)}` : rows.length ? `${fmtNumber(rows.length, 0)} resultado${rows.length === 1 ? "" : "s"}` : "Sin resultados";
+  if (!rows.length && !q) {
     box.innerHTML = `
       <div class="practice-search-empty-6702">
         <b>Busca una elaboración para añadirla a la práctica.</b>
@@ -1739,14 +1814,14 @@ function renderSelection() {
     summaryEl.innerHTML = `
       <div class="empty-action-card-628">
         <b>Práctica sin elaboraciones.</b>
-        <span>Añade elaboraciones desde la biblioteca única y define la cantidad total de cada una.</span>
-        <div class="actions"><button type="button" class="btn primary" data-tab="library">Buscar en Biblioteca</button></div>
+        <span>Usa el buscador de esta misma pantalla para añadir la primera elaboración y definir su producción.</span>
+        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Buscar elaboración</button></div>
       </div>`;
     itemsEl.innerHTML = `
       <div class="empty-action-card-628">
         <b>No has añadido elaboraciones.</b>
         <span>Las cantidades se decidirán al añadir cada elaboración: cantidad total de esta práctica.</span>
-        <div class="actions"><button type="button" class="btn primary" data-tab="library">Añadir desde Biblioteca</button></div>
+        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir desde el buscador</button><button type="button" class="btn ghost" data-tab="library">Abrir Biblioteca completa</button></div>
       </div>`;
   } else {
     summaryEl.classList.remove("empty-practice-summary");
@@ -1776,6 +1851,7 @@ function renderSelection() {
       { label: "Coste", render: r => fmtMoney(r.total_cost) }
     ], jobs) : "";
   }
+  updatePracticeActionStateV6703();
 }
 
 async function addWorkSelectionItem(item) {
@@ -1800,6 +1876,7 @@ async function addWorkSelectionItem(item) {
     };
     repo.addWorkSelectionItem(data);
     renderSelection();
+    renderOrder();
     await autosave({ backup: false, reason: "práctica actual" });
     toast("Añadido a la práctica.");
   } catch (err) { console.error(err); toast(err.message || "No se pudo añadir a la práctica actual.", "err"); }
@@ -1809,6 +1886,7 @@ async function deleteSelectionItem(id) {
   try {
     repo.deleteWorkSelectionItem(id);
     renderSelection();
+    renderOrder();
     await autosave({ backup: false, reason: "quitar de práctica actual" });
     toast("Elaboración quitada de la práctica.", "warn");
   } catch (err) { console.error(err); toast(err.message, "err"); }
@@ -1819,6 +1897,7 @@ async function clearSelection() {
     if (!confirm("¿Vaciar la práctica actual? No se borran fichas ni sesiones.")) return;
     repo.clearWorkSelection();
     renderSelection();
+    renderOrder();
     await autosave({ backup: false, reason: "vaciar práctica actual" });
     toast("Práctica actual vaciada.", "warn");
   } catch (err) { console.error(err); toast(err.message, "err"); }
@@ -1826,6 +1905,7 @@ async function clearSelection() {
 
 async function createSessionFromSelection() {
   try {
+    if (!ensureWorkSelectionNotEmptyV6703("Primero añade al menos una elaboración antes de archivar la sesión.")) return;
     const meta = practiceMetaV632();
     const plan = practicePlanV627();
     const title = meta.title || `Práctica ${meta.practiceDate || todayIsoV632()}`;
@@ -1881,6 +1961,7 @@ function printOptionsV637(overrides = {}) {
 
 async function printSelectionDirectV638({ includeElaborations = true, includeOrder = true, reason = "historial impresión práctica actual" } = {}) {
   try {
+    if (!ensureWorkSelectionNotEmptyV6703("Primero añade al menos una elaboración antes de imprimir.")) return;
     const opts = printOptionsV637({ includeElaborations, includeOrder });
     if (!opts.includeElaborations && !opts.includeOrder) { toast("Selecciona elaboraciones, pedido o ambos para imprimir.", "warn"); return; }
     printWorkSelection(swiftDb, "WORK_CURRENT", { ...opts, profile: "docente", metadata: practicePrintMetadataV632(), subrecipeMode: opts.subrecipeMode, processMode: opts.processMode });
@@ -1906,6 +1987,7 @@ async function printSelectionOrder() {
 
 async function printSelectionTeachingV641() {
   try {
+    if (!ensureWorkSelectionNotEmptyV6703("Primero añade al menos una elaboración antes de imprimir fichas.")) return;
     const opts = printOptionsV637({ includeElaborations: true, includeOrder: false });
     printWorkSelectionTeachingSheets(swiftDb, "WORK_CURRENT", { profile: "ficha_docente_completa", metadata: practicePrintMetadataV632(), includePracticeData: opts.includePracticeData, subrecipeMode: opts.subrecipeMode, processMode: opts.processMode });
     await autosave({ backup: false, reason: "historial impresión ficha docente completa práctica" });
@@ -1918,6 +2000,7 @@ async function printSelectionTeachingV641() {
 
 async function printSelectionTechnicalOrderV641() {
   try {
+    if (!ensureWorkSelectionNotEmptyV6703("Primero añade al menos una elaboración antes de imprimir el pedido.")) return;
     const opts = printOptionsV637({ includeElaborations: false, includeOrder: true });
     printWorkSelectionTechnicalOrder(swiftDb, "WORK_CURRENT", { profile: "pedido_tecnico", metadata: practicePrintMetadataV632(), includePracticeData: opts.includePracticeData });
     await autosave({ backup: false, reason: "historial impresión pedido técnico práctica" });
@@ -1930,6 +2013,7 @@ async function printSelectionTechnicalOrderV641() {
 
 
 function openPrintCenterV642() {
+  if (!ensureWorkSelectionNotEmptyV6703("Primero añade al menos una elaboración antes de abrir la salida.")) return;
   const dialog = document.querySelector("#printCenterDialogV642");
   if (!dialog) return printSelectionBothV638();
   const selected = dialog.querySelector('input[name="printProfileV642"]:checked');
@@ -1969,6 +2053,7 @@ async function executePrintCenterV642() {
 
 async function printSelectionTeachingOrderV642() {
   try {
+    if (!ensureWorkSelectionNotEmptyV6703("Primero añade al menos una elaboración antes de imprimir el dossier.")) return;
     const opts = printOptionsV637({ includeElaborations: true, includeOrder: true });
     printWorkSelectionTeachingSheetsWithOrder(swiftDb, "WORK_CURRENT", { profile: "ficha_docente_mas_pedido", metadata: practicePrintMetadataV632(), includePracticeData: opts.includePracticeData, subrecipeMode: opts.subrecipeMode, processMode: opts.processMode });
     await autosave({ backup: false, reason: "historial impresión ficha docente más pedido práctica" });
@@ -2008,11 +2093,13 @@ function renderOrder() {
     tableEl.innerHTML = `
       <div class="empty-action-card-628">
         <b>Pedido vacío.</b>
-        <span>Añade elaboraciones desde Biblioteca y define cantidades en Práctica para calcular el pedido.</span>
-        <div class="actions"><button type="button" class="btn primary" data-tab="library">Ir a Biblioteca</button><button type="button" class="btn ghost" data-tab="selection">Ir a Práctica</button></div>
+        <span>Añade elaboraciones desde Práctica y define cantidades para calcular el pedido.</span>
+        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="selection">Ir a Práctica</button></div>
       </div>`;
+    updatePracticeActionStateV6703();
     return;
   }
+  updatePracticeActionStateV6703();
   tableEl.innerHTML = table([
     { label: "Grupo", key: "order_group" },
     { label: "Ingrediente", key: "ingredient" },

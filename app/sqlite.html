@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>SwiftRemo SQL · Aula taller</title>
-  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6702">
+  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6703">
 </head>
 <body>
   <header class="app-header">
@@ -41,16 +41,16 @@
           <div class="section-head">
             <div>
               <h2>¿Qué quieres hacer?</h2>
-              <p class="small">Flujo docente: selecciona en Biblioteca, ajusta en Práctica, revisa Pedido, genera documentos en Salida y guarda copias en Datos.</p>
+              <p class="small">Flujo docente: prepara la práctica, revisa el pedido, genera documentos en Salida y conserva copias en Datos. Biblioteca queda como catálogo avanzado.</p>
             </div>
-            <button type="button" class="btn primary" data-tab="library">Empezar en Biblioteca</button>
+            <button type="button" class="btn primary" data-tab="selection">Crear / preparar práctica</button>
           </div>
 
           <div class="command-grid-619 command-grid-670">
-            <button type="button" class="command-card-619 primary" data-tab="library"><strong>1 · Biblioteca</strong><span>Busca fichas, fórmulas e ingredientes. Añade elaboraciones a la práctica.</span></button>
-            <button type="button" class="command-card-619" data-tab="selection"><strong>2 · Práctica</strong><span>Ajusta cantidades, datos docentes y elaboraciones seleccionadas.</span></button>
-            <button type="button" class="command-card-619" data-tab="order"><strong>3 · Pedido</strong><span>Revisa necesidades, unidades, costes, zonas y proveedor.</span></button>
-            <button type="button" class="command-card-619" data-tab="print"><strong>4 · Salida</strong><span>Genera fichas, pedido o dossier completo para imprimir o guardar PDF.</span></button>
+            <button type="button" class="command-card-619 primary" data-tab="selection"><strong>1 · Práctica</strong><span>Busca elaboraciones, añade fichas o fórmulas y define la producción.</span></button>
+            <button type="button" class="command-card-619" data-tab="order"><strong>2 · Pedido</strong><span>Revisa necesidades, unidades, costes, zonas y proveedor.</span></button>
+            <button type="button" class="command-card-619" data-tab="print"><strong>3 · Salida</strong><span>Genera fichas, pedido o dossier completo para imprimir o guardar PDF.</span></button>
+            <button type="button" class="command-card-619" data-tab="library"><strong>4 · Biblioteca</strong><span>Catálogo avanzado para revisar fichas, fórmulas e ingredientes.</span></button>
             <button type="button" class="command-card-619" data-tab="data"><strong>5 · Datos</strong><span>Guarda, carga o exporta copias SQLite y JSON técnico.</span></button>
             <button type="button" class="command-card-619" data-tab="audit"><strong>Calidad</strong><span>Comprueba estado de la base e incidencias antes de usar en clase.</span></button>
           </div>
@@ -152,7 +152,7 @@
           <div class="section-head">
             <div>
               <h2>Editor avanzado de elaboraciones</h2>
-              <p class="small">Zona técnica para abrir fichas o fórmulas concretas. Para el flujo diario usa Biblioteca → Práctica → Pedido → Salida.</p>
+              <p class="small">Zona técnica para abrir fichas o fórmulas concretas. Para el flujo diario usa Práctica → Pedido → Salida.</p>
             </div>
             <div class="actions">
               <button type="button" class="btn primary" data-tab="selection">Ver práctica</button>
@@ -976,7 +976,7 @@
             <div class="actions practice-main-actions-642">
               <button type="button" class="btn primary" data-tab="order">Revisar pedido</button>
               <button type="button" class="btn ghost" data-tab="print">Ir a salida</button>
-              <button id="selectionCreateSessionV623" type="button" class="btn ghost">Guardar práctica</button>
+              <button id="selectionCreateSessionV623" type="button" class="btn ghost">Archivar como sesión</button>
               <button id="selectionClearV623" type="button" class="btn danger">Vaciar</button>
             </div>
           </div>
@@ -1024,7 +1024,7 @@
                 <textarea id="practiceNotesV632" rows="2" placeholder="Mise en place, alergias, servicio, material, organización del aula…"></textarea>
               </label>
               <label class="full practice-print-data-toggle-638">
-                <input id="printIncludePracticeDataV637" type="checkbox"> Incluir estos datos en la impresión
+                <input id="printIncludePracticeDataV637" type="checkbox" checked> Datos docentes visibles en la impresión
               </label>
             </div>
           </details>
@@ -1033,9 +1033,9 @@
             <div class="section-head compact-head-6702">
               <div>
                 <h3>Buscar y añadir elaboraciones</h3>
-                <p class="small">Añade fichas o fórmulas directamente a la práctica actual. Para revisar el catálogo completo, usa Biblioteca.</p>
+                <p class="small">Añade fichas o fórmulas directamente a la práctica actual. Biblioteca queda para revisión avanzada del catálogo.</p>
               </div>
-              <button type="button" class="btn ghost" data-tab="library">Abrir Biblioteca completa</button>
+              <button type="button" class="btn ghost" data-tab="library">Abrir Biblioteca avanzada</button>
             </div>
             <div class="form-grid compact practice-search-grid-6702">
               <label class="full">Buscar elaboración
@@ -1074,7 +1074,7 @@
           <div class="selection-guidance-623">
             <b>Siguiente paso:</b> busca una elaboración en esta pestaña, añádela y decide la cantidad total en el cuadro de producción.
           </div>
-          <div class="actions practice-main-actions-636"><button type="button" class="btn primary" data-tab="library">Añadir desde Biblioteca</button><button type="button" class="btn ghost" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="audit">Revisar calidad</button></div>
+          <div class="actions practice-main-actions-636"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="audit">Revisar calidad</button></div>
         </div>
         <div class="card">
           <div class="section-head">
@@ -1380,15 +1380,15 @@
     console.log("SwiftRemo fase6.70.1 reorganización UX validada cargada");
   </script>
   <div id="swiftremoPrintPreview631" hidden></div>
-  <script type="module" src="./js/app.js?v=6702"></script>
-  <script type="module" src="./js/bakery-main-v3-7.js?v=6702"></script>
-  <script type="module" src="./js/preferments-v3-8.js?v=6702"></script>
-  <script type="module" src="./js/extras-v3-9.js?v=6702"></script>
-  <script type="module" src="./js/culinary-main-v5-1.js?v=6702"></script>
-  <script type="module" src="./js/session-v4-1.js?v=6702"></script>
-  <script type="module" src="./js/combobox-v6-9.js?v=6702"></script>
+  <script type="module" src="./js/app.js?v=6703"></script>
+  <script type="module" src="./js/bakery-main-v3-7.js?v=6703"></script>
+  <script type="module" src="./js/preferments-v3-8.js?v=6703"></script>
+  <script type="module" src="./js/extras-v3-9.js?v=6703"></script>
+  <script type="module" src="./js/culinary-main-v5-1.js?v=6703"></script>
+  <script type="module" src="./js/session-v4-1.js?v=6703"></script>
+  <script type="module" src="./js/combobox-v6-9.js?v=6703"></script>
   <script type="module">
-    import { printClassOrder } from "./js/print-service-v6-3.js?v=6702";
+    import { printClassOrder } from "./js/print-service-v6-3.js?v=6703";
     import { toast } from "./js/ui.js";
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.querySelector("#globalPrintOrderV61");

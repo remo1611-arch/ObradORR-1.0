@@ -1,0 +1,9 @@
+VALIDACION PUBLICA FASE 6.70.3
+
+OK app/js/app.js: sintaxis JavaScript validada con node --input-type=module --check
+OK app/js/*.js: sintaxis de módulos validada
+OK state.practiceSearch inicializado
+OK acciones de salida protegidas ante práctica vacía
+OK flujo Inicio actualizado a Práctica -> Pedido -> Salida
+OK cache ?v=6703
+OK sin modificación del esquema SQLite ni de datos culinarios/panaderos; app_meta actualizado a 6.70.3

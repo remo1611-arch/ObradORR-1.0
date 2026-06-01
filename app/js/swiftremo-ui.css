@@ -1121,3 +1121,12 @@ input:focus,select:focus,textarea:focus{
 .practice-search-card-6702 span{display:block;font-size:.84rem;color:var(--muted,#5d6675);line-height:1.35}
 .practice-search-card-actions-6702{display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end}
 @media (max-width:720px){.practice-search-card-6702{flex-direction:column}.practice-search-card-actions-6702{justify-content:flex-start}.practice-search-actions-6702{padding-top:0}}
+
+/* Fase 6.70.3 · Manejo docente real */
+.is-disabled-by-empty-practice-6703 {
+  opacity: .55;
+  cursor: not-allowed;
+}
+.practice-search-count-6702 {
+  font-weight: 700;
+}
