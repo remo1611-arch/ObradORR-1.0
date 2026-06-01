@@ -15,7 +15,7 @@ let practiceContextSaveTimer = null;
 const state = {
   filters: { search: "", active: "active", use: "all", view: "work" },
   elaborations: { search: "", type: "all", active: "active" },
-  library: { kind: "elaborations", search: "", active: "active", page: 1, pageSize: 50, selectedKey: "" },
+  library: { kind: "elaborations", search: "", active: "active", quality: "all", page: 1, pageSize: 50, selectedKey: "" },
   quantityDialog: { mode: "add", elaboration: null, selectionItem: null }
 };
 
@@ -114,8 +114,10 @@ function bindEvents() {
   bindIfExists("#libraryKindV666B", "change", ev => { state.library.kind = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderLibraryV666B(); });
   bindIfExists("#librarySearchV666B", "input", ev => { state.library.search = ev.target.value; state.library.page = 1; renderLibraryV666B(); });
   bindIfExists("#libraryStatusV666B", "change", ev => { state.library.active = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderLibraryV666B(); });
+  bindIfExists("#libraryQualityV667", "change", ev => { state.library.quality = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderLibraryV666B(); });
   bindIfExists("#libraryPageSizeV666B", "change", ev => { state.library.pageSize = Number(ev.target.value) || 50; state.library.page = 1; renderLibraryV666B(); });
   bindIfExists("#libraryClearFiltersV666C", "click", clearLibraryFiltersV666C);
+  bindIfExists("#libraryCopyReviewV667", "click", copyLibraryReviewReportV667);
   $("#newIngredient").addEventListener("click", newIngredientForm);
   $("#clearIngredientForm").addEventListener("click", clearIngredientForm);
   $("#deactivateIngredient").addEventListener("click", deactivateSelectedIngredient);
@@ -777,9 +779,113 @@ function librarySearchMatchV666B(row, q) {
   if (!q) return true;
   const haystack = foldTextV666B([
     row.name, row.typeLabel, row.family, row.subfamily, row.statusLabel,
-    row.baseLabel, row.orderGroup, row.unit, row.roleLabel, row.productionLabel
+    row.baseLabel, row.orderGroup, row.unit, row.roleLabel, row.productionLabel,
+    row.qualityLabel, ...(row.qualityIssues || [])
   ].join(" "));
   return haystack.includes(q);
+}
+
+
+function textLengthV667(value) {
+  return String(value || "").trim().length;
+}
+
+function hasWordV667(text, words) {
+  const folded = foldTextV666B(text || "");
+  return words.some(w => folded.includes(w));
+}
+
+function qualityTypeV667(result) {
+  if (!result || result.key === "ingredient") return "ingredient";
+  if (result.key === "archived") return "archived";
+  if (result.criticals?.length) return "poor";
+  if ((result.warnings?.length || 0) >= 3) return "review";
+  return "complete";
+}
+
+function qualityLabelV667(type) {
+  return ({
+    complete: "Completa",
+    review: "Revisable",
+    poor: "Pobre",
+    archived: "Archivada",
+    ingredient: "Ingrediente"
+  })[type] || "Sin clasificar";
+}
+
+function qualityBadgeTypeV667(type) {
+  return ({ complete: "ok", review: "warn", poor: "err", archived: "off", ingredient: "off" })[type] || "off";
+}
+
+function qualityReviewV667(row) {
+  if (!row || row.sourceKind === "ingredient") {
+    return { key: "ingredient", type: "ingredient", label: "Ingrediente", positives: ["Registro de ingrediente"], warnings: [], criticals: [], info: [] };
+  }
+  const positives = [];
+  const warnings = [];
+  const criticals = [];
+  const info = [];
+  if (!row.active) {
+    return { key: "archived", type: "archived", label: "Archivada", positives: [], warnings: ["No visible por defecto"], criticals: [], info: ["Ficha conservada para trazabilidad"] };
+  }
+  const lines = repo.unifiedElaborationLines(row.uid || row.key) || [];
+  const steps = repo.unifiedElaborationSteps(row.uid || row.key) || [];
+  const lineCount = lines.length;
+  const stepCount = steps.length;
+  const stepText = steps.map(st => `${st.phase || ""} ${st.instruction || ""} ${st.notes || ""}`).join("\n");
+  if (row.family) positives.push("Familia asignada"); else warnings.push("Sin familia técnica");
+  if (row.subfamily) positives.push("Subfamilia asignada"); else warnings.push("Sin subfamilia técnica");
+  if (lineCount > 0) positives.push(`${lineCount} línea${lineCount === 1 ? "" : "s"} técnica${lineCount === 1 ? "" : "s"}`); else criticals.push("Sin ingredientes/líneas técnicas");
+  if (stepCount > 0) positives.push(`${stepCount} bloque${stepCount === 1 ? "" : "s"} de proceso/APPCC`); else criticals.push("Sin proceso estructurado");
+  if (Number(row.cost || 0) > 0) positives.push("Coste calculable"); else warnings.push("Coste no calculable o cero");
+  if (row.sourceKind === "culinary") {
+    const raw = repo.culinaryRecipeById(row.id) || {};
+    const processLen = textLengthV667(raw.process);
+    const appccLen = textLengthV667(raw.appcc_notes);
+    if (processLen >= 80 || stepCount >= 3) positives.push("Proceso suficientemente documentado"); else warnings.push("Proceso breve: conviene revisar técnica y secuencia");
+    if (appccLen >= 25 || hasWordV667(stepText, ["appcc", "pcc", "temperatura", "frio", "caliente", "abat", "conserv", "alerg"])) positives.push("APPCC/puntos críticos presentes"); else warnings.push("APPCC poco visible");
+    if (raw.production_kind === "technical_yield") {
+      if (Number(raw.yield_quantity || 0) > 0 || String(row.baseLabel || "").toLowerCase().includes("rendimiento")) positives.push("Rendimiento técnico definido"); else warnings.push("Subelaboración sin rendimiento claro");
+    } else {
+      if (Number(raw.base_servings || 0) > 0) positives.push("Raciones base definidas"); else warnings.push("Sin raciones base");
+      if (Number(raw.serving_weight_g || 0) > 0 || raw.production_kind === "dual") positives.push("Gramaje/rendimiento por servicio definido"); else warnings.push("Sin gramaje/ración orientativo");
+    }
+    if (raw.status === "validated") positives.push("Estado validado"); else warnings.push(`Estado ${statusLabel(raw.status)}`);
+  }
+  if (row.sourceKind === "bakery") {
+    const raw = repo.bakeryRecipeById(row.id) || {};
+    const flourLines = lines.filter(x => String(x.baker_role || "").toLowerCase() === "flour");
+    const flourPct = flourLines.reduce((acc, x) => acc + Number(x.baker_pct || 0), 0);
+    const hydration = Number(row.hydration || raw.real_hydration_pct || 0);
+    if (Number(raw.base_flour_g || 0) > 0) positives.push("Harina base definida"); else criticals.push("Sin harina base");
+    if (Math.abs(flourPct - 100) < 0.01) positives.push("Harina al 100 % panadero"); else warnings.push(`Porcentaje de harina no estándar: ${fmtNumber(flourPct, 2)} %`);
+    if (hydration > 0) positives.push(`Hidratación calculada: ${fmtNumber(hydration, 1)} %`); else warnings.push("Hidratación no calculable");
+    if (hydration > 120) info.push("Hidratación especial: revisar si es papilla, dosa, injera o sin gluten");
+    if (hasWordV667(stepText, ["enfri", "conserv", "abat", "temperatura", "reposo", "ferment", "horne"])) positives.push("Proceso panadero con control técnico"); else warnings.push("Proceso panadero mejorable");
+    if (raw.status === "validated") positives.push("Estado validado"); else warnings.push(`Estado ${statusLabel(raw.status)}`);
+  }
+  const type = qualityTypeV667({ warnings, criticals });
+  return { key: type, type, label: qualityLabelV667(type), positives, warnings, criticals, info };
+}
+
+function enrichLibraryQualityV667(rows) {
+  return rows.map(row => {
+    const quality = qualityReviewV667(row);
+    return {
+      ...row,
+      quality,
+      qualityType: quality.type,
+      qualityLabel: quality.label,
+      qualityIssues: [...(quality.criticals || []), ...(quality.warnings || []), ...(quality.info || [])]
+    };
+  });
+}
+
+function qualityMatchesFilterV667(row) {
+  const filter = state.library.quality || "all";
+  if (filter === "all") return true;
+  if (filter === "actionable") return ["poor", "review"].includes(row.qualityType);
+  return row.qualityType === filter;
 }
 
 function libraryRowsV666B() {
@@ -865,7 +971,9 @@ function libraryRowsV666B() {
     if (active === "active") rows = rows.filter(r => r.active);
     if (active === "inactive") rows = rows.filter(r => !r.active);
   }
+  rows = enrichLibraryQualityV667(rows);
   if (q) rows = rows.filter(r => librarySearchMatchV666B(r, q));
+  rows = rows.filter(qualityMatchesFilterV667);
   return rows.sort((a, b) => Number(b.active) - Number(a.active) || String(a.name).localeCompare(String(b.name), "es"));
 }
 
@@ -891,6 +999,7 @@ function clearLibraryFiltersV666C() {
   state.library.kind = "elaborations";
   state.library.search = "";
   state.library.active = "active";
+  state.library.quality = "all";
   state.library.page = 1;
   state.library.pageSize = 50;
   state.library.selectedKey = "";
@@ -905,11 +1014,13 @@ function renderLibraryV666B() {
     kind: document.querySelector("#libraryKindV666B"),
     search: document.querySelector("#librarySearchV666B"),
     status: document.querySelector("#libraryStatusV666B"),
+    quality: document.querySelector("#libraryQualityV667"),
     pageSize: document.querySelector("#libraryPageSizeV666B")
   };
   if (controls.kind && controls.kind.value !== state.library.kind) controls.kind.value = state.library.kind;
   if (controls.search && controls.search.value !== state.library.search) controls.search.value = state.library.search;
   if (controls.status && controls.status.value !== state.library.active) controls.status.value = state.library.active;
+  if (controls.quality && controls.quality.value !== state.library.quality) controls.quality.value = state.library.quality || "all";
   if (controls.pageSize && Number(controls.pageSize.value) !== Number(state.library.pageSize)) controls.pageSize.value = String(state.library.pageSize || 50);
 
   const rows = libraryRowsV666B();
@@ -939,14 +1050,18 @@ function renderLibrarySummaryV666B(rows) {
   const el = document.querySelector("#librarySummaryV666B");
   if (!el) return;
   const all = rows.length;
+  const complete = rows.filter(r => r.qualityType === "complete").length;
+  const review = rows.filter(r => r.qualityType === "review").length;
+  const poor = rows.filter(r => r.qualityType === "poor").length;
+  const archived = rows.filter(r => r.qualityType === "archived").length;
   const ingredients = rows.filter(r => r.sourceKind === "ingredient").length;
-  const culinary = rows.filter(r => r.sourceKind === "culinary").length;
-  const bakery = rows.filter(r => r.sourceKind === "bakery").length;
   el.innerHTML = `
     <div class="kpi"><span>Resultados</span><b>${fmtNumber(all, 0)}</b></div>
-    <div class="kpi"><span>Ingredientes</span><b>${fmtNumber(ingredients, 0)}</b></div>
-    <div class="kpi"><span>Cocina/Pastelería</span><b>${fmtNumber(culinary, 0)}</b></div>
-    <div class="kpi"><span>Panadería</span><b>${fmtNumber(bakery, 0)}</b></div>`;
+    <div class="kpi"><span>Completas</span><b>${fmtNumber(complete, 0)}</b></div>
+    <div class="kpi"><span>Revisables</span><b>${fmtNumber(review, 0)}</b></div>
+    <div class="kpi"><span>Pobres</span><b>${fmtNumber(poor, 0)}</b></div>
+    <div class="kpi"><span>Archivadas</span><b>${fmtNumber(archived, 0)}</b></div>
+    <div class="kpi"><span>Ingredientes</span><b>${fmtNumber(ingredients, 0)}</b></div>`;
 }
 
 function libraryPagerHtmlV666B(total, start, count, totalPages) {
@@ -969,6 +1084,7 @@ function libraryHeadersV666B() {
     { label: "Tipo", render: r => esc(r.typeLabel) },
     { label: "Familia", render: r => esc([r.family, r.subfamily].filter(Boolean).join(" · ")) },
     { label: "Base técnica", render: r => esc(r.baseLabel || "—") },
+    { label: "Calidad", render: r => badge(r.qualityLabel || "—", qualityBadgeTypeV667(r.qualityType)) },
     { label: "Estado", render: r => badge(r.statusLabel || (r.active ? "Activo" : "Inactivo"), r.active ? "ok" : "off") },
     { label: "Coste", render: r => Number.isFinite(r.cost) && r.cost > 0 ? fmtMoney(r.cost) : "—" },
     { label: "Acciones", render: r => libraryActionsHtmlV666B(r) }
@@ -1029,6 +1145,50 @@ function renderIngredientDetailV666B(el, id) {
     <div class="library-text-block-666b"><b>Notas</b><p>${esc(raw.notes || "Sin notas.")}</p></div>`;
 }
 
+
+function qualityListHtmlV667(title, items, cls = "") {
+  if (!items || !items.length) return "";
+  return `<div class="quality-box-667 ${esc(cls)}"><b>${esc(title)}</b><ul>${items.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
+}
+
+function qualityDetailHtmlV667(q) {
+  if (!q || q.type === "ingredient") return "";
+  return `<section class="quality-review-667">
+    <div class="quality-title-667">${badge(q.label, qualityBadgeTypeV667(q.type))}<span>Auditoría orientativa de ficha</span></div>
+    <div class="quality-grid-667">
+      ${qualityListHtmlV667("Fortalezas", q.positives, "ok")}
+      ${qualityListHtmlV667("A revisar", q.warnings, "warn")}
+      ${qualityListHtmlV667("Crítico", q.criticals, "err")}
+      ${qualityListHtmlV667("Información", q.info, "info")}
+    </div>
+  </section>`;
+}
+
+function copyLibraryReviewReportV667() {
+  if (!repo) return;
+  const rows = libraryRowsV666B();
+  const counts = rows.reduce((acc, r) => { acc[r.qualityType || "other"] = (acc[r.qualityType || "other"] || 0) + 1; return acc; }, {});
+  const actionable = rows.filter(r => ["poor", "review"].includes(r.qualityType)).slice(0, 80);
+  const lines = [
+    "SwiftRemo · Informe de revisión de biblioteca",
+    `Filtro catálogo: ${state.library.kind || "elaborations"}`,
+    `Filtro estado: ${state.library.active || "active"}`,
+    `Filtro calidad: ${state.library.quality || "all"}`,
+    `Resultados: ${rows.length}`,
+    `Completas: ${counts.complete || 0}`,
+    `Revisables: ${counts.review || 0}`,
+    `Pobres: ${counts.poor || 0}`,
+    `Archivadas: ${counts.archived || 0}`,
+    "",
+    "Primeras fichas accionables:",
+    ...actionable.map(r => `- [${r.qualityLabel}] ${r.name}: ${(r.qualityIssues || []).slice(0, 4).join("; ")}`)
+  ];
+  navigator.clipboard?.writeText(lines.join("\n")).then(
+    () => toast("Informe de revisión copiado.", "ok"),
+    () => toast("No se pudo copiar el informe.", "err")
+  );
+}
+
 function renderElaborationDetailV666B(el, uid) {
   const r = repo.unifiedElaborationByUid(uid);
   if (!r) {
@@ -1047,6 +1207,7 @@ function renderElaborationDetailV666B(el, uid) {
           ${badge(r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería", r.source_type === "bakery" ? "warn" : "ok")}
           ${badge(r.production_label || r.production_model || "Modelo", r.source_type === "bakery" ? "warn" : "off")}
           ${badge(statusLabel(r.status), r.status === "validated" ? "ok" : r.status === "archived" ? "off" : "warn")}
+          ${badge(qualityReviewV667({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) }).label, qualityBadgeTypeV667(qualityReviewV667({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) }).type))}
         </div>
       </div>
       <div class="actions">
@@ -1062,6 +1223,7 @@ function renderElaborationDetailV666B(el, uid) {
       <div><span>Ingredientes</span><b>${fmtNumber(lines.length, 0)}</b></div>
       <div><span>Proceso</span><b>${fmtNumber(steps.length, 0)} bloque${steps.length === 1 ? "" : "s"}</b></div>
     </div>
+    ${qualityDetailHtmlV667(qualityReviewV667({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) }))}
     <h4>Ingredientes / líneas técnicas</h4>
     <div class="wide">${table([
       { label: "Línea", render: x => esc(x.line_name || "—") },

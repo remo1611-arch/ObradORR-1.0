@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>SwiftRemo SQL · Aula taller</title>
-  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6663">
+  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6670">
 </head>
 <body>
   <header class="app-header">
@@ -116,6 +116,7 @@
               <p class="small">Consulta completa de ingredientes, fichas de cocina/pastelería y fórmulas panaderas. Esta vista es de revisión: para editar, abre la ficha correspondiente.</p>
             </div>
             <div class="actions">
+              <button id="libraryCopyReviewV667" type="button" class="btn ghost">Copiar informe</button>
               <button id="libraryClearFiltersV666C" type="button" class="btn ghost">Limpiar filtros</button>
               <button type="button" class="btn primary" data-tab="selection">Preparar práctica</button>
             </div>
@@ -138,6 +139,16 @@
                 <option value="active">Activos</option>
                 <option value="all">Todos</option>
                 <option value="inactive">Archivados / inactivos</option>
+              </select>
+            </label>
+            <label>Calidad ficha
+              <select id="libraryQualityV667">
+                <option value="all">Todas</option>
+                <option value="complete">Completas</option>
+                <option value="actionable">Revisables + pobres</option>
+                <option value="review">Solo revisables</option>
+                <option value="poor">Solo pobres</option>
+                <option value="archived">Archivadas</option>
               </select>
             </label>
             <label>Por página
@@ -169,7 +180,7 @@
           <div class="section-head">
             <div>
               <h2>Detalle de biblioteca</h2>
-              <p class="small">Consulta técnica. La edición sigue estando en las pantallas de ingredientes, cocina/pastelería o panadería.</p>
+              <p class="small">Consulta técnica y auditoría orientativa. La edición sigue estando en las pantallas de ingredientes, cocina/pastelería o panadería.</p>
             </div>
           </div>
           <div id="libraryDetailV666B" class="library-detail-666b muted">Selecciona un registro para ver su detalle.</div>
@@ -1326,18 +1337,18 @@
 
   <div id="toastStack" class="toast-stack"></div>
   <script>
-    console.log("SwiftRemo fase6.66C limpieza UX de botones ambiguos cargada");
+    console.log("SwiftRemo fase6.67 auditoría de fichas actuales cargada");
   </script>
   <div id="swiftremoPrintPreview631" hidden></div>
-  <script type="module" src="./js/app.js?v=6663"></script>
-  <script type="module" src="./js/bakery-main-v3-7.js?v=6663"></script>
-  <script type="module" src="./js/preferments-v3-8.js?v=6663"></script>
-  <script type="module" src="./js/extras-v3-9.js?v=6663"></script>
-  <script type="module" src="./js/culinary-main-v5-1.js?v=6663"></script>
-  <script type="module" src="./js/session-v4-1.js?v=6663"></script>
-  <script type="module" src="./js/combobox-v6-9.js?v=6663"></script>
+  <script type="module" src="./js/app.js?v=6670"></script>
+  <script type="module" src="./js/bakery-main-v3-7.js?v=6670"></script>
+  <script type="module" src="./js/preferments-v3-8.js?v=6670"></script>
+  <script type="module" src="./js/extras-v3-9.js?v=6670"></script>
+  <script type="module" src="./js/culinary-main-v5-1.js?v=6670"></script>
+  <script type="module" src="./js/session-v4-1.js?v=6670"></script>
+  <script type="module" src="./js/combobox-v6-9.js?v=6670"></script>
   <script type="module">
-    import { printClassOrder } from "./js/print-service-v6-1.js?v=6663";
+    import { printClassOrder } from "./js/print-service-v6-1.js?v=6670";
     import { toast } from "./js/ui.js";
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.querySelector("#globalPrintOrderV61");

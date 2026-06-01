@@ -26,8 +26,10 @@ app/wasm/sqlite3.wasm
 assets/photos/README_FOTOS.md
 assets/photos/recipes/.gitkeep
 db/swiftremo.sqlite
+docs/MANIFEST_PUBLIC_FILES.txt
+docs/MANIFEST_PUBLIC_SHA256.txt
 docs/README_PUBLICACION.md
-docs/VALIDACION_PUBLICA_666C.txt
+docs/VALIDACION_PUBLICA_667.txt
 docs/VERSION.txt
 index.html
 robots.txt
