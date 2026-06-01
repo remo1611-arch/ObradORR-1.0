@@ -1,4 +1,4 @@
-import { $, table, toast } from "./ui.js?v=100rc3";
+import { $, table, toast } from "./ui.js?v=150v15";
 
 let db = null;
 
@@ -36,6 +36,11 @@ let currentRecipeId = null;
 let ingredients = [];
 let selectedLineId = null;
 let initialized = false;
+
+window.addEventListener("swiftremo:lazyViewReady", event => {
+  if (event?.detail?.route === "archive-bakery") setTimeout(initExtras, 60);
+});
+window.addEventListener("swiftremo:bakeryReady", () => setTimeout(initExtras, 60));
 
 window.addEventListener("DOMContentLoaded", () => {
   const bakeryTab = document.querySelector('[data-tab="bakery"]');
@@ -373,7 +378,7 @@ function esc(value) {
 
 function notifyBakeryChangedV40(message) {
   window.dispatchEvent(new CustomEvent("swiftremo:bakeryChanged", {
-    detail: { source: "extras-v3-9", message }
+    detail: { source: "extras", message }
   }));
 }
 

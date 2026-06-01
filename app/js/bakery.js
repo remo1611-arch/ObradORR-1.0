@@ -1,5 +1,5 @@
-import { $, fmtNumber, table, toast } from "./ui.js?v=100rc3";
-import { printBakeryRecipe } from "./print-service-v6-3.js?v=100rc3";
+import { $, fmtNumber, table, toast } from "./ui.js?v=150v15";
+import { printBakeryRecipe } from "./print.js?v=150v15";
 
 let db = null;
 
@@ -43,17 +43,15 @@ let bakeryIngredients = [];
 let editingLineId = null;
 
 window.addEventListener("DOMContentLoaded", () => {
-  const tabButton = document.querySelector('[data-tab="bakery"]');
-  if (tabButton) {
-    tabButton.addEventListener("click", () => {
-      if (!initialized) initBakeryV37();
-    });
-  }
-
-  if (document.querySelector("#tab-bakery.active")) {
+  if (document.querySelector("#view-archive-bakery") || document.querySelector("#tab-bakery.active")) {
     initBakeryV37();
   }
 });
+
+window.addEventListener("swiftremo:lazyViewReady", event => {
+  if (event?.detail?.route === "archive-bakery" && !initialized) initBakeryV37();
+});
+window.addEventListener("swiftremo:bakeryReady", () => { if (!initialized) initBakeryV37(); });
 
 window.addEventListener("swiftremo:bakeryChanged", async event => {
   try {

@@ -1,0 +1,24 @@
+SwiftRemo SQL v1.0 RC8_FAST_BOOT_REAL
+
+Fase 2 aplicada sobre RC7.
+
+Objetivo:
+- Reducir carga inicial real sin reescritura masiva.
+
+Cambios:
+- renderAll() deja de renderizar todos los paneles al arrancar.
+- Se añade renderActiveRouteRc8(), que refresca solo la ruta visible.
+- La navegación llama al render de la ruta activa.
+- Se mantienen las métricas de arranque para comparar con RC7.
+- Se actualizan query strings a ?v=100rc8.
+
+No aplicado todavía:
+- Paginación SQL real.
+- Lazy DOM.
+- Consolidación estructural profunda de módulos.
+- Migración OPFS/Worker.
+
+Prueba esperada:
+- Arranque más ligero.
+- El panel Sistema > Gestionar datos debe mostrar tiempos RC8.
+- Las pantallas no abiertas no deben forzar sus renderizados pesados al inicio.

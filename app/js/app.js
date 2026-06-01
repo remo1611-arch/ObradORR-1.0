@@ -1,16 +1,20 @@
-import { SwiftDB } from "./db-service.js?v=100rc3";
-import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=100rc3";
-import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-3.js?v=100rc3";
-import { loadRecovery, saveRecovery, clearRecovery } from "./storage-service.js?v=100rc3";
-import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson } from "./ui.js?v=100rc3";
-import { createAppState } from "./ui/state.js?v=100rc3";
-import { createDomainShell } from "./ui/app-shell.js?v=100rc3";
-import { createWorkshopDomain } from "./domain/workshop.js?v=100rc3";
-import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=100rc3";
-import { createHistoryDomain } from "./domain/history.js?v=100rc3";
-import { createSystemBackupService } from "./domain/system-backup.js?v=100rc3";
-import { createPrintDomain } from "./domain/print.js?v=100rc3";
-import { createWorkshopView } from "./ui/workshop-view.js?v=100rc3";
+import { SwiftDB } from "./db-service.js?v=150v15";
+import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=150v15";
+import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print.js?v=150v15";
+import { loadRecovery, saveRecovery, clearRecovery, hasCurrentRecovery } from "./storage-service.js?v=150v15";
+import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson, safeJsonStringify } from "./ui.js?v=150v15";
+import { createAppState } from "./ui/state.js?v=150v15";
+import { createDomainShell } from "./ui/app-shell.js?v=150v15";
+import { createWorkshopDomain } from "./domain/workshop.js?v=150v15";
+import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=150v15";
+import { createHistoryDomain } from "./domain/history.js?v=150v15";
+import { createSystemBackupService } from "./domain/system-backup.js?v=150v15";
+import { createPrintDomain } from "./domain/print.js?v=150v15";
+import { createWorkshopView } from "./ui/workshop-view.js?v=150v15";
+import { bootMark, bootStart, bootEnd, renderBootMetricsPanel, opfsWorkerEvaluation, renderOpfsWorkerEvaluation } from "./diagnostics.js?v=150v15";
+import { createFeatureModuleManager } from "./feature-modules.js?v=150v15";
+import { readPageSizeValue, pageWindow, pagerHtml, dateSlug, formatDate, setInputValue, badgeHtml, roleLabel, nullIfEmpty, num } from "./app-utils.js?v=150v15";
+import { kpiGridHtml, archiveSummaryKpisHtml, elaborationsSummaryKpisHtml, elaborationCardHtml, ingredientCardsHtml, rangeHintHtml } from "./app-renderers.js?v=150v15";
 
 const swiftDb = new SwiftDB();
 let repo = null;
@@ -21,15 +25,24 @@ let workshopDomain = null;
 let technicalArchiveDomain = null;
 let historyDomain = null;
 let systemBackupService = null;
+let persistenceStateRc12 = { source: "pending", savedAt: null, snapshotSize: 0, lastDownloadAt: null, lastDownloadKind: "", privateMaterial: false, note: "Arranque pendiente." };
 let printDomain = null;
 let workshopView = null;
 let selectedIngredientId = null;
 let hasSaveError = false;
 let hasPendingSave = false;
 let practiceContextSaveTimer = null;
+let firstRenderAllMeasuredRc7 = false;
+let firstActiveRouteRenderMeasured = false;
+
+const bootMarkRc7 = bootMark;
+const bootStartRc7 = bootStart;
+const bootEndRc7 = bootEnd;
+
+bootMarkRc7("app:module-evaluated");
 
 const state = {
-  filters: { search: "", active: "active", use: "all", view: "work" },
+  filters: { search: "", active: "active", use: "all", view: "work", page: 1, pageSize: 50 },
   elaborations: { search: "", type: "all", active: "active", page: 1, pageSize: 50 },
   library: { kind: "elaborations", search: "", active: "active", quality: "all", page: 1, pageSize: 50, selectedKey: "" },
   workshopSearch: { search: "", type: "all", page: 1, pageSize: 10 },
@@ -96,34 +109,95 @@ function migrateLegacyPracticeContextToSqliteV651() {
 }
 
 async function init() {
+  bootStartRc7("init");
   try {
+    bootStartRc7("bind-events");
     bindEvents();
+    bootEndRc7("bind-events");
+    bootStartRc7("domain-layer");
     initDomainLayer();
+    bootEndRc7("domain-layer");
     await loadBestAvailableDb();
+    bootEndRc7("init");
+    bootMarkRc7("app:usable");
+    renderBootMetricsPanelRc7();
   } catch (err) {
     console.error(err);
-    setState("Error JS", "error");
-    setStatus(err.message, "err");
+    const message = err?.message || String(err || "Error JavaScript al iniciar SwiftRemo.");
+    setState(`Error JS: ${message}`, "error");
+    setStatus(message, "err");
     setSaveIndicator("No se pudo iniciar", "err", "Descarga o importa una copia si tienes cambios.");
+    toast(`Error de arranque: ${message}`, "err");
   }
 }
 
 
+const boundDynamicControls = new WeakMap();
+
 function bindIfExists(selector, eventName, handler) {
   const el = document.querySelector(selector);
-  if (el) el.addEventListener(eventName, handler);
+  if (!el) return;
+  const key = `${eventName}:${selector}`;
+  let bound = boundDynamicControls.get(el);
+  if (!bound) { bound = new Set(); boundDynamicControls.set(el, bound); }
+  if (bound.has(key)) return;
+  el.addEventListener(eventName, handler);
+  bound.add(key);
+}
+
+function bindSystemControlsV104() {
+  if (document.documentElement.dataset.systemControlsV104 === "1") return;
+  document.documentElement.dataset.systemControlsV104 = "1";
+
+  if (document.documentElement.dataset.appDelegatedEventsRc10 !== "1") {
+    document.documentElement.dataset.appDelegatedEventsRc10 = "1";
+    document.addEventListener("click", ev => {
+    const routeBtn = ev.target.closest?.("[data-system-route]");
+    if (routeBtn) {
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      switchTab(routeBtn.dataset.systemRoute);
+      return;
+    }
+
+    const fileBtn = ev.target.closest?.("[data-system-file]");
+    if (fileBtn) {
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      const target = fileBtn.dataset.systemFile ? document.querySelector(fileBtn.dataset.systemFile) : null;
+      if (!target) { toast("No se encontró el selector de archivo.", "err"); return; }
+      target.click();
+      return;
+    }
+
+    const actionBtn = ev.target.closest?.("[data-system-action]");
+    if (!actionBtn) return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    const action = actionBtn.dataset.systemAction || "";
+    if (action === "export-work-copy") { exportSqlite(); return; }
+    if (action === "export-private-copy") { exportPrivateSqlite(); return; }
+    if (action === "export-technical-json") { exportJson(); return; }
+    if (action === "export-full-audit-json") { exportFullAuditJsonRc12(); return; }
+    if (action === "reset-public-base") { loadInitialDbWithConfirm(); return; }
+    toast("Acción de Sistema no reconocida.", "err");
+  }, true);
+}
 }
 
 function bindEvents() {
+  bindSystemControlsV104();
+  installFeatureModulePrefetchV12();
   $$(`[data-tab]`).forEach(btn => {
     if (btn.dataset.tabBound === "1") return;
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
     btn.dataset.tabBound = "1";
   });
-  $("#loadInitialDb").addEventListener("click", loadInitialDbWithConfirm);
-  $("#sqliteFile").addEventListener("change", loadSqliteFile);
-  $("#exportSqlite").addEventListener("click", exportSqlite);
-  $("#exportJson").addEventListener("click", exportJson);
+  bindIfExists("#loadInitialDb", "click", loadInitialDbWithConfirm);
+  bindIfExists("#sqliteFile", "change", loadSqliteFile);
+  bindIfExists("#exportSqlite", "click", exportSqlite);
+  bindIfExists("#exportJson", "click", exportJson);
+  bindIfExists("#exportFullAuditJsonRc12", "click", exportFullAuditJsonRc12);
   bindIfExists("#privateSqliteFile", "change", importPrivateSqlitePackage);
   bindIfExists("#exportPrivateSqlite", "click", exportPrivateSqlite);
   bindIfExists("#privatePhotoFiles", "change", importPrivatePhotoFiles);
@@ -131,10 +205,11 @@ function bindEvents() {
   bindIfExists("#privateSourceSlug", "input", ev => { ev.target.dataset.autofilled = "0"; renderPrivateDataManager(); });
   bindIfExists("#privatePhotoKind", "change", renderPrivateDataManager);
 
-  $("#ingredientSearch").addEventListener("input", ev => { state.filters.search = ev.target.value; renderIngredients(); });
-  $("#ingredientActiveFilter").addEventListener("change", ev => { state.filters.active = ev.target.value; renderIngredients(); });
-  $("#ingredientUseFilter").addEventListener("change", ev => { state.filters.use = ev.target.value; renderIngredients(); });
-  bindIfExists("#ingredientViewMode", "change", ev => { state.filters.view = ev.target.value; renderIngredients(); });
+  bindIfExists("#ingredientSearch", "input", ev => { state.filters.search = ev.target.value; state.filters.page = 1; renderIngredients(); });
+  bindIfExists("#ingredientActiveFilter", "change", ev => { state.filters.active = ev.target.value; state.filters.page = 1; renderIngredients(); });
+  bindIfExists("#ingredientUseFilter", "change", ev => { state.filters.use = ev.target.value; state.filters.page = 1; renderIngredients(); });
+  bindIfExists("#ingredientViewMode", "change", ev => { state.filters.view = ev.target.value; state.filters.page = 1; renderIngredients(); });
+  bindIfExists("#ingredientPageSize", "change", ev => { state.filters.pageSize = readPageSizeValue(ev.target.value, 50); state.filters.page = 1; renderIngredients(); });
   bindIfExists("#elaborationSearchV625", "input", ev => { state.elaborations.search = ev.target.value; state.elaborations.page = 1; renderElaborations(); });
   bindIfExists("#elaborationTypeFilterV625", "change", ev => { state.elaborations.type = ev.target.value; state.elaborations.page = 1; renderElaborations(); });
   bindIfExists("#elaborationStatusFilterV625", "change", ev => { state.elaborations.active = ev.target.value; state.elaborations.page = 1; renderElaborations(); });
@@ -150,11 +225,11 @@ function bindEvents() {
   bindIfExists("#workshopSearchClear", "click", () => { state.workshopSearch = { search: "", type: "all", page: 1, pageSize: 10 }; const q = document.querySelector("#workshopSearchInput"); if (q) q.value = ""; const typ = document.querySelector("#workshopSearchType"); if (typ) typ.value = "all"; const l = document.querySelector("#workshopSearchLimit"); if (l) l.value = "10"; renderWorkshopSearch(); });
   bindIfExists("#archiveClearFilters", "click", clearArchiveFilters);
   bindIfExists("#archiveCopyReview", "click", copyArchiveReviewReport);
-  $("#newIngredient").addEventListener("click", newIngredientForm);
-  $("#clearIngredientForm").addEventListener("click", clearIngredientForm);
-  $("#deactivateIngredient").addEventListener("click", deactivateSelectedIngredient);
-  $("#ingredientForm").addEventListener("submit", saveIngredientFromForm);
-  $("#runSql").addEventListener("click", runSql);
+  bindIfExists("#newIngredient", "click", newIngredientForm);
+  bindIfExists("#clearIngredientForm", "click", clearIngredientForm);
+  bindIfExists("#deactivateIngredient", "click", deactivateSelectedIngredient);
+  bindIfExists("#ingredientForm", "submit", saveIngredientFromForm);
+  bindIfExists("#runSql", "click", runSql);
   bindIfExists("#refreshAudit", "click", () => { renderBaseStatusV663(); renderAudit(); });
   bindIfExists("#copyBaseDiagnosisV663", "click", copyBaseDiagnosisV663);
   bindIfExists("#printQuickSession", "click", () => document.querySelector("#classPrintSessionV41")?.click());
@@ -238,16 +313,16 @@ function bindEvents() {
     if (workshopPage) { ev.preventDefault(); const ps = ensureWorkshopSearchState(); ps.page = Number(workshopPage.dataset.workshopSearchPage) || 1; renderWorkshopSearch(); return; }
     const elaborationPage = ev.target.closest?.("[data-elaboration-page]");
     if (elaborationPage) { ev.preventDefault(); state.elaborations.page = Number(elaborationPage.dataset.elaborationPage) || 1; renderElaborations(); return; }
+    const ingredientPage = ev.target.closest?.("[data-ingredient-page]");
+    if (ingredientPage) { ev.preventDefault(); state.filters.page = Number(ingredientPage.dataset.ingredientPage) || 1; renderIngredients(); return; }
     const libDetail = ev.target.closest?.("[data-library-detail]");
     if (libDetail) { ev.preventDefault(); state.library.selectedKey = libDetail.dataset.libraryDetail || ""; renderArchiveCatalog(); return; }
     const libOpen = ev.target.closest?.("[data-library-open]");
     if (libOpen) { ev.preventDefault(); openUnifiedElaboration(libOpen.dataset.libraryOpen); return; }
     const libEditIng = ev.target.closest?.("[data-library-edit-ingredient]");
     if (libEditIng) { ev.preventDefault(); loadIngredientForm(libEditIng.dataset.libraryEditIngredient); switchTab("archive-ingredients"); return; }
-  });
-  bindScrollTargets();
-  bindClassWorkflowAccordion();
-  window.addEventListener("swiftremo:databaseChanged", async ev => {
+    });
+    window.addEventListener("swiftremo:databaseChanged", async ev => {
     try {
       await loadBestAvailableDb();
       if (ev?.detail?.message) toast(ev.detail.message);
@@ -255,16 +330,18 @@ function bindEvents() {
       console.error(err);
       toast("No se pudo actualizar el panel tras cambios externos.", "err");
     }
-  });
+    });
 
-  window.addEventListener("beforeunload", ev => {
+    window.addEventListener("beforeunload", ev => {
     if (hasSaveError || hasPendingSave) {
       ev.preventDefault();
       ev.returnValue = hasPendingSave
         ? "Hay cambios de práctica pendientes de guardado automático. Espera unos segundos o guarda antes de cerrar."
         : "Hay cambios que no se han podido guardar automáticamente. Descarga una copia antes de cerrar.";
     }
-  });
+    });
+  bindScrollTargets();
+  bindClassWorkflowAccordion();
 }
 
 function bindScrollTargets() {
@@ -352,19 +429,30 @@ async function loadBestAvailableDb() {
   cancelPendingPracticeContextSave("carga de base");
   setState("Cargando…", "loading");
   setSaveIndicator("Cargando…", "saving", "Buscando base de trabajo.");
-  const recovery = await loadRecovery();
+  bootStartRc7("indexeddb:recovery-check");
+  const hasRecovery = await hasCurrentRecovery();
+  bootEndRc7("indexeddb:recovery-check", hasRecovery ? "snapshot presente" : "sin snapshot");
+  let recovery = null;
+  if (hasRecovery) {
+    bootStartRc7("indexeddb:recovery");
+    recovery = await loadRecovery();
+    bootEndRc7("indexeddb:recovery", recovery?.bytes ? `snapshot ${(recovery.bytes.byteLength || recovery.bytes.length || 0)} bytes` : "sin snapshot válido");
+  }
   if (recovery?.bytes) {
     try {
+      bootStartRc7("sqlite:recovery-load");
       await swiftDb.loadFromBytesAsync(new Uint8Array(recovery.bytes));
+      bootEndRc7("sqlite:recovery-load");
       ensurePrivateMediaSchema();
-      afterDbLoaded("Base de trabajo restaurada.", "Guardado", recovery.savedAt);
+      setPersistenceStateRc12({ source: "snapshot", savedAt: recovery.savedAt, snapshotSize: recovery.bytes?.byteLength || recovery.bytes?.length || 0, note: "Trabajo local recuperado desde IndexedDB." });
+      afterDbLoaded("Trabajo local recuperado desde el navegador.", "Trabajo local recuperado", recovery.savedAt);
       return;
     } catch (err) {
       console.error("[SwiftRemo] Recuperación no válida. Recovery corrupta. Se limpia y se carga base inicial.", err);
       try { await clearRecovery(); } catch (clearErr) { console.warn("[SwiftRemo] No se pudo limpiar la recuperación corrupta", clearErr); }
       setStatus("Recuperación no válida. La recuperación interna no se pudo abrir. Se ha limpiado y se carga la base inicial; importa una copia .sqlite si necesitas recuperar cambios.", "warn");
       setSaveIndicator("Recuperación limpiada", "err", "Se cargará una base inicial limpia.");
-      await loadInitialDb(true);
+      await loadInitialDb(false);
       return;
     }
   }
@@ -372,43 +460,47 @@ async function loadBestAvailableDb() {
 }
 
 async function loadInitialDbWithConfirm() {
-  if (!confirm("Vas a reiniciar la base local con la base pública inicial. Si no has descargado una copia SQLite, podrías perder cambios, paquetes privados o fotos BLOB integradas. ¿Continuar?")) return;
+  if (!confirm("Vas a reiniciar el trabajo local con la base pública inicial. Si no has descargado una copia de trabajo, podrías perder cambios, paquetes privados o fotos integradas. ¿Continuar?")) return;
   await clearRecovery();
-  await loadInitialDb(true);
+  await loadInitialDb(false);
 }
 
-async function loadInitialDb(saveAsCurrent = true) {
+async function loadInitialDb(saveAsCurrent = false) {
   cancelPendingPracticeContextSave("base inicial");
   setState("Cargando base…", "loading");
   setStatus("Cargando base inicial…", "warn");
+  bootStartRc7("public-db-load");
   await swiftDb.loadFromUrl("../db/swiftremo.sqlite");
+  bootEndRc7("public-db-load");
   ensurePrivateMediaSchema();
-  if (saveAsCurrent) await autosave({ backup: true, reason: "base inicial" });
-  afterDbLoaded("Base inicial cargada.", "Guardado", new Date().toISOString());
+  if (saveAsCurrent) await autosave({ backup: false, reason: "base pública inicial" });
+  setPersistenceStateRc12({ source: "public", savedAt: null, snapshotSize: 0, note: "Base pública cargada desde db/swiftremo.sqlite; sin snapshot local mientras no haya cambios." });
+  afterDbLoaded("Base pública cargada. No se ha creado snapshot local porque todavía no hay cambios.", "Base pública", null);
 }
 
 async function loadSqliteFile(ev) {
   const input = ev.target;
-  cancelPendingPracticeContextSave("importación SQLite");
+  cancelPendingPracticeContextSave("importación de copia");
   const file = input.files?.[0];
   if (!file) return;
   const sizeMb = file.size ? (file.size / (1024 * 1024)).toLocaleString("es-ES", { maximumFractionDigits: 1 }) : "desconocido";
-  if (!confirm(`Importar "${file.name}" (${sizeMb} MB) sustituirá la base local activa del navegador. Descarga antes una copia SQLite si quieres conservar el estado actual. ¿Continuar?`)) {
+  if (!confirm(`Importar "${file.name}" (${sizeMb} MB) sustituirá la base local activa del navegador. Descarga antes una copia de trabajo si quieres conservar el estado actual. ¿Continuar?`)) {
     input.value = "";
     return;
   }
   try {
     setState("Importando copia…", "saving");
-    setStatus(`Importando copia SQLite: ${file.name}`, "warn");
+    setStatus(`Importando copia de trabajo: ${file.name}`, "warn");
     await swiftDb.loadFromFile(file);
     ensurePrivateMediaSchema();
     await autosave({ backup: true, reason: `importación ${file.name}` });
-    afterDbLoaded(`Copia importada: ${file.name}`, "Guardado", new Date().toISOString());
-    setStatus(`Copia SQLite importada correctamente: ${file.name}.`, "ok");
+    setPersistenceStateRc12({ source: "imported", savedAt: new Date().toISOString(), note: `Copia importada: ${file.name}` });
+    afterDbLoaded(`Copia importada: ${file.name}`, "Copia importada", new Date().toISOString());
+    setStatus(`Copia importada correctamente: ${file.name}.`, "ok");
   } catch (err) {
     console.error(err); toast(err.message, "err");
     setSaveIndicator("Error al importar", "err", err.message);
-    setStatus(`No se pudo importar la copia SQLite: ${err.message}`, "err");
+    setStatus(`No se pudo importar la copia: ${err.message}`, "err");
   } finally {
     input.value = "";
   }
@@ -417,19 +509,149 @@ async function loadSqliteFile(ev) {
 function afterDbLoaded(message, saveLabel = "Guardado", savedAt = null) {
   ensurePrivateMediaSchema();
   syncPrivateSourceSlug();
+  bootStartRc7("repository");
   repo = new Repository(swiftDb);
+  bootEndRc7("repository");
+  bootStartRc7("catalogs");
   catalogs = repo.catalogs();
+  bootEndRc7("catalogs");
   selectedIngredientId = null;
   hasSaveError = false;
+  bootStartRc7("populate-catalogs");
   populateCatalogs();
+  bootEndRc7("populate-catalogs");
   clearIngredientForm(false);
+  bootStartRc7("legacy-migration");
   migrateLegacyPracticeContextToSqliteV651();
+  bootEndRc7("legacy-migration");
   renderAll();
   setState("Listo", "clean");
   setStatus(message, "ok");
   setSaveIndicator(saveLabel, "ok", savedAt ? `Última actualización: ${formatDate(savedAt)}` : "Listo.");
   window.dispatchEvent(new CustomEvent("swiftremo:coreReady", { detail: { message } }));
+  renderBootMetricsPanelRc7();
+  renderPersistencePanelRc12();
+  renderOpfsWorkerEvaluationRc13();
+  renderFeatureModulePanelV12();
 }
+
+
+function setPersistenceStateRc12(partial = {}) {
+  persistenceStateRc12 = { ...persistenceStateRc12, ...partial };
+  renderPersistencePanelRc12();
+}
+function persistenceLabelRc12(source = persistenceStateRc12.source) {
+  return ({
+    pending: "Pendiente de cargar",
+    public: "Base pública cargada",
+    snapshot: "Trabajo local recuperado/guardado",
+    imported: "Copia importada",
+    error: "Error de persistencia"
+  })[source] || source || "Estado desconocido";
+}
+function renderPersistencePanelRc12() {
+  const el = document.querySelector("#persistenceSummaryRc12");
+  if (!el) return;
+  const st = persistenceStateRc12 || {};
+  const source = persistenceLabelRc12(st.source);
+  const saved = st.savedAt ? formatDate(st.savedAt) : "Sin snapshot local";
+  const size = Number(st.snapshotSize || 0) ? `${fmtNumber(Number(st.snapshotSize || 0) / 1024, 1)} KB` : "—";
+  const download = st.lastDownloadAt ? `${formatDate(st.lastDownloadAt)} · ${st.lastDownloadKind || "copia"}` : "Aún no descargada";
+  el.innerHTML = `
+    <p><b>Estado activo</b><span>${esc(source)}</span></p>
+    <p><b>Snapshot local</b><span>${esc(saved)}${size !== "—" ? ` · ${esc(size)}` : ""}</span></p>
+    <p><b>Copia descargada</b><span>${esc(download)}</span></p>
+    <p><b>Material privado</b><span>${st.privateMaterial ? "Detectado en la base activa" : "No detectado o no comprobado"}</span></p>
+    <p><b>Nota</b><span>${esc(st.note || "")}</span></p>`;
+}
+function lightweightTechnicalDiagnosticRc12() {
+  const metrics = window.SwiftRemoBootMetrics?.snapshot?.() || null;
+  const scalar = (sql) => {
+    try { return Number(swiftDb?.selectValue?.(sql) ?? 0); }
+    catch (_) { return null; }
+  };
+  const metaValue = (key) => {
+    try { return swiftDb?.selectValue?.("SELECT value FROM app_meta WHERE key=$key;", { $key: key }) || ""; }
+    catch (_) { return ""; }
+  };
+  return {
+    app: "SwiftRemo SQL",
+    reportKind: "diagnostico_tecnico_ligero",
+    generatedAt: new Date().toISOString(),
+    version: metaValue("schema_version") || "desconocida",
+    releaseLabel: metaValue("release_label") || "",
+    persistence: { ...persistenceStateRc12 },
+    counts: {
+      ingredients: scalar("SELECT COUNT(*) FROM ingredients;"),
+      activeIngredients: scalar("SELECT COUNT(*) FROM ingredients WHERE active=1;"),
+      culinaryRecipes: scalar("SELECT COUNT(*) FROM culinary_recipes;"),
+      bakeryRecipes: scalar("SELECT COUNT(*) FROM bakery_recipes;"),
+      classSessions: scalar("SELECT COUNT(*) FROM class_sessions;"),
+      privateSources: scalar("SELECT COUNT(*) FROM sqlite_schema WHERE type='table' AND name='data_sources';") ? scalar("SELECT COUNT(*) FROM data_sources WHERE visibility='private';") : null,
+      mediaAssets: scalar("SELECT COUNT(*) FROM sqlite_schema WHERE type='table' AND name='media_assets';") ? scalar("SELECT COUNT(*) FROM media_assets;") : null
+    },
+    bootMetrics: metrics,
+    opfsWorkerEvaluation: opfsWorkerEvaluationRc13(),
+    note: "Diagnóstico ligero: no incluye volcados completos de tablas ni BLOB de imágenes. Usa auditoría completa solo bajo demanda."
+  };
+}
+function fullAuditJsonRc12() {
+  const base = repo.exportJson();
+  base.reportKind = "auditoria_completa_bajo_demanda";
+  base.persistence = { ...persistenceStateRc12 };
+  return base;
+}
+
+const opfsWorkerEvaluationRc13 = opfsWorkerEvaluation;
+
+function renderOpfsWorkerEvaluationRc13() {
+  renderOpfsWorkerEvaluation({ esc });
+}
+
+function renderBootMetricsPanelRc7() {
+  renderBootMetricsPanel({ fmtNumber });
+}
+
+
+const featureModulesV13 = createFeatureModuleManager({
+  version: "150v15",
+  toast,
+  esc,
+  moduleLoaded: name => window.SwiftRemoBootMetrics?.moduleLoaded?.(name),
+  mark: (name, detail) => window.SwiftRemoBootMetrics?.mark?.(name, detail)
+});
+
+const installFeatureModulePrefetchV12 = () => featureModulesV13.installPrefetch();
+const ensureFeatureModulesForRoute = route => featureModulesV13.ensureForRoute(route);
+const renderFeatureModulePanelV12 = () => featureModulesV13.renderPanel();
+
+window.SwiftRemoFeatureModules = featureModulesV13.publicApi;
+
+
+document.addEventListener("swiftremo:bootMetric", () => {
+  renderBootMetricsPanelRc7();
+  renderOpfsWorkerEvaluationRc13();
+  renderFeatureModulePanelV12();
+});
+
+
+document.addEventListener("swiftremo:lazyViewReady", ev => {
+  bootMarkRc7("lazy-dom:controls-bind", ev?.detail?.route || "");
+  bindEvents();
+  bindScrollTargets();
+  bindClassWorkflowAccordion();
+  ensureFeatureModulesForRoute(ev?.detail?.route).catch(err => console.error(err));
+  if (repo && catalogs) {
+    if (ev?.detail?.route === "archive-ingredients") {
+      populateCatalogs();
+      clearIngredientForm(false);
+    }
+    renderActiveRoute(ev?.detail || null, { reason: "lazy-view-ready" });
+  }
+  if (window.SwiftRemoEnhanceComboboxes) {
+    try { window.SwiftRemoEnhanceComboboxes(); } catch (_) {}
+  }
+});
 
 function initDomainLayer() {
   if (domainShell) return;
@@ -450,10 +672,12 @@ function initDomainLayer() {
       }
       return true;
     },
-    onAfterNavigate: () => {
+    onAfterNavigate: (resolved) => {
       const workshopState = getWorkshopState();
       renderDomainActions(workshopState);
       printDomain?.setEnabled?.(workshopState);
+      ensureFeatureModulesForRoute(resolved?.route).catch(err => console.error(err));
+      renderActiveRoute(resolved, { reason: "navigation" });
     }
   });
   domainShell.init();
@@ -471,60 +695,107 @@ async function autosave({ backup = false, reason = "auto" } = {}) {
     setSaveIndicator("Guardando…", "saving", "Actualizando base de trabajo.");
     const bytes = swiftDb.exportBytes();
     const saved = await saveRecovery(bytes, { backup, reason });
+    setPersistenceStateRc12({ source: "snapshot", savedAt: saved.savedAt, snapshotSize: saved.size || bytes.byteLength || bytes.length || 0, note: backup ? `Snapshot local y copia interna de seguridad: ${reason}.` : `Snapshot local actualizado: ${reason}.` });
     hasSaveError = false;
     setState("Guardado", "clean");
     setSaveIndicator("Guardado", "ok", `Última actualización: ${formatDate(saved.savedAt)}`);
-    setStatus("Cambios guardados.", "ok");
+    setStatus("Cambios guardados en el trabajo local del navegador.", "ok");
+    renderPersistencePanelRc12();
     return saved;
   } catch (err) {
     console.error(err);
     hasSaveError = true;
     setState("Error de guardado", "error");
-    setSaveIndicator("No se pudo guardar", "err", "Descarga una copia .sqlite para no perder cambios.");
-    setStatus("No se pudo guardar automáticamente. Descarga una copia .sqlite.", "err");
-    toast("No se pudo guardar. Descarga una copia .sqlite.", "err");
+    setSaveIndicator("No se pudo guardar", "err", "Descarga una copia de trabajo para no perder cambios.");
+    setStatus("No se pudo guardar automáticamente. Descarga una copia de trabajo.", "err");
+    toast("No se pudo guardar. Descarga una copia de trabajo.", "err");
     throw err;
   }
 }
 
 function renderAll() {
-  [
-    renderKpis,
-    renderBaseStatusV663,
-    renderPanelQualitySummary,
-    renderSessionSummary,
-    renderWorkshopMeta,
-    renderPracticePlanV627,
-    renderWorkshopSearch,
-    renderArchiveCatalog,
-    renderElaborations,
-    renderIngredients,
-    renderSelection,
-    renderOrder,
-    renderMargins,
-    renderAudit,
-    renderPrivateDataManager,
-    renderWorkshopState
-  ].forEach(fn => {
-    try { fn(); }
-    catch (err) {
-      console.error(`[SwiftRemo] Error renderizando ${fn.name}`, err);
-      const quality = document.querySelector("#panelQualitySummary");
-      if (quality && fn.name === "renderPanelQualitySummary") {
-        quality.className = "quality-strip warn";
-        quality.innerHTML = "<b>Calidad no disponible en este momento.</b><span>Abre Revisar calidad o recarga la app.</span>";
-      }
+  const first = !firstRenderAllMeasuredRc7;
+  if (first) { bootStartRc7("renderAll:first"); firstRenderAllMeasuredRc7 = true; }
+  bootStartRc7("renderAll:active-route-only");
+  renderActiveRoute(null, { reason: first ? "initial-active-render" : "refresh-active-render" });
+  bootEndRc7("renderAll:active-route-only");
+  if (first) bootEndRc7("renderAll:first");
+  renderBootMetricsPanelRc7();
+}
+
+function safeRenderRouteStep(fn) {
+  try { fn(); }
+  catch (err) {
+    console.error(`[SwiftRemo] Error renderizando ${fn.name}`, err);
+    const quality = document.querySelector("#panelQualitySummary");
+    if (quality && fn.name === "renderPanelQualitySummary") {
+      quality.className = "quality-strip warn";
+      quality.innerHTML = "<b>Calidad no disponible en este momento.</b><span>Abre Revisar calidad o recarga la app.</span>";
     }
+  }
+}
+
+function renderRouteSet(functions) {
+  const seen = new Set();
+  functions.forEach(fn => {
+    if (!fn || seen.has(fn)) return;
+    seen.add(fn);
+    safeRenderRouteStep(fn);
   });
 }
 
+function currentResolvedRoute(explicit = null) {
+  if (explicit?.domain) return explicit;
+  const active = domainShell?.getActive?.();
+  if (active?.domain) return active;
+  return { domain: "workshop", route: "workshop", viewId: null };
+}
+
+function renderActiveRoute(explicit = null, { reason = "active" } = {}) {
+  if (!repo) return;
+  const active = currentResolvedRoute(explicit);
+  const route = active.route || active.domain || "workshop";
+  const first = !firstActiveRouteRenderMeasured;
+  if (first) { bootStartRc7("renderActiveRoute:first", route); firstActiveRouteRenderMeasured = true; }
+  bootStartRc7("renderActiveRoute", `${route}; ${reason}`);
+
+  const commonWorkshop = [renderKpis, renderSessionSummary, renderWorkshopState];
+  const routeMap = {
+    workshop: commonWorkshop,
+    "workshop-practice": [...commonWorkshop, renderWorkshopMeta, renderPracticePlanV627, renderWorkshopSearch, renderSelection],
+    "workshop-order": [renderWorkshopState, renderSelection, renderOrder],
+    "workshop-output": [renderWorkshopState, renderSelection],
+    "workshop-margins": [renderMargins],
+    history: [],
+    "history-records": [],
+    "technical-archive": [renderBaseStatusV663, renderPanelQualitySummary],
+    "archive-catalog": [renderBaseStatusV663, renderArchiveCatalog],
+    "archive-elaborations": [renderElaborations],
+    "archive-ingredients": [renderIngredients],
+    "archive-bakery": [],
+    "archive-culinary": [],
+    "archive-review": [renderBaseStatusV663, renderPanelQualitySummary, renderAudit],
+    system: [renderBootMetricsPanelRc7, renderPersistencePanelRc12, renderOpfsWorkerEvaluationRc13],
+    "system-data": [renderBootMetricsPanelRc7, renderPersistencePanelRc12, renderOpfsWorkerEvaluationRc13, renderPrivateDataManager],
+    "system-sql": [],
+    "system-status": [renderBaseStatusV663, renderPanelQualitySummary, renderAudit]
+  };
+
+  renderRouteSet(routeMap[route] || routeMap[active.domain] || commonWorkshop);
+  bootEndRc7("renderActiveRoute", route);
+  if (first) bootEndRc7("renderActiveRoute:first", route);
+  renderBootMetricsPanelRc7();
+}
+
+
 function renderKpis() {
   const k = repo.kpis();
-  $("#kpis").innerHTML = `
-    <div class="kpi"><span>Ingredientes activos</span><b>${k.ingredients}</b></div>
-    <div class="kpi"><span>Elaboraciones</span><b>${Number(k.bakeryRecipes || 0) + Number(k.culinaryRecipes || 0)}</b></div>
-    <div class="kpi"><span>Práctica actual</span><b>${k.workItems || 0}</b></div>
-    <div class="kpi"><span>Coste práctica</span><b>${fmtMoney(k.workCost || 0)}</b></div>`;
+  $("#kpis").innerHTML = kpiGridHtml([
+    { label: "Ingredientes activos", value: k.ingredients },
+    { label: "Elaboraciones", value: Number(k.bakeryRecipes || 0) + Number(k.culinaryRecipes || 0) },
+    { label: "Práctica actual", value: k.workItems || 0 },
+    { label: "Coste práctica", value: fmtMoney(k.workCost || 0) }
+  ]);
 }
 
 
@@ -994,6 +1265,99 @@ function qualityMatchesFilter(row) {
   return row.qualityType === filter;
 }
 
+function archiveIngredientRowFromSql(r) {
+  return {
+    key: `ingredient:${r.id}`,
+    sourceKind: "ingredient",
+    id: r.id,
+    name: r.name,
+    typeLabel: "Ingrediente",
+    family: r.family || "",
+    subfamily: r.subfamily || "",
+    unit: r.base_unit || "",
+    orderGroup: r.order_group || "",
+    roleLabel: r.bakery_role ? roleLabel(r.bakery_role) : "",
+    statusLabel: r.active ? "Activo" : "Inactivo",
+    active: Number(r.active) === 1,
+    baseLabel: [r.base_unit || "", r.order_group || ""].filter(Boolean).join(" · "),
+    cost: Number(r.cost_per_base_unit_after_waste || 0),
+    raw: r
+  };
+}
+
+function archiveUnifiedRowFromSql(r) {
+  return {
+    key: r.uid,
+    uid: r.uid,
+    sourceKind: r.source_type,
+    id: r.source_id,
+    name: r.name,
+    typeLabel: r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería",
+    family: r.family || "",
+    subfamily: r.subfamily || "",
+    productionLabel: r.production_label || r.production_model || "",
+    statusLabel: statusLabel(r.status),
+    active: Number(r.active) === 1,
+    baseLabel: r.base_label || "",
+    cost: Number(r.total_cost || 0),
+    hydration: Number(r.real_hydration_pct || 0),
+    raw: r
+  };
+}
+
+function archivePageData() {
+  if (!repo) return { rows: [], total: 0, start: 0, count: 0, totalPages: 1, page: 1, all: false, pagedSql: false };
+  const quality = state.library.quality || "all";
+  const active = state.library.active || "active";
+  const kind = state.library.kind || "elaborations";
+  const search = state.library.search || "";
+  const page = Math.max(1, Number(state.library.page || 1) || 1);
+  const pageSize = state.library.pageSize || 50;
+
+  if (quality !== "all") {
+    const rows = archiveRows();
+    const win = pageWindow(rows.length, pageSize, page, 50);
+    return {
+      rows: rows.slice(win.start, win.start + win.count),
+      total: rows.length,
+      start: win.start,
+      count: win.count,
+      totalPages: win.totalPages,
+      page: win.page,
+      all: win.all,
+      pagedSql: false,
+      qualityFiltered: true,
+      summaryRows: rows
+    };
+  }
+
+  const pageArgs = { search, active, page, pageSize };
+  let paged;
+  let rows;
+  if (kind === "ingredients") {
+    paged = repo.ingredientsPage({ ...pageArgs, use: "all" });
+    rows = paged.rows.map(archiveIngredientRowFromSql);
+  } else {
+    const type = kind === "culinary" || kind === "bakery" ? kind : "all";
+    paged = repo.unifiedElaborationsPage({ ...pageArgs, type });
+    rows = paged.rows.map(archiveUnifiedRowFromSql);
+  }
+
+  const enriched = enrichArchiveQuality(rows);
+  return {
+    rows: enriched,
+    total: paged.total,
+    start: paged.offset,
+    count: enriched.length,
+    totalPages: paged.totalPages,
+    page: paged.page,
+    all: paged.all,
+    pagedSql: true,
+    pageQualityOnly: true,
+    summaryRows: enriched
+  };
+}
+
 function archiveRows() {
   if (!repo) return [];
   const kind = state.library.kind || "elaborations";
@@ -1099,36 +1463,6 @@ function bakeryBaseLabel(r) {
   const dough = Number(r.total_raw_dough_g || 0) > 0 ? `${fmtNumber(r.total_raw_dough_g, 0)} g masa` : "";
   const hydration = Number(r.real_hydration_pct || 0) > 0 ? `${fmtNumber(r.real_hydration_pct, 1)} % hidratación` : "";
   return [flour, dough, hydration].filter(Boolean).join(" · ");
-}
-
-function readPageSizeValue(value, fallback = 50) {
-  return String(value) === "all" ? "all" : (Math.max(1, Number(value) || fallback));
-}
-
-function pageWindow(total, rawPageSize, currentPage, fallback = 50) {
-  const all = String(rawPageSize) === "all";
-  const size = all ? Math.max(total, 1) : Math.max(1, Number(rawPageSize) || fallback);
-  const totalPages = all ? 1 : Math.max(1, Math.ceil(total / size));
-  const page = all ? 1 : Math.min(Math.max(1, Number(currentPage) || 1), totalPages);
-  const start = all ? 0 : (page - 1) * size;
-  const count = all ? total : Math.min(size, Math.max(total - start, 0));
-  return { all, size, totalPages, page, start, count };
-}
-
-function pagerHtml6733({ total, start, count, page, totalPages, all, attr, label = "registros" }) {
-  const from = total ? start + 1 : 0;
-  const to = start + count;
-  if (all) {
-    return `<span class="library-range-666b">Mostrando <b>todas</b>: <b>${fmtNumber(total,0)}</b> ${esc(label)}</span>`;
-  }
-  const disabledPrev = page <= 1 ? "disabled" : "";
-  const disabledNext = page >= totalPages ? "disabled" : "";
-  return `
-    <span class="library-range-666b">Mostrando <b>${fmtNumber(from,0)}–${fmtNumber(to,0)}</b> de <b>${fmtNumber(total,0)}</b> · página ${fmtNumber(page,0)}/${fmtNumber(totalPages,0)}</span>
-    <button type="button" class="btn ghost mini-btn-666b" ${disabledPrev} ${attr}="1">Inicio</button>
-    <button type="button" class="btn ghost mini-btn-666b" ${disabledPrev} ${attr}="${page - 1}">Anterior</button>
-    <button type="button" class="btn ghost mini-btn-666b" ${disabledNext} ${attr}="${page + 1}">Siguiente</button>
-    <button type="button" class="btn ghost mini-btn-666b" ${disabledNext} ${attr}="${totalPages}">Final</button>`;
 }
 
 function clearArchiveFilters() {
@@ -1373,7 +1707,7 @@ function renderWorkshopSearch() {
   const label = !q
     ? `Sugerencias activas · ${fmtNumber(allRows.length, 0)} elaboración${allRows.length === 1 ? "" : "es"}`
     : allRows.length ? `${fmtNumber(allRows.length, 0)} resultado${allRows.length === 1 ? "" : "s"}` : "Sin resultados";
-  const pager = allRows.length ? pagerHtml6733({ total: allRows.length, start: win.start, count: rows.length, page: win.page, totalPages: win.totalPages, all: win.all, attr: "data-workshop-search-page", label: "elaboraciones" }) : "";
+  const pager = allRows.length ? pagerHtml({ total: allRows.length, start: win.start, count: rows.length, page: win.page, totalPages: win.totalPages, all: win.all, attr: "data-workshop-search-page", label: "elaboraciones" }) : "";
   const pagerTop = document.querySelector("#workshopSearchPager");
   const pagerBottom = document.querySelector("#workshopSearchPagerBottom");
   if (pagerTop) pagerTop.innerHTML = pager;
@@ -1427,13 +1761,12 @@ function renderArchiveCatalog() {
   if (controls.quality && controls.quality.value !== state.library.quality) controls.quality.value = state.library.quality || "all";
   if (controls.pageSize && String(controls.pageSize.value) !== String(state.library.pageSize || 50)) controls.pageSize.value = String(state.library.pageSize || 50);
 
-  const rows = archiveRows();
-  const win = pageWindow(rows.length, state.library.pageSize, state.library.page, 50);
-  state.library.page = win.page;
-  const pageRows = rows.slice(win.start, win.start + win.count);
+  const pageData = archivePageData();
+  const pageRows = pageData.rows;
+  state.library.page = pageData.page;
 
-  renderArchiveSummary(rows);
-  const pager = archivePagerHtml(rows.length, win.start, pageRows.length, win.totalPages);
+  renderArchiveSummary(pageData.summaryRows || pageRows, pageData);
+  const pager = archivePagerHtml(pageData.total, pageData.start, pageRows.length, pageData.totalPages);
   const top = document.querySelector("#archivePagerTop");
   const bottom = document.querySelector("#archivePagerBottom");
   if (top) top.innerHTML = pager;
@@ -1443,33 +1776,28 @@ function renderArchiveCatalog() {
     rowAttrs: r => r.key === state.library.selectedKey ? "class='selected-row'" : ""
   });
 
-  const stillVisible = rows.some(r => r.key === state.library.selectedKey);
+  const stillVisible = pageRows.some(r => r.key === state.library.selectedKey);
   if (!stillVisible) state.library.selectedKey = "";
   renderArchiveDetail(state.library.selectedKey);
 }
 
-function renderArchiveSummary(rows) {
+function renderArchiveSummary(rows, pageData = null) {
   const el = document.querySelector("#archiveSummary");
   if (!el) return;
-  const all = rows.length;
+  const all = pageData?.total ?? rows.length;
   const complete = rows.filter(r => r.qualityType === "complete").length;
   const review = rows.filter(r => r.qualityType === "review").length;
   const poor = rows.filter(r => r.qualityType === "poor").length;
   const archived = rows.filter(r => r.qualityType === "archived").length;
   const ingredients = rows.filter(r => r.sourceKind === "ingredient").length;
-  el.innerHTML = `
-    <div class="kpi"><span>Resultados</span><b>${fmtNumber(all, 0)}</b></div>
-    <div class="kpi"><span>Completas</span><b>${fmtNumber(complete, 0)}</b></div>
-    <div class="kpi"><span>Revisables</span><b>${fmtNumber(review, 0)}</b></div>
-    <div class="kpi"><span>Pobres</span><b>${fmtNumber(poor, 0)}</b></div>
-    <div class="kpi"><span>Archivadas</span><b>${fmtNumber(archived, 0)}</b></div>
-    <div class="kpi"><span>Ingredientes</span><b>${fmtNumber(ingredients, 0)}</b></div>`;
+  const scope = pageData?.pageQualityOnly ? " pág." : "";
+  el.innerHTML = archiveSummaryKpisHtml({ total: all, complete, review, poor, archived, ingredients, scope });
 }
 
 function archivePagerHtml(total, start, count, totalPages) {
   const all = String(state.library.pageSize) === "all";
   const page = Number(state.library.page || 1);
-  return pagerHtml6733({ total, start, count, page, totalPages, all, attr: "data-library-page", label: "registros" });
+  return pagerHtml({ total, start, count, page, totalPages, all, attr: "data-library-page", label: "registros" });
 }
 
 function archiveHeaders() {
@@ -1507,7 +1835,7 @@ function renderArchiveDetail(key) {
 }
 
 function renderArchiveIngredientDetail(el, id) {
-  const row = repo.ingredients({ search: "", active: "all", use: "all" }).find(r => r.id === id);
+  const row = repo.ingredientListRowById(id);
   const raw = repo.ingredientById(id);
   if (!row || !raw) {
     el.className = "library-detail-666b err";
@@ -1636,61 +1964,28 @@ function renderElaborations() {
   if (!listEl || !summaryEl || !repo) return;
   const controls = { pageSize: document.querySelector("#elaborationPageSizeV625") };
   if (controls.pageSize && String(controls.pageSize.value) !== String(state.elaborations.pageSize || 50)) controls.pageSize.value = String(state.elaborations.pageSize || 50);
-  const rows = repo.unifiedElaborations(state.elaborations);
-  const total = rows.length;
-  const bakery = rows.filter(r => r.source_type === "bakery").length;
-  const culinary = rows.filter(r => r.source_type === "culinary").length;
-  const technical = rows.filter(r => r.production_kind === "technical_yield").length;
-  summaryEl.innerHTML = `
-    <div class="kpi"><span>Resultados</span><b>${fmtNumber(total,0)}</b></div>
-    <div class="kpi"><span>Cocina/Pastelería</span><b>${fmtNumber(culinary,0)}</b></div>
-    <div class="kpi"><span>Panadería</span><b>${fmtNumber(bakery,0)}</b></div>
-    <div class="kpi"><span>Subelaboraciones</span><b>${fmtNumber(technical,0)}</b></div>`;
-  const win = pageWindow(rows.length, state.elaborations.pageSize, state.elaborations.page, 50);
-  state.elaborations.page = win.page;
-  const pageRows = rows.slice(win.start, win.start + win.count);
-  const pager = rows.length ? pagerHtml6733({ total: rows.length, start: win.start, count: pageRows.length, page: win.page, totalPages: win.totalPages, all: win.all, attr: "data-elaboration-page", label: "elaboraciones" }) : "";
+  const summary = repo.unifiedElaborationsSummary(state.elaborations);
+  const page = repo.unifiedElaborationsPage(state.elaborations);
+  const rows = page.rows;
+  const total = page.total;
+  summaryEl.innerHTML = elaborationsSummaryKpisHtml(summary);
+  state.elaborations.page = page.page;
+  const pageRows = rows;
+  const pager = total ? pagerHtml({ total, start: page.offset, count: pageRows.length, page: page.page, totalPages: page.totalPages, all: page.all, attr: "data-elaboration-page", label: "elaboraciones" }) : "";
   const top = document.querySelector("#elaborationsPagerTopV625");
   const bottom = document.querySelector("#elaborationsPagerBottomV625");
   if (top) top.innerHTML = pager;
   if (bottom) bottom.innerHTML = pager;
-  if (!rows.length) {
+  if (!total) {
     listEl.innerHTML = "<p class='small'>Sin elaboraciones con estos filtros.</p>";
     return;
   }
-  const note = win.all
-    ? `<div class="view-hint-618 strong">Mostrando todas las elaboraciones: ${fmtNumber(rows.length,0)}.</div>`
-    : `<div class="view-hint-618 strong">Mostrando ${fmtNumber(win.start + 1,0)}–${fmtNumber(win.start + pageRows.length,0)} de ${fmtNumber(rows.length,0)}.</div>`;
+  const note = rangeHintHtml({ total, from: page.offset + 1, to: page.offset + pageRows.length, label: "elaboraciones", all: page.all });
   listEl.innerHTML = note + pageRows.map(renderElaborationCard).join("");
 }
 
 function renderElaborationCard(r) {
-  const typeBadge = r.source_type === "bakery"
-    ? badge("Panadería", "warn")
-    : badge("Cocina/Pastelería", "ok");
-  const modelBadge = badge(r.production_label || r.production_model || "Modelo", r.source_type === "bakery" ? "warn" : "off");
-  const activeCls = r.active ? "" : " inactive";
-  return `
-    <article class="elaboration-card-625${activeCls}">
-      <div class="elaboration-title-625">
-        <b>${esc(r.name)}</b>
-        ${badge(statusLabel(r.status), r.status === "validated" ? "ok" : r.status === "archived" ? "off" : "warn")}
-      </div>
-      <div class="elaboration-meta-625">
-        <span>${esc(r.family || "Sin familia")}</span>
-        <span>${esc(r.subfamily || "Sin subfamilia")}</span>
-      </div>
-      <div class="elaboration-badges-625">
-        ${typeBadge}
-        ${modelBadge}
-        ${r.production_kind === "dual" ? badge("Dual", "warn") : ""}
-      </div>
-      <div class="elaboration-base-625">${esc(r.base_label || "Sin base definida")} · Coste base: <b>${fmtMoney(r.total_cost || 0)}</b></div>
-      <div class="elaboration-actions-625">
-        <button type="button" class="btn primary" data-open-elaboration="${esc(r.uid)}">Abrir / editar</button>
-        <button type="button" class="btn ghost" data-add-elaboration-work="${esc(r.uid)}">Añadir a la práctica</button>
-      </div>
-    </article>`;
+  return elaborationCardHtml(r, { badge, statusLabel });
 }
 
 function statusLabel(v) {
@@ -1997,15 +2292,36 @@ function openUnifiedElaboration(uid) {
 }
 
 function renderIngredients() {
-  const rows = repo.ingredients(state.filters);
+  if (!repo) return;
+  const page = repo.ingredientsPage(state.filters);
+  state.filters.page = page.page;
+  const rows = page.rows;
   const viewMode = state.filters.view || "work";
   const output = $("#ingredientsTable");
+  if (!output) return;
   const modeSelect = document.querySelector("#ingredientViewMode");
+  const pageSizeSelect = document.querySelector("#ingredientPageSize");
   if (modeSelect && modeSelect.value !== viewMode) modeSelect.value = viewMode;
+  if (pageSizeSelect && String(pageSizeSelect.value) !== String(state.filters.pageSize || 50)) pageSizeSelect.value = String(state.filters.pageSize || 50);
+
+  const pager = page.total ? pagerHtml({
+    total: page.total,
+    start: page.offset,
+    count: rows.length,
+    page: page.page,
+    totalPages: page.totalPages,
+    all: page.all,
+    attr: "data-ingredient-page",
+    label: "ingredientes"
+  }) : "";
+  const top = document.querySelector("#ingredientsPagerTop");
+  const bottom = document.querySelector("#ingredientsPagerBottom");
+  if (top) top.innerHTML = pager;
+  if (bottom) bottom.innerHTML = pager;
 
   if (viewMode === "work") {
     output.classList.remove("wide");
-    output.innerHTML = renderIngredientCards(rows);
+    output.innerHTML = renderIngredientCards(rows, page);
   } else {
     output.classList.add("wide");
     output.innerHTML = table([
@@ -2023,31 +2339,8 @@ function renderIngredients() {
   document.querySelectorAll("[data-edit-ing]").forEach(btn => btn.addEventListener("click", () => loadIngredientForm(btn.dataset.editIng)));
 }
 
-function renderIngredientCards(rows) {
-  if (!rows?.length) return "<p class='small'>Sin ingredientes con estos filtros.</p>";
-  const limit = 80;
-  const visible = rows.slice(0, limit);
-  const note = rows.length > limit
-    ? `<div class="view-hint-618 strong">Mostrando ${limit} de ${rows.length}. Usa el buscador o cambia a vista auditoría para ver todo.</div>`
-    : `<div class="view-hint-618 strong">Mostrando ${rows.length} ingrediente${rows.length === 1 ? "" : "s"}.</div>`;
-  return `${note}<div class="ingredient-card-grid-618">${
-    visible.map(r => `
-      <article class="ingredient-card-618 ${r.id === selectedIngredientId ? "selected" : ""}">
-        <button type="button" class="ingredient-title-618" data-edit-ing="${esc(r.id)}">${esc(r.name)}</button>
-        <div class="ingredient-meta-618">
-          <span>${esc(r.family || "Sin familia")}</span>
-          <span>${esc(r.base_unit || "—")}</span>
-          <span>${fmtMoney(r.cost_per_base_unit_after_waste)}</span>
-        </div>
-        <div class="ingredient-badges-618">
-          ${badge(r.active ? "Activo" : "Inactivo", r.active ? "ok" : "off")}
-          ${badge(r.use_culinary ? "Cocina" : "No cocina", r.use_culinary ? "ok" : "off")}
-          ${badge(r.use_bakery ? "Panadería" : "No panadería", r.use_bakery ? "ok" : "off")}
-          ${r.bakery_role ? badge(roleLabel(r.bakery_role), "warn") : ""}
-        </div>
-      </article>
-    `).join("")
-  }</div>`;
+function renderIngredientCards(rows, page = null) {
+  return ingredientCardsHtml(rows, { page, selectedIngredientId, badge });
 }
 
 
@@ -2411,6 +2704,7 @@ function renderMargins() {
 
 
 function populateCatalogs() {
+  if (!catalogs) return;
   fillSelect($("#ing_family_id"), catalogs.families, { empty: "Selecciona familia" });
   fillSelect($("#ing_subfamily_id"), catalogs.subfamilies, { empty: "Sin subfamilia" });
   fillSelect($("#ing_base_unit_id"), catalogs.units, { empty: "Selecciona unidad" });
@@ -2418,29 +2712,36 @@ function populateCatalogs() {
   fillSelect($("#ing_order_group_id"), catalogs.orderGroups, { empty: "Sin grupo" });
   fillSelect($("#ing_supplier_id"), catalogs.suppliers, { empty: "Sin proveedor" });
   fillSelect($("#ing_storage_zone_id"), catalogs.storageZones, { empty: "Sin zona" });
-  $("#ing_family_id").addEventListener("change", filterSubfamilies);
+  const familySelect = $("#ing_family_id");
+  if (familySelect && familySelect.dataset.subfamilyBound !== "1") {
+    familySelect.addEventListener("change", filterSubfamilies);
+    familySelect.dataset.subfamilyBound = "1";
+  }
   filterSubfamilies();
   populateWorkshopMetaSelectors();
 }
 
 function filterSubfamilies() {
-  const familyId = $("#ing_family_id").value;
-  fillSelect($("#ing_subfamily_id"), catalogs.subfamilies.filter(s => !familyId || s.family_id === familyId), { empty: "Sin subfamilia" });
+  const familySelect = $("#ing_family_id");
+  const familyId = familySelect?.value || "";
+  fillSelect($("#ing_subfamily_id"), (catalogs?.subfamilies || []).filter(s => !familyId || s.family_id === familyId), { empty: "Sin subfamilia" });
 }
 
-function newIngredientForm() { clearIngredientForm(); switchTab("archive-ingredients"); $("#ing_name").focus(); }
+function newIngredientForm() { switchTab("archive-ingredients"); setTimeout(() => { clearIngredientForm(); $("#ing_name")?.focus(); }, 0); }
 
 function clearIngredientForm(shouldRender = true) {
   selectedIngredientId = null;
-  $("#ingredientForm").reset();
-  $("#ing_id").value = "";
-  $("#ing_purchase_net_quantity").value = "1";
-  $("#ing_waste_pct").value = "0";
-  $("#ing_hydration_factor").value = "0";
-  $("#ing_edible_yield_pct").value = "100";
-  $("#ing_active").checked = true;
-  $("#ing_use_culinary").checked = true;
-  $("#ingredientFormTitle").textContent = "Nuevo ingrediente";
+  const form = $("#ingredientForm");
+  if (!form) return;
+  form.reset();
+  const idEl = $("#ing_id"); if (idEl) idEl.value = "";
+  const net = $("#ing_purchase_net_quantity"); if (net) net.value = "1";
+  const waste = $("#ing_waste_pct"); if (waste) waste.value = "0";
+  const hydration = $("#ing_hydration_factor"); if (hydration) hydration.value = "0";
+  const yieldEl = $("#ing_edible_yield_pct"); if (yieldEl) yieldEl.value = "100";
+  const active = $("#ing_active"); if (active) active.checked = true;
+  const culinary = $("#ing_use_culinary"); if (culinary) culinary.checked = true;
+  const title = $("#ingredientFormTitle"); if (title) title.textContent = "Nuevo ingrediente";
   if (shouldRender && repo) renderIngredients();
 }
 
@@ -2448,7 +2749,7 @@ function loadIngredientForm(id) {
   const ing = repo.ingredientById(id);
   if (!ing) return toast("No se encontró el ingrediente.", "err");
   selectedIngredientId = id;
-  $("#ingredientFormTitle").textContent = `Editar ingrediente · ${ing.name}`;
+  const title = $("#ingredientFormTitle"); if (title) title.textContent = `Editar ingrediente · ${ing.name}`;
   setValue("ing_id", ing.id); setValue("ing_name", ing.name);
   setValue("ing_family_id", ing.family_id); filterSubfamilies();
   setValue("ing_subfamily_id", ing.subfamily_id); setValue("ing_base_unit_id", ing.base_unit_id);
@@ -2494,6 +2795,7 @@ async function saveIngredientFromForm(ev) {
     if (data.$purchase_net_quantity <= 0) throw new Error("La cantidad neta de compra debe ser mayor que 0.");
     if (data.$waste_pct < 0 || data.$waste_pct >= 100) throw new Error("La merma debe estar entre 0 y 99,99 %.");
     repo.saveIngredient(data);
+    catalogs = repo.catalogs();
     selectedIngredientId = id;
     renderAll();
     loadIngredientForm(id);
@@ -2511,6 +2813,7 @@ async function deactivateSelectedIngredient() {
 No se borra: solo active = 0.`)) return;
   await autosave({ backup: true, reason: "antes de desactivar" });
   repo.deactivateIngredient(selectedIngredientId);
+  catalogs = repo.catalogs();
   clearIngredientForm();
   renderAll();
   await autosave({ backup: false, reason: "desactivar" });
@@ -2894,31 +3197,35 @@ async function sha256Hex(bytes) {
 function exportPrivateSqlite() {
   const base = slugTechnical(privateSourceName()) || PRIVATE_DEFAULT_SOURCE_ID;
   downloadBytes(`SwiftRemo_${base}_${dateSlug()}.sqlite`, swiftDb.exportBytes());
-  toast("Copia SQLite privada descargada.");
-  setStatus("Copia local privada descargada. No la subas al repositorio público.", "ok");
+  setPersistenceStateRc12({ lastDownloadAt: new Date().toISOString(), lastDownloadKind: "copia con material local", privateMaterial: true, note: "Copia privada descargada. No subir a repositorio público." });
+  toast("Copia con material local descargada.");
+  setStatus("Copia con material local descargada. No la subas al repositorio público.", "ok");
 }
 
 function exportSqlite() {
-  downloadBytes(`swiftremo_${dateSlug()}.sqlite`, swiftDb.exportBytes());
+  downloadBytes(`swiftremo_trabajo_${dateSlug()}.sqlite`, swiftDb.exportBytes());
+  setPersistenceStateRc12({ lastDownloadAt: new Date().toISOString(), lastDownloadKind: "copia de trabajo", note: "Copia de trabajo descargada manualmente." });
   setState("Guardado", "clean");
-  setStatus("Copia .sqlite descargada.", "ok");
-  toast("Copia SQLite descargada.");
+  setStatus("Copia de trabajo descargada. Esta es la copia principal para conservar o trasladar el trabajo.", "ok");
+  toast("Copia de trabajo descargada.");
 }
 
-function exportJson() { downloadJson(`swiftremo_export_${dateSlug()}.json`, repo.exportJson()); toast("JSON técnico exportado."); }
+function exportJson() {
+  downloadJson(`swiftremo_diagnostico_ligero_${dateSlug()}.json`, lightweightTechnicalDiagnosticRc12());
+  setStatus("Diagnóstico técnico ligero descargado. No incluye tablas completas ni imágenes.", "ok");
+  toast("Diagnóstico técnico ligero exportado.");
+}
+function exportFullAuditJsonRc12() {
+  if (!confirm("La auditoría completa puede ser grande y contener datos privados o material local integrado. ¿Descargar igualmente?")) return;
+  downloadJson(`swiftremo_auditoria_completa_${dateSlug()}.json`, fullAuditJsonRc12());
+  setStatus("Auditoría completa descargada bajo demanda. Revísala antes de compartirla.", "warn");
+  toast("Auditoría completa exportada.");
+}
 
 function runSql() {
-  try { $("#sqlOutput").textContent = JSON.stringify(repo.selectOnly($("#sqlInput").value), null, 2); }
+  try { $("#sqlOutput").textContent = safeJsonStringify(repo.selectOnly($("#sqlInput").value), 2); }
   catch (err) { $("#sqlOutput").textContent = err.stack || err.message; toast(err.message, "err"); }
 }
 
-function setValue(id, value) { $("#" + id).value = value ?? ""; }
-function badge(text, type = "ok") { return `<span class="badge ${type}">${esc(text)}</span>`; }
-function roleLabel(role) {
-  const labels = { flour: "Harina", liquid: "Líquido", yeast: "Levadura", salt: "Sal", fat: "Grasa", sugar: "Azúcar", egg: "Huevo", dairy: "Lácteo", aroma: "Aroma", seed: "Semilla", inclusion: "Inclusión", other: "Otro" };
-  return labels[role] || role || "";
-}
-function nullIfEmpty(value) { const v = String(value ?? "").trim(); return v ? v : null; }
-function num(value, fallback = 0) { const n = Number(String(value ?? "").replace(",", ".")); return Number.isFinite(n) ? n : fallback; }
-function dateSlug() { const d = new Date(); const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; }
-function formatDate(value) { try { return new Date(value).toLocaleString("es-ES"); } catch { return ""; } }
+const setValue = (id, value) => setInputValue($, id, value);
+const badge = badgeHtml;

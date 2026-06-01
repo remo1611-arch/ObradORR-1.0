@@ -1,0 +1,6 @@
+SwiftRemo v1.0 RC12 HOTFIX SYNTAX APPJS
+
+Corrección urgente sobre RC10c:
+- Se elimina una llave de cierre sobrante en app/js/app.js que provocaba SyntaxError: Unexpected token } en contexto ESM.
+- Se valida app/js/app.js como módulo real con node --input-type=module --check, no solo como script clásico.
+- No se avanza a RC11; esta entrega estabiliza RC10 antes de continuar.

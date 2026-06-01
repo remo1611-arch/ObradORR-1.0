@@ -1,13 +1,15 @@
-import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js?v=100rc3";
-import { printCulinaryRecipe } from "./print-service-v6-3.js?v=100rc3";
-import { slugCulinaryRecipeIdFromName, slugCulinaryLineId } from "./repositories.js?v=100rc3";
+import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js?v=150v15";
+import { printCulinaryRecipe } from "./print.js?v=150v15";
+import { slugCulinaryRecipeIdFromName, slugCulinaryLineId } from "./repositories.js?v=150v15";
 
 let selectedRecipeId = null;
 let selectedLineId = null;
 let readyBound = false;
 
 window.addEventListener("DOMContentLoaded", initCulinaryUi);
-window.addEventListener("swiftremo:coreReady", () => renderCulinaryUi());
+window.addEventListener("swiftremo:lazyViewReady", ev => { if (ev?.detail?.route === "archive-culinary") initCulinaryUi(); });
+window.addEventListener("swiftremo:culinaryReady", initCulinaryUi);
+window.addEventListener("swiftremo:coreReady", () => { initCulinaryUi(); renderCulinaryUi(); });
 window.addEventListener("swiftremo:render", () => renderCulinaryUi());
 
 function core() { return window.SwiftRemoCore; }

@@ -79,27 +79,54 @@ function ensureHost(cfg) {
   return host;
 }
 
+function sectionIdForRoute(domain, route) {
+  return DOMAIN_ROUTES[domain]?.routes?.[route] || null;
+}
+
+function instantiateLazyView(sectionId) {
+  let view = document.getElementById(sectionId);
+  if (view) return view;
+  const template = document.querySelector(`template[data-lazy-view="${sectionId}"]`);
+  if (!template) return null;
+  const fragment = template.content.cloneNode(true);
+  view = fragment.firstElementChild;
+  if (!view) return null;
+  template.replaceWith(fragment);
+  window.SwiftRemoBootMetrics?.mark?.('lazy-dom:view-instantiated', sectionId);
+  return document.getElementById(sectionId) || view;
+}
+
 export function createDomainShell({ onBeforeNavigate, onAfterNavigate, state } = {}) {
   let active = { domain: 'workshop', route: 'workshop', viewId: null };
   const movedViews = new Map();
 
+  function ensureRouteView(domain, route) {
+    const cfg = DOMAIN_ROUTES[domain];
+    const sectionId = sectionIdForRoute(domain, route);
+    if (!cfg || !sectionId) return null;
+    const host = ensureHost(cfg);
+    if (!host) return null;
+
+    let view = movedViews.get(route) || document.getElementById(sectionId) || instantiateLazyView(sectionId);
+    if (!view) return null;
+
+    if (!movedViews.has(route)) {
+      view.classList.remove('tab-section', 'active');
+      view.classList.add('domain-nested-view');
+      view.dataset.domain = domain;
+      view.dataset.domainRoute = route;
+      view.hidden = true;
+      host.append(view);
+      movedViews.set(route, view);
+      document.dispatchEvent(new CustomEvent('swiftremo:lazyViewReady', {
+        detail: { domain, route, sectionId, view }
+      }));
+    }
+    return view;
+  }
+
   function init() {
     for (const cfg of Object.values(DOMAIN_ROUTES)) ensureHost(cfg);
-    for (const [domain, cfg] of Object.entries(DOMAIN_ROUTES)) {
-      const host = ensureHost(cfg);
-      if (!host) continue;
-      for (const [route, sectionId] of Object.entries(cfg.routes)) {
-        const view = document.getElementById(sectionId);
-        if (!view) continue;
-        view.classList.remove('tab-section', 'active');
-        view.classList.add('domain-nested-view');
-        view.dataset.domain = domain;
-        view.dataset.domainRoute = route;
-        view.hidden = true;
-        host.append(view);
-        movedViews.set(route, view);
-      }
-    }
     navigate('workshop', { scroll: false, replace: true });
   }
 
@@ -119,9 +146,10 @@ export function createDomainShell({ onBeforeNavigate, onAfterNavigate, state } =
   function setNestedView(domain, route) {
     const cfg = DOMAIN_ROUTES[domain];
     if (!cfg) return;
+    const activeView = ensureRouteView(domain, route);
     const section = document.getElementById(cfg.sectionId);
-    if (section) section.classList.toggle('has-domain-view', !!cfg.routes[route]);
-    Object.keys(cfg.routes).forEach(key => {
+    if (section) section.classList.toggle('has-domain-view', !!activeView);
+    Object.entries(cfg.routes).forEach(([key]) => {
       const view = movedViews.get(key);
       if (view) view.hidden = key !== route;
     });

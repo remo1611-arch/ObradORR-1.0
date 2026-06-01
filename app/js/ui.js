@@ -1,6 +1,35 @@
 export const $ = sel => document.querySelector(sel);
 export const $$ = sel => Array.from(document.querySelectorAll(sel));
 
+const uiRuntimeState = {
+  dbState: { label: "Preparando…", state: "loading" },
+  status: { message: "La base todavía no se ha cargado.", type: "warn" },
+  save: { message: "Preparando guardado…", type: "saving", detail: "Sin cambios todavía." }
+};
+
+function applyUiRuntimeState() {
+  const stateEl = $("#dbState");
+  if (stateEl) {
+    stateEl.textContent = uiRuntimeState.dbState.label;
+    stateEl.className = `state-pill state-${uiRuntimeState.dbState.state}`;
+  }
+  const statusEl = $("#statusBox");
+  if (statusEl) {
+    statusEl.textContent = uiRuntimeState.status.message;
+    statusEl.className = `status-box ${uiRuntimeState.status.type === "ok" ? "ok" : uiRuntimeState.status.type === "err" ? "err" : uiRuntimeState.status.type === "warn" ? "warn" : ""}`;
+  }
+  const indicator = $("#saveIndicator");
+  if (indicator) {
+    indicator.textContent = uiRuntimeState.save.message;
+    indicator.className = `save-indicator ${uiRuntimeState.save.type}`;
+  }
+  const detailEl = $("#lastSavedInfo");
+  if (detailEl) detailEl.textContent = uiRuntimeState.save.detail || "";
+}
+
+document.addEventListener("DOMContentLoaded", applyUiRuntimeState);
+document.addEventListener("swiftremo:lazyViewReady", applyUiRuntimeState);
+
 export function esc(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
@@ -21,25 +50,24 @@ export function toast(message, type = "ok") {
   const el = document.createElement("div");
   el.className = `toast ${type === "err" ? "err" : type === "warn" ? "warn" : ""}`;
   el.textContent = message;
-  stack.appendChild(el);
-  setTimeout(() => el.remove(), 3600);
+  if (stack) {
+    stack.appendChild(el);
+    setTimeout(() => el.remove(), 3600);
+  } else {
+    console[type === "err" ? "error" : type === "warn" ? "warn" : "info"](`[SwiftRemo] ${message}`);
+  }
 }
 export function setState(label, state = "clean") {
-  const el = $("#dbState");
-  el.textContent = label;
-  el.className = `state-pill state-${state}`;
+  uiRuntimeState.dbState = { label, state };
+  applyUiRuntimeState();
 }
 export function setStatus(message, type = "ok") {
-  const el = $("#statusBox");
-  el.textContent = message;
-  el.className = `status-box ${type === "ok" ? "ok" : type === "err" ? "err" : type === "warn" ? "warn" : ""}`;
+  uiRuntimeState.status = { message, type };
+  applyUiRuntimeState();
 }
 export function setSaveIndicator(message, type = "ok", detail = "") {
-  const indicator = $("#saveIndicator");
-  const detailEl = $("#lastSavedInfo");
-  indicator.textContent = message;
-  indicator.className = `save-indicator ${type}`;
-  detailEl.textContent = detail;
+  uiRuntimeState.save = { message, type, detail };
+  applyUiRuntimeState();
 }
 export function table(headers, rows, opts = {}) {
   if (!rows?.length) return "<p class='small'>Sin datos.</p>";
@@ -60,8 +88,17 @@ export function fillSelect(select, rows, { value = "id", label = "name", empty =
 export function downloadBytes(filename, bytes, mime = "application/octet-stream") {
   downloadBlob(filename, new Blob([bytes], { type: mime }));
 }
+export function jsonSafeReplacer(_key, value) {
+  if (typeof value === "bigint") return value.toString();
+  if (value instanceof Uint8Array) return `[Uint8Array ${value.byteLength} bytes]`;
+  if (value instanceof ArrayBuffer) return `[ArrayBuffer ${value.byteLength} bytes]`;
+  return value;
+}
+export function safeJsonStringify(obj, space = 2) {
+  return JSON.stringify(obj, jsonSafeReplacer, space);
+}
 export function downloadJson(filename, obj) {
-  downloadBlob(filename, new Blob([JSON.stringify(obj, null, 2)], { type: "application/json;charset=utf-8" }));
+  downloadBlob(filename, new Blob([safeJsonStringify(obj, 2)], { type: "application/json;charset=utf-8" }));
 }
 function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob);

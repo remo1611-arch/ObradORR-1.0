@@ -1,0 +1,9 @@
+SwiftRemo SQL v1.0 RC10c HOTFIX_LAZY_DOM
+
+Corrección de regresión detectada en RC10_LAZY_DOM:
+- El panel de Sistema/Datos quedó dentro de template lazy y ui.js seguía escribiendo textContent en #statusBox, #saveIndicator y #lastSavedInfo antes de materializar la vista.
+- Se añade estado runtime de UI y aplicación diferida al materializar vistas lazy.
+- populateCatalogs(), filterSubfamilies() y clearIngredientForm() se hacen compatibles con vistas no instanciadas.
+- Al materializar archive-ingredients se repueblan catálogos y formulario.
+
+No se avanza a RC11. Es un hotfix de Fase 4.

@@ -1,0 +1,12 @@
+SwiftRemo SQL v1.5 · validación pública
+
+Comprobaciones mínimas:
+1. Abrir app sin Error JS.
+2. Abrir Taller.
+3. Abrir Archivo técnico → Catálogo.
+4. Probar paginación de Ingredientes y Elaboraciones.
+5. Abrir Fórmulas panaderas, Fichas cocina/pastelería e Histórico.
+6. Abrir Sistema → Gestionar datos.
+7. Descargar copia .sqlite.
+8. Descargar diagnóstico ligero.
+9. Consola sin errores rojos críticos.

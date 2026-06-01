@@ -1,23 +1,15 @@
-# SwiftRemo · publicación pública 6.69.2
+# Publicación · SwiftRemo SQL v1.5
 
-Paquete mínimo para GitHub Pages.
+Uso local recomendado:
 
-Incluye solo lo necesario para ejecutar la app:
+```bash
+python -m http.server 8033
+```
 
-- `index.html`
-- `Abrir_SwiftRemo.html`
-- `app/`
-- `db/`
-- `assets/`
-- avisos públicos de autoría y uso
+URL:
 
-No incluye scripts de desarrollo, SQL fuente, migraciones ni auditorías históricas internas.
+```text
+http://127.0.0.1:8033/app/sqlite.html?v=150v15
+```
 
-## Fase 6.69.2
-
-Pulido final de impresión panadera y pedido:
-
-- nombre visible de levadura fresca corregido desde base;
-- módulo de impresión `print-service-v6-3.js`;
-- ocultación de bloques vacíos de acabados panaderos;
-- pedido técnico dividido en tablas con continuidad solo desde la segunda tabla.
+No publicar copias privadas con material local integrado.

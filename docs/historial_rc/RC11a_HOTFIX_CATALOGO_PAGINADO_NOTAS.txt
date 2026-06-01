@@ -1,0 +1,13 @@
+SwiftRemo v1.0 RC12 · Hotfix catálogo paginado
+
+Motivo:
+- En RC11 el editor de ingredientes y elaboraciones ya usaba paginación SQL, pero Archivo técnico → Catálogo seguía usando archiveRows(), que traía colecciones completas y aplicaba qualityReview() a todos los registros antes de mostrar una página.
+
+Cambios:
+- Catálogo usa now archivePageData().
+- Con filtro de calidad = Todos, usa LIMIT/OFFSET SQL para ingredientes y elaboraciones.
+- La revisión de calidad JS se aplica solo a la página visible.
+- Si se usa un filtro de calidad específico, se conserva la ruta completa legacy por exactitud, aunque puede ser más lenta.
+
+Límite:
+- Para eliminar totalmente el coste de qualityReview() habría que persistir o precalcular indicadores de calidad en SQL/caché, preferiblemente en una fase técnica propia.

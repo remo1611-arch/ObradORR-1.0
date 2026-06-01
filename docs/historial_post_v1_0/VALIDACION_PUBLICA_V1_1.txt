@@ -1,0 +1,13 @@
+SwiftRemo SQL v1.3 · validación pública
+
+Comprobaciones realizadas en paquete:
+- Sintaxis ESM de todos los JS.
+- Integridad SQLite con PRAGMA integrity_check.
+- Comprobación HTTP estática de app, wasm y db.
+- Eliminación de carga inicial de módulos pesados opcionales en sqlite.html.
+
+Pruebas manuales pendientes en navegador real:
+- Abrir Panadería y comprobar carga bajo demanda.
+- Abrir Cocina/Pastelería y comprobar carga bajo demanda.
+- Abrir Histórico y comprobar carga bajo demanda.
+- Revisar consola sin errores críticos.

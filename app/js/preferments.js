@@ -1,4 +1,4 @@
-import { $, toast } from "./ui.js?v=100rc3";
+import { $, toast } from "./ui.js?v=150v15";
 
 let db = null;
 
@@ -36,6 +36,11 @@ let currentRecipeId = null;
 let yeastTypes = [];
 let presets = [];
 let initialized = false;
+
+window.addEventListener("swiftremo:lazyViewReady", event => {
+  if (event?.detail?.route === "archive-bakery") setTimeout(initPreferments, 60);
+});
+window.addEventListener("swiftremo:bakeryReady", () => setTimeout(initPreferments, 60));
 
 window.addEventListener("DOMContentLoaded", () => {
   const bakeryTab = document.querySelector('[data-tab="bakery"]');
@@ -443,7 +448,7 @@ function esc(value) {
 
 function notifyBakeryChangedV40(message) {
   window.dispatchEvent(new CustomEvent("swiftremo:bakeryChanged", {
-    detail: { source: "preferments-v3-8", message }
+    detail: { source: "preferments", message }
   }));
 }
 

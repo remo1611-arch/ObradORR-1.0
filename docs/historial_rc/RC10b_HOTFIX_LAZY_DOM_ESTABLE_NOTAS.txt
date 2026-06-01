@@ -1,0 +1,13 @@
+SwiftRemo v1.0 RC10c HOTFIX LAZY DOM ESTABLE
+
+Motivo:
+RC10/RC10a detectaron errores de arranque al materializar vistas mediante <template> lazy. La app conserva código legacy que consulta nodos por id en distintas fases del arranque, por lo que el lazy DOM completo aún no es seguro.
+
+Cambio aplicado:
+- Se desactiva la materialización diferida por <template> para devolver las vistas críticas al DOM activo.
+- Se mantiene la navegación por rutas y el render activo de RC8/RC9.
+- Se mantiene la medición de arranque.
+- Se mejora el mensaje visible de error de arranque para que muestre la causa real en #dbState/toast si hubiera otra excepción.
+
+Decisión técnica:
+Esta versión prioriza estabilidad. La Fase 4 queda como intento parcial: el siguiente paso seguro no es seguir migrando más DOM, sino estabilizar consultas/paginación/caché o rediseñar lazy DOM con contratos explícitos por vista.

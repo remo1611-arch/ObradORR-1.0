@@ -1,0 +1,10 @@
+SwiftRemo v1.0 RC10c · HOTFIX_BIND_EVENTS
+
+Corrección aplicada sobre RC10b:
+- Se cerró correctamente el bloque de bindSystemControlsV104().
+- bindEvents() vuelve a quedar en ámbito de módulo y puede ser llamada por init().
+- Se mantiene la reversión estable del lazy DOM por compatibilidad con selectores legacy.
+
+Motivo:
+RC10b mostraba: Error JS: bindEvents is not defined.
+La causa era una llave de cierre ausente tras el listener delegado de Sistema.

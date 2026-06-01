@@ -1,6 +1,6 @@
-import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js?v=100rc3";
-import { printClassSession, printClassOrder } from "./print-service-v6-3.js?v=100rc3";
-import { slugSessionIdFromTitle, slugSessionItemId } from "./repositories.js?v=100rc3";
+import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js?v=150v15";
+import { printClassSession, printClassOrder } from "./print.js?v=150v15";
+import { slugSessionIdFromTitle, slugSessionItemId } from "./repositories.js?v=150v15";
 
 let selectedSessionId = null;
 let selectedItemId = null;
@@ -10,6 +10,7 @@ const DEFAULT_RESPONSIBLE = "Remo J. Pereira González";
 
 window.addEventListener("DOMContentLoaded", initSessionUi);
 window.addEventListener("swiftremo:coreReady", () => renderSessionUi());
+window.addEventListener("swiftremo:historyReady", () => { initSessionUi(); renderSessionUi(); });
 
 function core() { return window.SwiftRemoCore; }
 function repo() { return core()?.repo; }

@@ -1,0 +1,11 @@
+SwiftRemo v1.0 RC13 · OPFS/WORKER EVALUACION
+
+Intervención de fase 6:
+- No autosalvar la base pública inicial sin cambios.
+- Reset a base pública sin crear snapshot automático.
+- Estado visible de persistencia en Sistema.
+- Copia de trabajo diferenciada de diagnóstico técnico.
+- Diagnóstico JSON ligero por defecto.
+- Auditoría completa bajo demanda con confirmación.
+
+No se cambia el modelo SQLite ni se migra a OPFS/Worker.

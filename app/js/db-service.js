@@ -1,5 +1,8 @@
 import sqlite3InitModule from "../wasm/index.mjs";
 
+function bootStartRc7(name, detail = "") { try { window.SwiftRemoBootMetrics?.start?.(name, detail); } catch (_) {} }
+function bootEndRc7(name, detail = "") { try { window.SwiftRemoBootMetrics?.end?.(name, detail); } catch (_) {} }
+
 export class SwiftDB {
   constructor() {
     this.sqlite3 = null;
@@ -8,25 +11,31 @@ export class SwiftDB {
 
   async init() {
     if (this.sqlite3) return this.sqlite3;
+    bootStartRc7("sqlite:init");
     this.sqlite3 = await sqlite3InitModule({
       print: (...args) => console.log(...args),
       printErr: (...args) => console.error(...args),
       locateFile: (file) => new URL("../wasm/" + file, import.meta.url).href
     });
+    bootEndRc7("sqlite:init");
     return this.sqlite3;
   }
 
   async loadFromUrl(url) {
     await this.init();
+    bootStartRc7("sqlite:url-fetch", url);
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) throw new Error(`No se pudo cargar ${url}: HTTP ${response.status}`);
     const buffer = await response.arrayBuffer();
+    bootEndRc7("sqlite:url-fetch", `${buffer.byteLength} bytes`);
     return this.loadFromBytes(new Uint8Array(buffer));
   }
 
   async loadFromFile(file) {
     await this.init();
+    bootStartRc7("sqlite:file-read", file?.name || "archivo local");
     const buffer = await file.arrayBuffer();
+    bootEndRc7("sqlite:file-read", `${buffer.byteLength} bytes`);
     return this.loadFromBytes(new Uint8Array(buffer));
   }
 
@@ -36,6 +45,7 @@ export class SwiftDB {
   }
 
   loadFromBytes(bytes) {
+    bootStartRc7("sqlite:deserialize", `${bytes?.byteLength || bytes?.length || 0} bytes`);
     this.close();
     const p = this.sqlite3.wasm.allocFromTypedArray(bytes);
     this.db = new this.sqlite3.oo1.DB();
@@ -47,6 +57,7 @@ export class SwiftDB {
     );
     this.db.checkRc(rc);
     this.exec("PRAGMA foreign_keys = ON;");
+    bootEndRc7("sqlite:deserialize");
     return this.db;
   }
 

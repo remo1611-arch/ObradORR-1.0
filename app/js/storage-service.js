@@ -34,6 +34,26 @@ export async function loadRecovery() {
   return txGet(db, CURRENT_KEY);
 }
 
+export async function hasCurrentRecovery() {
+  const db = await openDb();
+  const keys = await txKeys(db);
+  return keys.includes(CURRENT_KEY);
+}
+
+export async function getRecoveryInfo() {
+  const db = await openDb();
+  const current = await txGet(db, CURRENT_KEY);
+  const keys = await txKeys(db);
+  const backups = keys.filter(k => String(k).startsWith(BACKUP_PREFIX)).sort().reverse();
+  return {
+    hasCurrent: !!current,
+    savedAt: current?.savedAt || null,
+    size: current?.size || current?.bytes?.byteLength || current?.bytes?.length || 0,
+    reason: current?.reason || '',
+    backupCount: backups.length
+  };
+}
+
 export async function clearRecovery() {
   const db = await openDb();
   return txClear(db);

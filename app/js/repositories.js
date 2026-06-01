@@ -1,8 +1,34 @@
 export class Repository {
-  constructor(swiftDb) { this.db = swiftDb; }
+  constructor(swiftDb) {
+    this.db = swiftDb;
+    this._cache = new Map();
+  }
+
+  invalidateCache() {
+    this._cache.clear();
+  }
+
+  cached(key, producer) {
+    if (this._cache.has(key)) return this._cache.get(key);
+    const value = producer();
+    this._cache.set(key, value);
+    return value;
+  }
+
+  pagedQuery({ selectSql, fromWhereSql, orderSql, bind = {}, page = 1, pageSize = 50 }) {
+    const total = Number(this.db.selectValue(`SELECT COUNT(*) ${fromWhereSql};`, bind) ?? 0);
+    const all = String(pageSize) === "all";
+    const size = all ? Math.max(total, 1) : Math.max(1, Number(pageSize) || 50);
+    const totalPages = all ? 1 : Math.max(1, Math.ceil(total / size));
+    const safePage = all ? 1 : Math.min(Math.max(1, Number(page) || 1), totalPages);
+    const offset = all ? 0 : (safePage - 1) * size;
+    const limitSql = all ? "" : " LIMIT $limit OFFSET $offset";
+    const rows = this.db.query(`${selectSql} ${fromWhereSql} ${orderSql}${limitSql};`, all ? bind : { ...bind, $limit: size, $offset: offset });
+    return { rows, total, page: safePage, pageSize: all ? "all" : size, totalPages, offset, all };
+  }
 
 
-  unifiedElaborations({ search = "", type = "all", active = "active" } = {}) {
+  unifiedElaborationsWhere({ search = "", type = "all", active = "active" } = {}) {
     const filters = [];
     const bind = {};
     if (active === "active") filters.push("active = 1");
@@ -27,12 +53,41 @@ export class Repository {
       )`);
     }
     const where = filters.length ? "WHERE " + filters.join(" AND ") : "";
-    return this.db.query(`
-      SELECT *
+    return { where, bind };
+  }
+
+  unifiedElaborations({ search = "", type = "all", active = "active" } = {}) {
+    return this.unifiedElaborationsPage({ search, type, active, pageSize: "all" }).rows;
+  }
+
+  unifiedElaborationsPage({ search = "", type = "all", active = "active", page = 1, pageSize = 50 } = {}) {
+    const { where, bind } = this.unifiedElaborationsWhere({ search, type, active });
+    return this.pagedQuery({
+      selectSql: "SELECT *",
+      fromWhereSql: `FROM v_elaborations_unified ${where}`,
+      orderSql: "ORDER BY active DESC, name",
+      bind, page, pageSize
+    });
+  }
+
+  unifiedElaborationsSummary({ search = "", type = "all", active = "active" } = {}) {
+    const { where, bind } = this.unifiedElaborationsWhere({ search, type, active });
+    const rows = this.db.query(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN source_type='bakery' THEN 1 ELSE 0 END) AS bakery,
+        SUM(CASE WHEN source_type='culinary' THEN 1 ELSE 0 END) AS culinary,
+        SUM(CASE WHEN production_kind='technical_yield' THEN 1 ELSE 0 END) AS technical
       FROM v_elaborations_unified
-      ${where}
-      ORDER BY active DESC, name;
+      ${where};
     `, bind);
+    const r = rows[0] || {};
+    return {
+      total: Number(r.total || 0),
+      bakery: Number(r.bakery || 0),
+      culinary: Number(r.culinary || 0),
+      technical: Number(r.technical || 0)
+    };
   }
 
   unifiedElaborationByUid(uid) {
@@ -58,7 +113,7 @@ export class Repository {
     };
   }
 
-  ingredients({ search = "", active = "active", use = "all" } = {}) {
+  ingredientsWhere({ search = "", active = "active", use = "all" } = {}) {
     const filters = [];
     const bind = {};
     if (active === "active") filters.push("i.active = 1");
@@ -70,25 +125,51 @@ export class Repository {
       filters.push(`(
         lower(i.name) LIKE $q OR
         lower(COALESCE(f.name,'')) LIKE $q OR
+        lower(COALESCE(sf.name,'')) LIKE $q OR
         lower(COALESCE(og.name,'')) LIKE $q OR
         lower(COALESCE(i.bakery_role,'')) LIKE $q
       )`);
     }
     const where = filters.length ? "WHERE " + filters.join(" AND ") : "";
-    return this.db.query(`
+    return { where, bind };
+  }
+
+  ingredientsSelectSql() {
+    return `
       SELECT i.id, i.name, f.name AS family, sf.name AS subfamily, u.symbol AS base_unit,
              i.purchase_price, i.purchase_net_quantity, i.waste_pct,
              ic.cost_per_base_unit_after_waste, i.use_culinary, i.use_bakery,
-             i.bakery_role, i.hydration_factor, og.name AS order_group, i.active
+             i.bakery_role, i.hydration_factor, og.name AS order_group, i.active`;
+  }
+
+  ingredientsFromSql(where = "") {
+    return `
       FROM ingredients i
       LEFT JOIN technical_families f ON f.id = i.family_id
       LEFT JOIN technical_subfamilies sf ON sf.id = i.subfamily_id
       LEFT JOIN units u ON u.id = i.base_unit_id
       LEFT JOIN order_groups og ON og.id = i.order_group_id
       LEFT JOIN v_ingredients_cost ic ON ic.id = i.id
-      ${where}
-      ORDER BY i.active DESC, i.name;
-    `, bind);
+      ${where}`;
+  }
+
+  ingredients({ search = "", active = "active", use = "all" } = {}) {
+    return this.ingredientsPage({ search, active, use, pageSize: "all" }).rows;
+  }
+
+  ingredientsPage({ search = "", active = "active", use = "all", page = 1, pageSize = 50 } = {}) {
+    const { where, bind } = this.ingredientsWhere({ search, active, use });
+    return this.pagedQuery({
+      selectSql: this.ingredientsSelectSql(),
+      fromWhereSql: this.ingredientsFromSql(where),
+      orderSql: "ORDER BY i.active DESC, i.name",
+      bind, page, pageSize
+    });
+  }
+
+  ingredientListRowById(id) {
+    const rows = this.db.query(`${this.ingredientsSelectSql()} ${this.ingredientsFromSql("WHERE i.id=$id")} LIMIT 1;`, { $id: id });
+    return rows[0] ?? null;
   }
 
   ingredientById(id) {
@@ -96,7 +177,7 @@ export class Repository {
   }
 
   catalogs() {
-    return {
+    return this.cached("catalogs:v1", () => ({
       units: this.db.query("SELECT id, name, symbol FROM units ORDER BY unit_type, symbol;"),
       families: this.db.query(`
         SELECT id, name, area
@@ -116,7 +197,7 @@ export class Repository {
       orderGroups: this.db.query("SELECT id, name FROM order_groups ORDER BY sort_order, name;"),
       suppliers: this.db.query("SELECT id, name FROM suppliers ORDER BY name;"),
       storageZones: this.db.query("SELECT id, name FROM storage_zones ORDER BY name;")
-    };
+    }));
   }
 
   saveIngredient(data) {
@@ -144,10 +225,12 @@ export class Repository {
       );
     `;
     this.db.exec(sql, data);
+    this.invalidateCache();
   }
 
   deactivateIngredient(id) {
     this.db.exec("UPDATE ingredients SET active=0, updated_at=CURRENT_TIMESTAMP WHERE id=$id;", { $id: id });
+    this.invalidateCache();
   }
 
   bakeryFormula() {
@@ -886,7 +969,7 @@ export class Repository {
   }
 
   technicalAudit() {
-    return this.db.query(`
+    return this.cached("technicalAudit:v1", () => this.db.query(`
       WITH issues AS (
         SELECT 'error' AS severity, 'Panadería' AS area, br.name AS item,
                'La suma de harinas debe ser 100 % y ahora es ' || COALESCE(ROUND(bt.flour_pct_total, 3), 0) || ' %.' AS message
@@ -968,7 +1051,7 @@ export class Repository {
       SELECT severity, area, item, message
       FROM issues
       ORDER BY CASE severity WHEN 'error' THEN 1 WHEN 'warn' THEN 2 ELSE 3 END, area, item;
-    `);
+    `));
   }
 
   exportJson() {
