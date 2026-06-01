@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Reset SwiftRemo Recovery</title>
+  <style>
+    body{font-family:system-ui;margin:40px;background:#f7f1e8;color:#241d17}
+    .card{max-width:720px;background:#fffaf2;border:1px solid #e5d3bf;border-radius:18px;padding:24px}
+    button{padding:12px 16px;border-radius:12px;border:1px solid #7a4824;background:#7a4824;color:white;font-weight:800}
+    pre{background:white;padding:12px;border-radius:12px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Reset de recuperación local SwiftRemo</h1>
+    <p>Esto borra la copia interna guardada en este navegador. No borra <code>db/swiftremo.sqlite</code>.</p>
+    <button id="reset">Borrar recuperación local</button>
+    <pre id="out">Pendiente…</pre>
+  </div>
+
+  <script>
+    document.getElementById("reset").addEventListener("click", () => {
+      const out = document.getElementById("out");
+      const req = indexedDB.deleteDatabase("swiftremo-recovery");
+
+      req.onsuccess = () => {
+        out.textContent = "Recuperación local borrada correctamente. Ya puedes abrir la app.";
+      };
+
+      req.onerror = () => {
+        out.textContent = "Error al borrar recuperación: " + req.error;
+      };
+
+      req.onblocked = () => {
+        out.textContent = "Bloqueado: cierra otras pestañas de SwiftRemo y vuelve a pulsar.";
+      };
+    });
+  </script>
+</body>
+</html>

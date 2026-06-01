@@ -1,0 +1,12 @@
+OK node --check app/js/*.js
+OK paquete público limpio mantenido
+OK sin scripts/sql/migration
+OK sin __pycache__ ni .pyc
+OK cache ?v=6692
+OK metadata schema_version 6.69.2
+OK print-service-v6-3 activo
+OK print-service-v6-2 retirado del paquete público
+OK ingrediente visible: Levadura fresca prensada
+OK fichas culinarias mantienen columna Unidad
+OK alérgenos canónicos en vista SQL
+OK pedido técnico sin “continuación de tabla” en primera tabla
