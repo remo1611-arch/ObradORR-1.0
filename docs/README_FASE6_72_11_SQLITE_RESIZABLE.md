@@ -1,4 +1,4 @@
-# Fase 6.72.11 · SQLite deserializable redimensionable
+# Fase 6.72.12 · SQLite deserializable redimensionable
 
 Corrección técnica crítica: la base SQLite cargada desde `db/swiftremo.sqlite` se deserializa ahora con `SQLITE_DESERIALIZE_RESIZEABLE`, además de `SQLITE_DESERIALIZE_FREEONCLOSE`.
 

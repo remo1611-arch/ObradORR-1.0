@@ -1,16 +1,16 @@
-import { SwiftDB } from "./db-service.js?v=6731";
-import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=6731";
-import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-3.js?v=6731";
-import { loadRecovery, saveRecovery, clearRecovery } from "./storage-service.js?v=6731";
-import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson } from "./ui.js?v=6731";
-import { createAppState } from "./ui/state.js?v=6731";
-import { createDomainShell } from "./ui/app-shell.js?v=6731";
-import { createWorkshopDomain } from "./domain/workshop.js?v=6731";
-import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=6731";
-import { createHistoryDomain } from "./domain/history.js?v=6731";
-import { createSystemBackupService } from "./domain/system-backup.js?v=6731";
-import { createPrintDomain } from "./domain/print.js?v=6731";
-import { createWorkshopView } from "./ui/workshop-view.js?v=6731";
+import { SwiftDB } from "./db-service.js?v=6732";
+import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=6732";
+import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-3.js?v=6732";
+import { loadRecovery, saveRecovery, clearRecovery } from "./storage-service.js?v=6732";
+import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson } from "./ui.js?v=6732";
+import { createAppState } from "./ui/state.js?v=6732";
+import { createDomainShell } from "./ui/app-shell.js?v=6732";
+import { createWorkshopDomain } from "./domain/workshop.js?v=6732";
+import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=6732";
+import { createHistoryDomain } from "./domain/history.js?v=6732";
+import { createSystemBackupService } from "./domain/system-backup.js?v=6732";
+import { createPrintDomain } from "./domain/print.js?v=6732";
+import { createWorkshopView } from "./ui/workshop-view.js?v=6732";
 
 const swiftDb = new SwiftDB();
 let repo = null;
@@ -433,7 +433,11 @@ function initDomainLayer() {
       }
       return true;
     },
-    onAfterNavigate: () => renderDomainActions(getWorkshopState()); printDomain?.setEnabled?.(getWorkshopState())
+    onAfterNavigate: () => {
+      const workshopState = getWorkshopState();
+      renderDomainActions(workshopState);
+      printDomain?.setEnabled?.(workshopState);
+    }
   });
   domainShell.init();
 }

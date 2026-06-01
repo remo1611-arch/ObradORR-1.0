@@ -1,4 +1,4 @@
-import { esc, fmtMoney, fmtNumber } from "./ui.js?v=6731";
+import { esc, fmtMoney, fmtNumber } from "./ui.js?v=6732";
 
 const PRINT_STYLE = `
   @page { size: A4; margin: 10mm; }
