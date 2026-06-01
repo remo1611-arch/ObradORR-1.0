@@ -1,16 +1,16 @@
-import { SwiftDB } from "./db-service.js?v=6733";
-import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=6733";
-import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-3.js?v=6733";
-import { loadRecovery, saveRecovery, clearRecovery } from "./storage-service.js?v=6733";
-import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson } from "./ui.js?v=6733";
-import { createAppState } from "./ui/state.js?v=6733";
-import { createDomainShell } from "./ui/app-shell.js?v=6733";
-import { createWorkshopDomain } from "./domain/workshop.js?v=6733";
-import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=6733";
-import { createHistoryDomain } from "./domain/history.js?v=6733";
-import { createSystemBackupService } from "./domain/system-backup.js?v=6733";
-import { createPrintDomain } from "./domain/print.js?v=6733";
-import { createWorkshopView } from "./ui/workshop-view.js?v=6733";
+import { SwiftDB } from "./db-service.js?v=100rc1";
+import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=100rc1";
+import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-3.js?v=100rc1";
+import { loadRecovery, saveRecovery, clearRecovery } from "./storage-service.js?v=100rc1";
+import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson } from "./ui.js?v=100rc1";
+import { createAppState } from "./ui/state.js?v=100rc1";
+import { createDomainShell } from "./ui/app-shell.js?v=100rc1";
+import { createWorkshopDomain } from "./domain/workshop.js?v=100rc1";
+import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=100rc1";
+import { createHistoryDomain } from "./domain/history.js?v=100rc1";
+import { createSystemBackupService } from "./domain/system-backup.js?v=100rc1";
+import { createPrintDomain } from "./domain/print.js?v=100rc1";
+import { createWorkshopView } from "./ui/workshop-view.js?v=100rc1";
 
 const swiftDb = new SwiftDB();
 let repo = null;
@@ -372,7 +372,7 @@ async function loadBestAvailableDb() {
 }
 
 async function loadInitialDbWithConfirm() {
-  if (!confirm("¿Usar la base inicial? Si no has descargado una copia, podrías perder los cambios actuales.")) return;
+  if (!confirm("Vas a reiniciar la base local con la base pública inicial. Si no has descargado una copia SQLite, podrías perder cambios, paquetes privados o fotos BLOB integradas. ¿Continuar?")) return;
   await clearRecovery();
   await loadInitialDb(true);
 }
@@ -388,17 +388,29 @@ async function loadInitialDb(saveAsCurrent = true) {
 }
 
 async function loadSqliteFile(ev) {
+  const input = ev.target;
   cancelPendingPracticeContextSave("importación SQLite");
-  const file = ev.target.files?.[0];
+  const file = input.files?.[0];
   if (!file) return;
+  const sizeMb = file.size ? (file.size / (1024 * 1024)).toLocaleString("es-ES", { maximumFractionDigits: 1 }) : "desconocido";
+  if (!confirm(`Importar "${file.name}" (${sizeMb} MB) sustituirá la base local activa del navegador. Descarga antes una copia SQLite si quieres conservar el estado actual. ¿Continuar?`)) {
+    input.value = "";
+    return;
+  }
   try {
+    setState("Importando copia…", "saving");
+    setStatus(`Importando copia SQLite: ${file.name}`, "warn");
     await swiftDb.loadFromFile(file);
     ensurePrivateMediaSchema();
-    await autosave({ backup: true, reason: "importación" });
+    await autosave({ backup: true, reason: `importación ${file.name}` });
     afterDbLoaded(`Copia importada: ${file.name}`, "Guardado", new Date().toISOString());
+    setStatus(`Copia SQLite importada correctamente: ${file.name}.`, "ok");
   } catch (err) {
     console.error(err); toast(err.message, "err");
     setSaveIndicator("Error al importar", "err", err.message);
+    setStatus(`No se pudo importar la copia SQLite: ${err.message}`, "err");
+  } finally {
+    input.value = "";
   }
 }
 
@@ -2506,8 +2518,8 @@ No se borra: solo active = 0.`)) return;
 }
 
 
-const PRIVATE_DEFAULT_SOURCE_NAME = "Carlos González Sanmartín";
-const PRIVATE_DEFAULT_SOURCE_ID = "carlos_gonzalez_sanmartin";
+const PRIVATE_DEFAULT_SOURCE_NAME = "Paquete privado local";
+const PRIVATE_DEFAULT_SOURCE_ID = "paquete_privado_local";
 const PRIVATE_MERGE_TABLES = Object.freeze([
   "data_sources", "units", "technical_families", "technical_subfamilies", "order_groups", "suppliers", "storage_zones", "allergens",
   "ingredients", "ingredient_allergens", "ingredient_price_history",
@@ -2786,7 +2798,7 @@ function renderPrivateDataManager() {
       <div class="kpi"><span>Fotos vinculadas</span><b>${fmtNumber(stats.linked,0)}</b></div>
       <div class="kpi"><span>Vínculos pendientes</span><b>${fmtNumber(stats.pending,0)}</b></div>
     </div>
-    ${stats.pending ? `<div class="notice warn"><b>Fotos privadas pendientes</b><p>Hay ${fmtNumber(stats.pending,0)} vínculo(s) de foto cuyo ID de ficha todavía no existe en la base actual. No es un error si has importado primero las fotos de Carlos: se activarán cuando se importe una base de fichas con esos mismos IDs.</p></div>` : ""}
+    ${stats.pending ? `<div class="notice warn"><b>Fotos privadas pendientes</b><p>Hay ${fmtNumber(stats.pending,0)} vínculo(s) de foto cuyo ID de ficha todavía no existe en la base actual. No es un error si has importado primero las fotos: se activarán cuando se importe una base de fichas con esos mismos IDs.</p></div>` : ""}
     ${sources.length ? table([
       { label: "Origen", key: "name" },
       { label: "ID", key: "id" },

@@ -1,60 +1,49 @@
-# SwiftRemo
+# SwiftRemo v1.0 RC1
 
-Aplicación docente para aula-taller de Cocina, Pastelería y Panadería: prácticas, fichas técnicas, formulación panadera, pedidos e impresión A4.
+Aplicación docente para aula-taller de Cocina, Pastelería y Panadería: prácticas, fichas técnicas, formulación panadera, pedidos, impresión A4 y gestión local de datos SQLite.
 
-Versión pública: **Fase 6.72.12 · Corrección de caché total de módulos ES
+## Estado de esta versión
 
-## Uso
+**Versión pública:** `SwiftRemo v1.0 RC1 · Windows · Datos y copias · Paquetes privados BLOB`
 
-Abre la app publicada en GitHub Pages:
+Esta RC parte de `SwiftRemo_v2_SQL_FASE6_72_13_ESTADO_FIJO_PAGINACION.zip` y mantiene la arquitectura por dominios:
 
-```text
-https://remo1611-arch.github.io/SwiftRemo/
-```
+- **Taller:** práctica activa del día.
+- **Histórico:** prácticas archivadas y documentación cerrada.
+- **Archivo técnico:** verdad maestra de elaboraciones, ingredientes y formulación.
+- **Sistema:** copias SQLite, importación/exportación, base inicial, paquetes privados y SQL técnico.
 
-La base incluida es una base inicial. Los cambios de cada usuario se guardan en su navegador y deben exportarse como copia `.sqlite` para conservarlos, trasladarlos o enviarlos para revisión.
+## Publicación en GitHub Pages
 
-## Modelo de trabajo
+La carpeta del ZIP puede subirse directamente al repositorio público de GitHub Pages. Se incluyen:
 
-- La app pública sirve una base inicial común.
-- Cada usuario trabaja con su propia copia local en el navegador.
-- Si un docente quiere aportar fichas o mejoras, debe compartir una copia `.sqlite` o un paquete de datos para revisión.
-- La integración en la base pública se realiza de forma curada por el responsable del proyecto.
+- `index.html` como entrada raíz.
+- `.nojekyll` para evitar tratamiento Jekyll.
+- `app/sqlite.html` como aplicación principal.
+- `db/swiftremo.sqlite` como base pública inicial.
+- `app/wasm/index.mjs` y `app/wasm/sqlite3.wasm` como motor SQLite WASM.
+
+La base pública incluida no contiene paquetes privados ni fotografías BLOB.
+
+## Modelo de datos y copias
+
+La app pública carga una base inicial común. Cada usuario trabaja con su propia base local en el navegador.
+
+- La recuperación interna del navegador ayuda ante cierres accidentales.
+- La copia **SQLite descargada** es el respaldo real para conservar, trasladar o revisar trabajo.
+- Importar una copia `.sqlite` o `.db` sustituye la base local activa del navegador tras confirmación.
+- Reiniciar con la base pública limpia elimina la base local activa tras confirmación.
+
+## Paquetes privados y fotos BLOB
+
+La RC mantiene soporte para paquetes privados SQLite y fotografías integradas como BLOB optimizado. Lo importado queda en el navegador local y en la copia privada descargada; no se incorpora a la base pública del repositorio.
+
+Regla operativa: las copias privadas con datos de terceros o fotos BLOB no deben subirse a GitHub.
 
 ## Derechos y uso autorizado
 
 SwiftRemo, su código, base docente, fichas, datos, estructura y documentación asociada son propiedad de **Remo José Pereira González**, salvo elementos de terceros expresamente identificados.
 
-No se concede licencia abierta de reutilización, redistribución, publicación de versiones derivadas ni explotación comercial.
-
-Se permite el uso docente personal de la app publicada. Cualquier redistribución, adaptación pública, incorporación a otro producto, publicación de copias modificadas o uso comercial requiere autorización expresa y previa.
+No se concede licencia abierta de reutilización, redistribución, publicación de versiones derivadas ni explotación comercial. Se permite el uso docente personal de la app publicada. Cualquier redistribución, adaptación pública, incorporación a otro producto, publicación de copias modificadas o uso comercial requiere autorización expresa y previa.
 
 Consulta `NOTICE.md` y `AVISO_LEGAL.md`.
-
-## Fotografías
-
-La base pública no incorpora fotografías privadas. Las fotos de paquetes locales pueden guardarse como BLOB optimizado dentro de una copia `.sqlite` privada, siempre que sean propias, de dominio público, Creative Commons compatible con atribución verificable o cuenten con permiso expreso.
-
-No deben publicarse fotografías privadas en GitHub ni usarse fotografías tomadas de internet sin licencia clara.
-
-
-Versión pública actual: `swiftremo_sql_fase6.72.12_cache_total_imports
-
-
-## Versión publicada
-
-Fase 6.72.12 · Corrección de caché total de módulos ES
-
-
-## Interfaz docente 6.72.3
-
-La navegación principal se organiza en cuatro dominios: **Taller / Histórico / Archivo técnico / Sistema**. Las pantallas internas heredadas se conservan como transición funcional hasta completar la sustitución por adaptadores.
-
-
-## Fase 6.72.12 · Corrección de caché total de módulos ES
-
-Paquetes privados con fotos BLOB y vínculos pendientes: las fotos pueden importarse antes que las fichas privadas y quedan conservadas en la base local.
-
-
-## Fase 6.72.12
-Corrección de crecimiento SQLite en memoria durante importación de paquetes privados: `sqlite3_deserialize()` usa ahora `SQLITE_DESERIALIZE_RESIZEABLE`.

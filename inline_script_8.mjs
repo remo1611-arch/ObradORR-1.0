@@ -1,5 +1,5 @@
 
-    import { printClassOrder } from "./js/print-service-v6-3.js?v=6728";
+    import { printClassOrder } from "./js/print-service-v6-3.js?v=100rc1";
     import { toast } from "./js/ui.js";
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.querySelector("#globalPrintOrderV61");

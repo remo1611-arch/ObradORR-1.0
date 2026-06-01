@@ -32,7 +32,7 @@ export function setState(label, state = "clean") {
 export function setStatus(message, type = "ok") {
   const el = $("#statusBox");
   el.textContent = message;
-  el.className = `status-box ${type === "ok" ? "ok" : type === "err" ? "err" : ""}`;
+  el.className = `status-box ${type === "ok" ? "ok" : type === "err" ? "err" : type === "warn" ? "warn" : ""}`;
 }
 export function setSaveIndicator(message, type = "ok", detail = "") {
   const indicator = $("#saveIndicator");

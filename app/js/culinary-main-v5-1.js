@@ -1,6 +1,6 @@
-import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js?v=6732";
-import { printCulinaryRecipe } from "./print-service-v6-3.js?v=6732";
-import { slugCulinaryRecipeIdFromName, slugCulinaryLineId } from "./repositories.js?v=6732";
+import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js?v=100rc1";
+import { printCulinaryRecipe } from "./print-service-v6-3.js?v=100rc1";
+import { slugCulinaryRecipeIdFromName, slugCulinaryLineId } from "./repositories.js?v=100rc1";
 
 let selectedRecipeId = null;
 let selectedLineId = null;

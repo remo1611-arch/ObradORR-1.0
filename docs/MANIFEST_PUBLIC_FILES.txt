@@ -23,13 +23,13 @@
 ./app/js/repositories.js
 ./app/js/storage-service.js
 ./app/js/swiftremo-ui.css
-./app/js/ui.js
 ./app/js/ui/app-shell.js
 ./app/js/ui/state.js
 ./app/js/ui/workshop-actions.js
 ./app/js/ui/workshop-components.js
 ./app/js/ui/workshop-flow.js
 ./app/js/ui/workshop-view.js
+./app/js/ui.js
 ./app/reset_recovery.html
 ./app/sqlite.html
 ./app/wasm/index.mjs
@@ -37,9 +37,13 @@
 ./assets/photos/README_FOTOS.md
 ./assets/photos/recipes/.gitkeep
 ./db/swiftremo.sqlite
+./docs/GUIA_WINDOWS_V1_0_RC.md
 ./docs/MANIFEST_PUBLIC_FILES.txt
 ./docs/MANIFEST_PUBLIC_SHA256.txt
 ./docs/README_FASE6_72_10_FIX_APPJS_ONAFTERNAVIGATE.md
+./docs/README_FASE6_72_11_SQLITE_RESIZABLE.md
+./docs/README_FASE6_72_12_FIX_APPJS_SQLITE_RESIZEABLE.md
+./docs/README_FASE6_72_13_ESTADO_FIJO_PAGINACION.md
 ./docs/README_FASE6_72_2_ADAPTADORES_DOMINIOS_TALLER_REAL.md
 ./docs/README_FASE6_72_3_TALLER_COMPONENTES_PROPIOS.md
 ./docs/README_FASE6_72_4_INTERFAZ_DOCENTE_FINAL.md
@@ -55,6 +59,8 @@
 ./docs/VALIDACION_PUBLICA_6725.txt
 ./docs/VALIDACION_PUBLICA_6726.txt
 ./docs/VALIDACION_PUBLICA_6729.txt
+./docs/VALIDACION_PUBLICA_6733.txt
+./docs/VALIDACION_PUBLICA_V1_0_RC1.txt
 ./docs/VERSION.txt
 ./index.html
 ./inline_script_0.js
