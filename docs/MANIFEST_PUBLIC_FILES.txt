@@ -1,57 +1,57 @@
-136	.gitattributes
-417	.gitignore
-0	.nojekyll
-1527	AVISO_LEGAL.md
-4488	Abrir_SwiftRemo.html
-1219	NOTICE.md
-2547	README.md
-80	VERSION.txt
-143273	app/js/app.js
-24345	app/js/bakery-main-v3-7.js
-7369	app/js/combobox-v6-9.js
-13348	app/js/culinary-main-v5-1.js
-2210	app/js/db-service.js
-281	app/js/domain/history.js
-1064	app/js/domain/print.js
-336	app/js/domain/system-backup.js
-590	app/js/domain/technical-archive.js
-2585	app/js/domain/workshop.js
-10544	app/js/extras-v3-9.js
-34023	app/js/history-engine.js
-14570	app/js/preferments-v3-8.js
-80569	app/js/print-service-v6-3.js
-41557	app/js/repositories.js
-3007	app/js/storage-service.js
-62645	app/js/swiftremo-ui.css
-3040	app/js/ui.js
-5036	app/js/ui/app-shell.js
-687	app/js/ui/state.js
-1669	app/js/ui/workshop-actions.js
-5128	app/js/ui/workshop-components.js
-1147	app/js/ui/workshop-flow.js
-2060	app/js/ui/workshop-view.js
-1407	app/reset_recovery.html
-78263	app/sqlite.html
-578559	app/wasm/index.mjs
-864752	app/wasm/sqlite3.wasm
-694	assets/photos/README_FOTOS.md
-0	assets/photos/recipes/.gitkeep
-2334720	db/swiftremo.sqlite
-1340	docs/MANIFEST_PUBLIC_FILES.txt
-4838	docs/MANIFEST_PUBLIC_SHA256.txt
-940	docs/README_FASE6_72_2_ADAPTADORES_DOMINIOS_TALLER_REAL.md
-571	docs/README_FASE6_72_3_TALLER_COMPONENTES_PROPIOS.md
-901	docs/README_FASE6_72_4_INTERFAZ_DOCENTE_FINAL.md
-1584	docs/README_FASE6_72_5_PAQUETES_PRIVADOS_BLOB.md
-807	docs/README_FASE6_72_6_PAQUETES_PRIVADOS_BLOB_PENDIENTES.md
-641	docs/README_PUBLICACION.md
-436	docs/VALIDACION_PUBLICA_6722.txt
-290	docs/VALIDACION_PUBLICA_6723.txt
-227	docs/VALIDACION_PUBLICA_6724.txt
-583	docs/VALIDACION_PUBLICA_6725.txt
-235	docs/VALIDACION_PUBLICA_6726.txt
-80	docs/VERSION.txt
-2509	index.html
-26	robots.txt
-
+.gitattributes
+.gitignore
+.nojekyll
+AVISO_LEGAL.md
+Abrir_SwiftRemo.html
+NOTICE.md
+README.md
+VERSION.txt
+app/js/app.js
+app/js/bakery-main-v3-7.js
+app/js/combobox-v6-9.js
+app/js/culinary-main-v5-1.js
+app/js/db-service.js
+app/js/domain/history.js
+app/js/domain/print.js
+app/js/domain/system-backup.js
+app/js/domain/technical-archive.js
+app/js/domain/workshop.js
+app/js/extras-v3-9.js
+app/js/history-engine.js
+app/js/preferments-v3-8.js
+app/js/print-service-v6-3.js
+app/js/repositories.js
+app/js/storage-service.js
+app/js/swiftremo-ui.css
+app/js/ui/app-shell.js
+app/js/ui/state.js
+app/js/ui/workshop-actions.js
+app/js/ui/workshop-components.js
+app/js/ui/workshop-flow.js
+app/js/ui/workshop-view.js
+app/js/ui.js
+app/reset_recovery.html
+app/sqlite.html
+app/wasm/index.mjs
+app/wasm/sqlite3.wasm
+assets/photos/README_FOTOS.md
+assets/photos/recipes/.gitkeep
+db/swiftremo.sqlite
+docs/MANIFEST_PUBLIC_FILES.txt
+docs/MANIFEST_PUBLIC_SHA256.txt
+docs/README_FASE6_72_2_ADAPTADORES_DOMINIOS_TALLER_REAL.md
+docs/README_FASE6_72_3_TALLER_COMPONENTES_PROPIOS.md
+docs/README_FASE6_72_4_INTERFAZ_DOCENTE_FINAL.md
+docs/README_FASE6_72_5_PAQUETES_PRIVADOS_BLOB.md
+docs/README_FASE6_72_6_PAQUETES_PRIVADOS_BLOB_PENDIENTES.md
 docs/README_FASE6_72_7_CORRECCION_CACHE_ARRANQUE.md
+docs/README_FASE6_72_8_ENTRADA_RAIZ_CACHE.md
+docs/README_PUBLICACION.md
+docs/VALIDACION_PUBLICA_6722.txt
+docs/VALIDACION_PUBLICA_6723.txt
+docs/VALIDACION_PUBLICA_6724.txt
+docs/VALIDACION_PUBLICA_6725.txt
+docs/VALIDACION_PUBLICA_6726.txt
+docs/VERSION.txt
+index.html
+robots.txt
