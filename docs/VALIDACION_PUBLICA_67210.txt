@@ -1,4 +1,0 @@
-SwiftRemo fase 6.72.10
-Sintaxis JS ES module: OK
-SQLite integrity_check: ok
-Base pública sin datos privados.

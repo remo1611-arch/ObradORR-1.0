@@ -1,1 +1,1 @@
-swiftremo_sql_fase6.72.10_fix_sintaxis_app
+SwiftRemo SQL Fase 6.72.10 · corrección app.js onAfterNavigate
