@@ -383,6 +383,19 @@ function afterDbLoaded(message, saveLabel = "Guardado", savedAt = null) {
   window.dispatchEvent(new CustomEvent("swiftremo:coreReady", { detail: { message } }));
 }
 
+const SHELL_TAB_GROUPS_V672 = {
+  workshop: new Set(["workshop", "panel", "selection", "order", "print"]),
+  history: new Set(["history", "class"]),
+  "technical-archive": new Set(["technical-archive", "library", "elaborations", "ingredients", "bakery", "culinary", "audit", "margins"]),
+  system: new Set(["system", "data", "sql"])
+};
+function shellAreaForTabV672(tab) {
+  for (const [area, tabs] of Object.entries(SHELL_TAB_GROUPS_V672)) {
+    if (tabs.has(tab)) return area;
+  }
+  return tab || "workshop";
+}
+
 function switchTab(tab) {
   if (!tab) return;
   if ((tab === "order" || tab === "print") && repo && !getWorkflowStateV6704().hasItems) {
@@ -395,7 +408,11 @@ function switchTab(tab) {
     console.warn(`[SwiftRemo] Pestaña no encontrada: ${tab}`);
     return;
   }
-  $$(`.nav-row button`).forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
+  const shellArea = shellAreaForTabV672(tab);
+  $$(`.nav-row button`).forEach(btn => {
+    const btnArea = btn.dataset.shellArea || shellAreaForTabV672(btn.dataset.tab);
+    btn.classList.toggle("active", btnArea === shellArea);
+  });
   $$(`.tab-section`).forEach(sec => sec.classList.remove("active"));
   target.classList.add("active");
   target.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -606,7 +623,7 @@ function renderSessionSummary() {
       <div class="empty-state empty-state-6271 workflow-empty-panel-6704">
         <b>No hay práctica activa.</b>
         <span>El siguiente paso real es abrir Práctica, buscar una elaboración y definir la cantidad de producción.</span>
-        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Crear práctica</button><button type="button" class="btn ghost" data-tab="library">Consultar biblioteca</button></div>
+        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Crear práctica</button><button type="button" class="btn ghost" data-tab="library">Consultar Archivo técnico</button></div>
       </div>`;
     return;
   }
@@ -617,7 +634,7 @@ function renderSessionSummary() {
       <div class="kpi"><span>Cocina/Pastelería</span><b>${fmtNumber(wf.culinaryItems || 0,0)}</b></div>
       <div class="kpi"><span>Coste base aprox.</span><b>${fmtMoney(wf.estimatedCost || 0)}</b></div>
     </div>
-    <div class="actions"><button type="button" class="btn primary" data-tab="selection">Continuar práctica</button><button type="button" class="btn ghost" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Preparar salida</button></div>`;
+    <div class="actions"><button type="button" class="btn primary" data-tab="selection">Continuar práctica</button><button type="button" class="btn ghost" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Imprimir / exportar</button></div>`;
 }
 
 
@@ -1145,7 +1162,7 @@ function workflowSummaryHtmlV6704(wf, context = "panel") {
           <span>La app mantiene bloqueados Pedido y Salida hasta que añadas una elaboración. El siguiente paso real es buscar y añadir.</span>
         </div>
         ${workflowStepsHtmlV6704(wf)}
-        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="library">Abrir biblioteca</button></div>
+        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="library">Abrir Archivo técnico</button></div>
       </div>`;
   }
   return `
@@ -1155,7 +1172,7 @@ function workflowSummaryHtmlV6704(wf, context = "panel") {
         <span>${fmtNumber(wf.itemCount,0)} elaboración(es) · ${fmtNumber(wf.orderLineCount,0)} línea(s) de pedido · coste estimado ${fmtMoney(wf.orderCost || wf.estimatedCost || 0)}.</span>
       </div>
       ${workflowStepsHtmlV6704(wf)}
-      <div class="actions"><button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Preparar salida</button></div>
+      <div class="actions"><button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Imprimir / exportar</button></div>
     </div>`;
 }
 
@@ -1163,17 +1180,17 @@ function workflowSummaryHtmlV6704(wf, context = "panel") {
 function shellActionButtonHtmlV671(wf, area = "practice") {
   if (!wf?.hasItems) {
     if (area === "order") {
-      return `<button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="selection">Volver a práctica</button>`;
+      return `<button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="selection">Volver al Taller</button>`;
     }
-    return `<button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="library">Biblioteca avanzada</button>`;
+    return `<button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="library">Archivo técnico</button>`;
   }
   if (area === "order") {
-    return `<button type="button" class="btn primary" data-tab="print">Preparar salida</button><button type="button" class="btn ghost" data-tab="selection">Volver a práctica</button>`;
+    return `<button type="button" class="btn primary" data-tab="print">Imprimir / exportar</button><button type="button" class="btn ghost" data-tab="selection">Volver al Taller</button>`;
   }
   if (area === "practice-next") {
-    return `<button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Preparar salida</button><button type="button" class="btn ghost" data-tab="audit">Revisar calidad</button>`;
+    return `<button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Imprimir / exportar</button><button type="button" class="btn ghost" data-tab="audit">Revisar calidad</button>`;
   }
-  return `<button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Preparar salida</button><button type="button" class="btn ghost" data-shell-action="archive-selection">Archivar como sesión</button><button type="button" class="btn danger" data-shell-action="clear-selection">Vaciar</button>`;
+  return `<button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Imprimir / exportar</button><button type="button" class="btn ghost" data-shell-action="archive-selection">Archivar como sesión</button><button type="button" class="btn danger" data-shell-action="clear-selection">Vaciar</button>`;
 }
 
 function renderShellActionsV671(wf) {
@@ -2268,7 +2285,7 @@ function renderOrder() {
       <div class="empty-action-card-628">
         <b>Pedido vacío.</b>
         <span>Añade elaboraciones desde Práctica y define cantidades para calcular el pedido.</span>
-        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="selection">Ir a Práctica</button></div>
+        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="selection">Ir al Taller</button></div>
       </div>`;
     updatePracticeActionStateV6703();
     return;

@@ -8,14 +8,14 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>SwiftRemo SQL · Aula taller</title>
-  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6710">
+  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6721">
 </head>
 <body>
   <header class="app-header">
     <div class="wrap header-grid">
       <div>
         <h1>🍽️🍞 SwiftRemo SQL</h1>
-        <p class="subtitle">Aula taller · biblioteca · práctica · pedido · salida documental</p>
+        <p class="subtitle">Taller · histórico · archivo técnico · sistema</p>
         <p class="subtitle" style="font-size:.82rem;opacity:.82">© Remo José Pereira González · Uso docente personal autorizado · Sin licencia abierta de redistribución o explotación comercial.</p>
       </div>
       <div id="dbState" class="state-pill state-loading">Preparando…</div>
@@ -23,49 +23,112 @@
   </header>
 
   <nav class="top-nav">
-    <div class="wrap nav-row nav-row-670">
-      <button type="button" data-tab="panel" class="active">Inicio</button>
-      <button type="button" data-tab="selection">Práctica</button>
-      <button type="button" data-tab="order" data-requires-work-items="1">Pedido</button>
-      <button type="button" data-tab="print" data-requires-work-items="1">Salida</button>
-      <button type="button" data-tab="library">Biblioteca</button>
-      <button type="button" data-tab="data">Datos</button>
-      <button type="button" data-tab="audit">Calidad</button>
+    <div class="wrap nav-row nav-row-670 nav-row-672">
+      <button type="button" data-tab="workshop" data-shell-area="workshop" class="active">Taller</button>
+      <button type="button" data-tab="history" data-shell-area="history">Histórico</button>
+      <button type="button" data-tab="technical-archive" data-shell-area="technical-archive">Archivo técnico</button>
+      <button type="button" data-tab="system" data-shell-area="system">Sistema</button>
     </div>
   </nav>
 
   <main class="wrap main-grid main-grid-670">
     <section class="content content-670">
-      <section id="tab-panel" class="tab-section active">
-        <div class="card panel-hero">
+      <section id="tab-workshop" class="tab-section active">
+        <div class="card panel-hero shell-area-card-672 shell-workshop-672">
           <div class="section-head">
             <div>
-              <h2>Continuar trabajo docente</h2>
-              <p class="small">Flujo principal: Práctica → Pedido → Salida. Biblioteca y Datos quedan como herramientas de apoyo, no como pasos obligatorios.</p>
+              <h2>Taller · práctica activa</h2>
+              <p class="small">Mesa de trabajo del día: datos docentes, búsqueda rápida, cantidades, pedido, impresión y cierre. El Taller no modifica el Archivo técnico.</p>
             </div>
-            <button type="button" class="btn primary" data-tab="selection">Abrir práctica</button>
+            <div class="actions">
+              <button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button>
+              <button type="button" class="btn ghost" data-tab="selection">Ver práctica activa</button>
+            </div>
           </div>
 
-          <div class="command-grid-619 command-grid-670 shell-command-grid-671">
-            <button type="button" class="command-card-619 primary shell-primary-card-671" data-tab="selection"><strong>1 · Práctica</strong><span>Empieza aquí: busca elaboraciones, añádelas y define la producción.</span></button>
-            <button type="button" class="command-card-619" data-tab="order" data-requires-work-items="1"><strong>2 · Pedido</strong><span>Solo se activa cuando la práctica tiene elaboraciones.</span></button>
-            <button type="button" class="command-card-619" data-tab="print" data-requires-work-items="1"><strong>3 · Salida</strong><span>Centro único de impresión: dossier, fichas o pedido.</span></button>
-            <button type="button" class="command-card-619 shell-secondary-card-671" data-tab="library"><strong>Biblioteca</strong><span>Catálogo avanzado para revisar fichas, fórmulas e ingredientes.</span></button>
-            <button type="button" class="command-card-619 shell-secondary-card-671" data-tab="data"><strong>Datos y copias</strong><span>Exporta/importa SQLite, restaura base inicial o descarga JSON técnico.</span></button>
-            <button type="button" class="command-card-619 shell-secondary-card-671" data-tab="audit"><strong>Calidad</strong><span>Revisión técnica de datos antes de usar costes o pedidos.</span></button>
+          <div class="shell-step-grid-672">
+            <button type="button" class="command-card-619 primary shell-primary-card-671" data-tab="selection"><strong>1 · Preparar práctica</strong><span>Datos docentes, buscador rápido, cantidades y observaciones de aula.</span></button>
+            <button type="button" class="command-card-619" data-tab="order" data-requires-work-items="1"><strong>2 · Revisar pedido</strong><span>Necesidades consolidadas por familia, unidad, coste, zona y proveedor.</span></button>
+            <button type="button" class="command-card-619" data-tab="print" data-requires-work-items="1"><strong>3 · Imprimir / exportar</strong><span>Dossier completo, fichas docentes o pedido técnico.</span></button>
+            <button type="button" class="command-card-619 shell-secondary-card-671" data-shell-action="archive-selection"><strong>4 · Archivar práctica</strong><span>Guardar fotografía cerrada en Histórico cuando la práctica esté lista.</span></button>
           </div>
+
           <div id="kpis" class="kpi-grid"></div>
+          <div id="workflowPanelV6704" class="workflow-host-6704"></div>
+          <div id="sessionSummary" class="wide shell-summary-host-672"></div>
+          <div class="actions shell-actions-672">
+            <button type="button" class="btn ghost" data-tab="technical-archive">Buscar en Archivo técnico</button>
+            <button type="button" class="btn ghost" data-tab="history">Usar histórico</button>
+            <button type="button" class="btn danger" data-shell-action="clear-selection">Descartar práctica actual</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-history" class="tab-section">
+        <div class="card shell-area-card-672 shell-history-672">
+          <div class="section-head">
+            <div>
+              <h2>Histórico</h2>
+              <p class="small">Prácticas archivadas o sesiones cerradas. El histórico no se edita directamente: se consulta, se imprime, se exporta o se usa como nueva práctica.</p>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn primary" data-tab="class">Abrir histórico técnico</button>
+              <button type="button" class="btn ghost" data-tab="selection">Volver al Taller</button>
+            </div>
+          </div>
+          <div class="shell-step-grid-672">
+            <button type="button" class="command-card-619" data-tab="class"><strong>Ver prácticas cerradas</strong><span>Consulta sesiones guardadas y documentación asociada.</span></button>
+            <button type="button" class="command-card-619" data-tab="selection"><strong>Usar como nueva</strong><span>Clona o reconstruye una práctica en el Taller actual cuando proceda.</span></button>
+            <button type="button" class="command-card-619" data-tab="print"><strong>Imprimir práctica</strong><span>Solo disponible cuando haya una práctica activa o selección recuperada.</span></button>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-technical-archive" class="tab-section">
+        <div class="card shell-area-card-672 shell-archive-672">
+          <div class="section-head">
+            <div>
+              <h2>Archivo técnico</h2>
+              <p class="small">Verdad maestra: elaboraciones, ingredientes, subelaboraciones y revisión técnica. Añadir al Taller no altera la ficha maestra.</p>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn primary" data-tab="library">Abrir catálogo</button>
+              <button type="button" class="btn ghost" data-tab="audit">Revisión</button>
+            </div>
+          </div>
+          <div class="shell-step-grid-672 technical-grid-672">
+            <button type="button" class="command-card-619 primary" data-tab="library"><strong>Catálogo docente</strong><span>Buscar, filtrar, ver detalle y añadir al Taller.</span></button>
+            <button type="button" class="command-card-619" data-tab="elaborations"><strong>Elaboraciones</strong><span>Vista unificada de fichas culinarias, fórmulas y subelaboraciones.</span></button>
+            <button type="button" class="command-card-619" data-tab="ingredients"><strong>Ingredientes</strong><span>Alta, revisión y desactivación lógica de materias primas.</span></button>
+            <button type="button" class="command-card-619" data-tab="culinary"><strong>Fichas cocina/pastelería</strong><span>Editor técnico de fichas maestras.</span></button>
+            <button type="button" class="command-card-619" data-tab="bakery"><strong>Fórmulas panaderas</strong><span>Formulación, prefermentos, acabados y conservación.</span></button>
+            <button type="button" class="command-card-619" data-tab="audit"><strong>Revisión técnica</strong><span>Calidad, incidencias, auditoría de fichas y estado de base.</span></button>
+          </div>
           <div id="baseStatusPanelV663" class="base-status-card-v663 muted">
             <div class="base-status-title-v663">Estado de la base pendiente de cargar</div>
             <div class="small">Se mostrará cuando SQLite esté disponible.</div>
           </div>
-          <div id="panelQualitySummary" class="quality-strip muted">Calidad pendiente de cargar. Si tarda, entra en Revisar calidad.</div>
-          <div id="workflowPanelV6704" class="workflow-host-6704"></div>
+          <div id="panelQualitySummary" class="quality-strip muted">Calidad pendiente de cargar. Si tarda, entra en Revisión técnica.</div>
         </div>
-        <div class="card compact-guidance-619">
-          <h2>Resumen de práctica</h2>
-          <p class="small">Estado operativo de la práctica actual y siguiente paso recomendado.</p>
-          <div id="sessionSummary" class="wide"></div>
+      </section>
+
+      <section id="tab-system" class="tab-section">
+        <div class="card shell-area-card-672 shell-system-672">
+          <div class="section-head">
+            <div>
+              <h2>Sistema</h2>
+              <p class="small">Copias, importación/exportación, base inicial, recuperación, versión y herramientas técnicas. Las acciones de infraestructura viven aquí.</p>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn primary" data-tab="data">Datos y copias</button>
+              <button type="button" class="btn ghost" data-tab="sql">SQL técnico</button>
+            </div>
+          </div>
+          <div class="shell-step-grid-672">
+            <button type="button" class="command-card-619 primary" data-tab="data"><strong>Copias SQLite</strong><span>Descargar, importar, restaurar base inicial o exportar JSON técnico.</span></button>
+            <button type="button" class="command-card-619" data-tab="sql"><strong>SQL técnico</strong><span>Consulta puntual para diagnóstico, no para flujo docente ordinario.</span></button>
+            <button type="button" class="command-card-619" data-tab="audit"><strong>Estado de base</strong><span>Comprobar versión, calidad y metadatos antes de publicar.</span></button>
+          </div>
         </div>
       </section>
 
@@ -1032,9 +1095,9 @@
             <div class="section-head compact-head-6702">
               <div>
                 <h3>Buscar y añadir elaboraciones</h3>
-                <p class="small">Añade fichas o fórmulas directamente a la práctica actual. Biblioteca queda para revisión avanzada del catálogo.</p>
+                <p class="small">Añade fichas o fórmulas directamente a la práctica actual. Archivo técnico queda para revisión avanzada del catálogo.</p>
               </div>
-              <button type="button" class="btn ghost" data-tab="library">Abrir Biblioteca avanzada</button>
+              <button type="button" class="btn ghost" data-tab="library">Abrir Archivo técnico</button>
             </div>
             <div class="form-grid compact practice-search-grid-6702">
               <label class="full">Buscar elaboración
@@ -1370,15 +1433,15 @@
     console.log("SwiftRemo fase6.71 interfaz guiada por estado cargada");
   </script>
   <div id="swiftremoPrintPreview631" hidden></div>
-  <script type="module" src="./js/app.js?v=6710"></script>
-  <script type="module" src="./js/bakery-main-v3-7.js?v=6710"></script>
-  <script type="module" src="./js/preferments-v3-8.js?v=6710"></script>
-  <script type="module" src="./js/extras-v3-9.js?v=6710"></script>
-  <script type="module" src="./js/culinary-main-v5-1.js?v=6710"></script>
-  <script type="module" src="./js/session-v4-1.js?v=6710"></script>
-  <script type="module" src="./js/combobox-v6-9.js?v=6710"></script>
+  <script type="module" src="./js/app.js?v=6721"></script>
+  <script type="module" src="./js/bakery-main-v3-7.js?v=6721"></script>
+  <script type="module" src="./js/preferments-v3-8.js?v=6721"></script>
+  <script type="module" src="./js/extras-v3-9.js?v=6721"></script>
+  <script type="module" src="./js/culinary-main-v5-1.js?v=6721"></script>
+  <script type="module" src="./js/session-v4-1.js?v=6721"></script>
+  <script type="module" src="./js/combobox-v6-9.js?v=6721"></script>
   <script type="module">
-    import { printClassOrder } from "./js/print-service-v6-3.js?v=6710";
+    import { printClassOrder } from "./js/print-service-v6-3.js?v=6721";
     import { toast } from "./js/ui.js";
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.querySelector("#globalPrintOrderV61");

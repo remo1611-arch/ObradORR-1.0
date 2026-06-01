@@ -1203,3 +1203,17 @@ body[data-workflow-state="empty"] #tab-order .order-guidance-619{display:none;}
   .shell-actions-671{display:grid!important;grid-template-columns:1fr;width:100%;}
   .shell-actions-671 .btn{width:100%;}
 }
+
+
+/* Fase 6.72.1 · shell docente limpio por áreas de dominio */
+.nav-row-672 button[data-shell-area="workshop"]{background:#eaf6ef;border-color:#b8dcc8;color:#1f6a43}
+.nav-row-672 button[data-shell-area="history"]{background:#f2f0fb;border-color:#cfc7ee;color:#4c3f7a}
+.nav-row-672 button[data-shell-area="technical-archive"]{background:#fff8de;border-color:#e5cb78;color:#7b5600}
+.nav-row-672 button[data-shell-area="system"]{background:#eef2f7;border-color:#cbd5e1;color:#334155}
+.shell-area-card-672{border-left:5px solid var(--accent)}
+.shell-history-672{border-left-color:#7b61c8}.shell-archive-672{border-left-color:#ca8a04}.shell-system-672{border-left-color:#64748b}
+.shell-step-grid-672{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}.technical-grid-672{grid-template-columns:repeat(3,minmax(0,1fr))}
+.shell-actions-672{margin-top:12px}.shell-summary-host-672{margin-top:12px}
+.shell-area-card-672 .command-card-619{min-height:110px;text-align:left}
+@media(max-width:980px){.shell-step-grid-672,.technical-grid-672{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.shell-step-grid-672,.technical-grid-672{grid-template-columns:1fr}}

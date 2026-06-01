@@ -1,0 +1,10 @@
+OK index.html raíz presente
+OK app/sqlite.html presente
+OK db/swiftremo.sqlite presente
+OK app/wasm/sqlite3.wasm presente
+OK paquete público limpio sin scripts/sql/migration
+OK node --check app/js/*.js
+OK cache ?v=6721
+OK schema_version fase 6.72.1
+OK navegación principal: Taller / Histórico / Archivo técnico / Sistema
+OK se conservan pantallas internas heredadas como transición
