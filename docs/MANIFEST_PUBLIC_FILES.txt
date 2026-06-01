@@ -22,9 +22,12 @@ app/js/print-service-v6-3.js
 app/js/repositories.js
 app/js/storage-service.js
 app/js/swiftremo-ui.css
-app/js/ui.js
 app/js/ui/app-shell.js
 app/js/ui/state.js
+app/js/ui/workshop-actions.js
+app/js/ui/workshop-components.js
+app/js/ui/workshop-view.js
+app/js/ui.js
 app/reset_recovery.html
 app/sqlite.html
 app/wasm/index.mjs
@@ -35,6 +38,7 @@ db/swiftremo.sqlite
 docs/MANIFEST_PUBLIC_FILES.txt
 docs/MANIFEST_PUBLIC_SHA256.txt
 docs/README_FASE6_72_2_ADAPTADORES_DOMINIOS_TALLER_REAL.md
+docs/README_FASE6_72_3_TALLER_COMPONENTES_PROPIOS.md
 docs/README_PUBLICACION.md
 docs/VALIDACION_PUBLICA_6722.txt
 docs/VERSION.txt

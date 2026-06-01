@@ -1,1 +1,1 @@
-swiftremo_sql_fase6.72.2_adaptadores_dominios_taller_real
+swiftremo_sql_fase6.72.3_taller_componentes_propios

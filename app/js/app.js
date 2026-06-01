@@ -9,6 +9,7 @@ import { createWorkshopDomain } from "./domain/workshop.js";
 import { createTechnicalArchiveDomain } from "./domain/technical-archive.js";
 import { createHistoryDomain } from "./domain/history.js";
 import { createSystemBackupService } from "./domain/system-backup.js";
+import { createWorkshopView } from "./ui/workshop-view.js";
 
 const swiftDb = new SwiftDB();
 let repo = null;
@@ -19,6 +20,7 @@ let workshopDomain = null;
 let technicalArchiveDomain = null;
 let historyDomain = null;
 let systemBackupService = null;
+let workshopView = null;
 let selectedIngredientId = null;
 let hasSaveError = false;
 let hasPendingSave = false;
@@ -403,6 +405,7 @@ function initDomainLayer() {
   if (domainShell) return;
   appState = createAppState();
   workshopDomain = createWorkshopDomain({ getRepo: () => repo });
+  workshopView = createWorkshopView({ document, formatters: { fmtNumber, fmtMoney } });
   technicalArchiveDomain = createTechnicalArchiveDomain({ getRepo: () => repo });
   historyDomain = createHistoryDomain({ getRepo: () => repo });
   systemBackupService = createSystemBackupService({ getDb: () => swiftDb });
@@ -1206,6 +1209,7 @@ function domainActionButtonHtml(wf, area = "practice") {
 }
 
 function renderDomainActions(wf) {
+  if (workshopView?.renderActions) { workshopView.renderActions(wf); return; }
   const practiceActions = document.querySelector("#workshopActions");
   if (practiceActions) practiceActions.innerHTML = domainActionButtonHtml(wf, "practice");
   const practiceNext = document.querySelector("#workshopNextActions");
@@ -1263,6 +1267,7 @@ function applyWorkshopButtonState(wf) {
 function renderWorkshopState() {
   if (!repo) return;
   const wf = getWorkshopState();
+  if (workshopView?.render) { workshopView.render(wf); return; }
   const panel = document.querySelector("#workshopStatePanel");
   if (panel) panel.innerHTML = workshopSummaryHtml(wf, "panel");
   const practice = document.querySelector("#workshopPracticeState");
