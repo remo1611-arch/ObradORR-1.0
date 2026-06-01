@@ -1,4 +1,4 @@
-# Fase 6.72.3 · Taller con componentes propios
+# Fase 6.72.4 · Interfaz docente final por dominios
 
 Versión pública con Taller implementado mediante componentes propios de UI, manteniendo el motor estable.
 

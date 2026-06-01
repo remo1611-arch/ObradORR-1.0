@@ -6,5 +6,5 @@ OK paquete público limpio
 OK app/js/ui/workshop-view.js
 OK app/js/ui/workshop-components.js
 OK app/js/ui/workshop-actions.js
-OK cache ?v=6723
-OK schema_version swiftremo_sql_fase6.72.3_taller_componentes_propios
+OK cache ?v=6724
+OK schema_version swiftremo_sql_fase6.72.4_interfaz_docente_final

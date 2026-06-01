@@ -10,9 +10,9 @@ export function createWorkshopView({ document: documentRef = document, formatter
     const orderActions = documentRef.querySelector("#workshopOrderActions");
     if (orderActions) orderActions.innerHTML = workshopActionButtonsHtml(workshopState, "order");
     const outputGrid = documentRef.querySelector("#workshopOutputActionsGrid");
-    if (outputGrid) outputGrid.classList.toggle("shell-output-grid-disabled-671", !workshopState?.hasItems);
+    if (outputGrid) outputGrid.classList.toggle("shell-output-grid-disabled", !workshopState?.hasItems);
     const printHistoryCard = documentRef.querySelector("#workshopPrintHistoryCard");
-    if (printHistoryCard) printHistoryCard.classList.toggle("shell-secondary-empty-671", printHistoryCard.classList.contains("is-empty"));
+    if (printHistoryCard) printHistoryCard.classList.toggle("shell-secondary-empty", printHistoryCard.classList.contains("is-empty"));
   }
 
   function render(workshopState) {

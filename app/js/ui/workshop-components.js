@@ -1,15 +1,16 @@
+import { WORKSHOP_STEPS, canUseOrder, canUseOutput, canArchive } from './workshop-flow.js';
 function stepClass(active) {
-  return active ? "workflow-step-pill-6704 active" : "workflow-step-pill-6704";
+  return active ? "workshop-step-pill active" : "workshop-step-pill";
 }
 
 export function workshopStepsHtml(workshopState) {
-  const hasItems = !!workshopState?.hasItems;
+  const orderReady = canUseOrder(workshopState);
+  const outputReady = canUseOutput(workshopState);
+  const archiveReady = canArchive(workshopState);
+  const active = { practice: true, order: orderReady, output: outputReady, archive: archiveReady };
   return `
-    <div class="workflow-steps-6704" aria-label="Estado del flujo de práctica">
-      <span class="${stepClass(true)}">1 · Práctica</span>
-      <span class="${stepClass(hasItems)}">2 · Pedido</span>
-      <span class="${stepClass(hasItems)}">3 · Salida</span>
-      <span class="${stepClass(hasItems)}">4 · Archivo</span>
+    <div class="workshop-flow-steps" aria-label="Flujo del Taller">
+      ${WORKSHOP_STEPS.map(step => `<button type="button" class="${stepClass(active[step.key])}" data-tab="${step.route}" ${!active[step.key] && step.key !== 'practice' ? 'disabled aria-disabled="true"' : ''}><span>${step.label}</span><small>${step.help}</small></button>`).join('')}
     </div>`;
 }
 
@@ -18,7 +19,7 @@ export function workshopSummaryHtml(workshopState, { fmtNumber, fmtMoney } = {})
   const money = fmtMoney || ((value) => `${Number(value || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
   if (!workshopState?.hasItems) {
     return `
-      <div class="workflow-state-card-6704 empty">
+      <div class="workshop-state-card empty">
         <div>
           <b>Práctica vacía</b>
           <span>La app mantiene bloqueados Pedido y Salida hasta que añadas una elaboración. El siguiente paso real es buscar y añadir.</span>
@@ -28,7 +29,7 @@ export function workshopSummaryHtml(workshopState, { fmtNumber, fmtMoney } = {})
       </div>`;
   }
   return `
-    <div class="workflow-state-card-6704 ready">
+    <div class="workshop-state-card ready">
       <div>
         <b>Práctica activa</b>
         <span>${n(workshopState.itemCount,0)} elaboración(es) · ${n(workshopState.orderLineCount,0)} línea(s) de pedido · coste estimado ${money(workshopState.orderCost || workshopState.estimatedCost || 0)}.</span>
@@ -56,12 +57,12 @@ export function workshopActionButtonsHtml(workshopState, area = "practice") {
 
 export function workshopOrderStateHtml(workshopState) {
   return workshopState?.hasItems
-    ? `<div class="workflow-state-card-6704 ready"><b>Pedido disponible</b><span>Revisa cantidades, unidades, proveedor, zona y coste. La impresión se hace desde Salida.</span></div>`
-    : `<div class="workflow-state-card-6704 empty"><b>Pedido bloqueado</b><span>El pedido se genera automáticamente cuando la práctica tiene elaboraciones.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
+    ? `<div class="workshop-state-card ready"><b>Pedido disponible</b><span>Revisa cantidades, unidades, proveedor, zona y coste. La impresión se hace desde Salida.</span></div>`
+    : `<div class="workshop-state-card empty"><b>Pedido bloqueado</b><span>El pedido se genera automáticamente cuando la práctica tiene elaboraciones.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
 }
 
 export function workshopOutputStateHtml(workshopState) {
   return workshopState?.hasItems
-    ? `<div class="workflow-state-card-6704 ready"><b>Salida preparada</b><span>Centro único para generar dossier, fichas, pedido u opciones avanzadas.</span></div>`
-    : `<div class="workflow-state-card-6704 empty"><b>Salida no disponible todavía</b><span>Añade al menos una elaboración para activar la impresión y la exportación documental.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
+    ? `<div class="workshop-state-card ready"><b>Salida preparada</b><span>Centro único para generar dossier, fichas, pedido u opciones avanzadas.</span></div>`
+    : `<div class="workshop-state-card empty"><b>Salida no disponible todavía</b><span>Añade al menos una elaboración para activar la impresión y la exportación documental.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
 }

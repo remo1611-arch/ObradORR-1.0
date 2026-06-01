@@ -9,6 +9,7 @@ import { createWorkshopDomain } from "./domain/workshop.js";
 import { createTechnicalArchiveDomain } from "./domain/technical-archive.js";
 import { createHistoryDomain } from "./domain/history.js";
 import { createSystemBackupService } from "./domain/system-backup.js";
+import { createPrintDomain } from "./domain/print.js";
 import { createWorkshopView } from "./ui/workshop-view.js";
 
 const swiftDb = new SwiftDB();
@@ -20,6 +21,7 @@ let workshopDomain = null;
 let technicalArchiveDomain = null;
 let historyDomain = null;
 let systemBackupService = null;
+let printDomain = null;
 let workshopView = null;
 let selectedIngredientId = null;
 let hasSaveError = false;
@@ -409,6 +411,7 @@ function initDomainLayer() {
   technicalArchiveDomain = createTechnicalArchiveDomain({ getRepo: () => repo });
   historyDomain = createHistoryDomain({ getRepo: () => repo });
   systemBackupService = createSystemBackupService({ getDb: () => swiftDb });
+  printDomain = createPrintDomain({ document });
   domainShell = createDomainShell({
     state: appState,
     onBeforeNavigate: (route) => {
@@ -419,7 +422,7 @@ function initDomainLayer() {
       }
       return true;
     },
-    onAfterNavigate: () => renderDomainActions(getWorkshopState())
+    onAfterNavigate: () => renderDomainActions(getWorkshopState()); printDomain?.setEnabled?.(getWorkshopState())
   });
   domainShell.init();
 }
@@ -1154,13 +1157,13 @@ function getWorkshopState() {
 }
 
 function workshopStepClass(active) {
-  return active ? "workflow-step-pill-6704 active" : "workflow-step-pill-6704";
+  return active ? "workshop-step-pill active" : "workshop-step-pill";
 }
 
 function workshopStepsHtml(wf) {
   const has = wf.hasItems;
   return `
-    <div class="workflow-steps-6704" aria-label="Estado del flujo de práctica">
+    <div class="workshop-flow-steps" aria-label="Estado del flujo de práctica">
       <span class="${workshopStepClass(true)}">1 · Práctica</span>
       <span class="${workshopStepClass(has)}">2 · Pedido</span>
       <span class="${workshopStepClass(has)}">3 · Salida</span>
@@ -1171,7 +1174,7 @@ function workshopStepsHtml(wf) {
 function workshopSummaryHtml(wf, context = "panel") {
   if (!wf.hasItems) {
     return `
-      <div class="workflow-state-card-6704 empty">
+      <div class="workshop-state-card empty">
         <div>
           <b>Práctica vacía</b>
           <span>La app mantiene bloqueados Pedido y Salida hasta que añadas una elaboración. El siguiente paso real es buscar y añadir.</span>
@@ -1181,7 +1184,7 @@ function workshopSummaryHtml(wf, context = "panel") {
       </div>`;
   }
   return `
-    <div class="workflow-state-card-6704 ready">
+    <div class="workshop-state-card ready">
       <div>
         <b>Práctica activa</b>
         <span>${fmtNumber(wf.itemCount,0)} elaboración(es) · ${fmtNumber(wf.orderLineCount,0)} línea(s) de pedido · coste estimado ${fmtMoney(wf.orderCost || wf.estimatedCost || 0)}.</span>
@@ -1217,9 +1220,9 @@ function renderDomainActions(wf) {
   const orderActions = document.querySelector("#workshopOrderActions");
   if (orderActions) orderActions.innerHTML = domainActionButtonHtml(wf, "order");
   const outputGrid = document.querySelector("#workshopOutputActionsGrid");
-  if (outputGrid) outputGrid.classList.toggle("shell-output-grid-disabled-671", !wf.hasItems);
+  if (outputGrid) outputGrid.classList.toggle("shell-output-grid-disabled", !wf.hasItems);
   const printHistoryCard = document.querySelector("#workshopPrintHistoryCard");
-  if (printHistoryCard) printHistoryCard.classList.toggle("shell-secondary-empty-671", printHistoryCard.classList.contains("is-empty"));
+  if (printHistoryCard) printHistoryCard.classList.toggle("shell-secondary-empty", printHistoryCard.classList.contains("is-empty"));
 }
 
 function applyWorkshopButtonState(wf) {
@@ -1243,8 +1246,8 @@ function applyWorkshopButtonState(wf) {
   document.querySelectorAll(disabledSelectors.join(",")).forEach(btn => {
     btn.disabled = !wf.hasItems;
     btn.setAttribute("aria-disabled", wf.hasItems ? "false" : "true");
-    btn.classList.toggle("is-disabled-by-empty-practice-6703", !wf.hasItems);
-    btn.classList.toggle("workflow-disabled-6704", !wf.hasItems);
+    btn.classList.toggle("is-disabled-by-empty-workshop", !wf.hasItems);
+    btn.classList.toggle("workflow-disabled", !wf.hasItems);
     if (!wf.hasItems) btn.title = "Primero añade al menos una elaboración a la práctica.";
     else btn.removeAttribute("title");
   });
@@ -1254,12 +1257,12 @@ function applyWorkshopButtonState(wf) {
     "#workshopClear"
   ];
   document.querySelectorAll(hideWhenEmpty.join(",")).forEach(btn => {
-    btn.classList.toggle("hidden-by-workflow-6704", !wf.hasItems);
+    btn.classList.toggle("hidden-by-workflow", !wf.hasItems);
   });
 
   document.querySelectorAll("#workshopPrintDossier, #workshopPrintSheets, #workshopPrintOrder, #workshopOpenPrintCenter").forEach(btn => {
     const card = btn.closest(".print-profile-card-618");
-    if (card) card.classList.toggle("workflow-card-disabled-6704", !wf.hasItems);
+    if (card) card.classList.toggle("workflow-card-disabled", !wf.hasItems);
   });
   document.body.dataset.workflowState = wf.stage;
 }
@@ -1275,14 +1278,14 @@ function renderWorkshopState() {
   const order = document.querySelector("#workshopOrderState");
   if (order) {
     order.innerHTML = wf.hasItems
-      ? `<div class="workflow-state-card-6704 ready"><b>Pedido disponible</b><span>Revisa cantidades, unidades, proveedor, zona y coste. La impresión se hace desde Salida.</span></div>`
-      : `<div class="workflow-state-card-6704 empty"><b>Pedido bloqueado</b><span>El pedido se genera automáticamente cuando la práctica tiene elaboraciones.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
+      ? `<div class="workshop-state-card ready"><b>Pedido disponible</b><span>Revisa cantidades, unidades, proveedor, zona y coste. La impresión se hace desde Salida.</span></div>`
+      : `<div class="workshop-state-card empty"><b>Pedido bloqueado</b><span>El pedido se genera automáticamente cuando la práctica tiene elaboraciones.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
   }
   const output = document.querySelector("#workshopOutputState");
   if (output) {
     output.innerHTML = wf.hasItems
-      ? `<div class="workflow-state-card-6704 ready"><b>Salida preparada</b><span>Centro único para generar dossier, fichas, pedido u opciones avanzadas.</span></div>`
-      : `<div class="workflow-state-card-6704 empty"><b>Salida no disponible todavía</b><span>Añade al menos una elaboración para activar la impresión y la exportación documental.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
+      ? `<div class="workshop-state-card ready"><b>Salida preparada</b><span>Centro único para generar dossier, fichas, pedido u opciones avanzadas.</span></div>`
+      : `<div class="workshop-state-card empty"><b>Salida no disponible todavía</b><span>Añade al menos una elaboración para activar la impresión y la exportación documental.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
   }
   renderDomainActions(wf);
   applyWorkshopButtonState(wf);

@@ -1224,3 +1224,20 @@ body[data-workflow-state="empty"] #tab-order .order-guidance-619{display:none;}
 .domain-nested-view{display:block;}
 .tab-section.has-domain-view > .shell-area-card-672{margin-bottom:1rem;}
 .nav-row button[aria-current="page"]{box-shadow:inset 0 -3px 0 currentColor;}
+
+
+/* Fase 6.72.4 · shell final por dominios */
+.workshop-flow-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.65rem;margin:.75rem 0}
+.workshop-step-pill{border:1px solid var(--line,#d9dee5);background:#fff;border-radius:14px;padding:.65rem .75rem;text-align:left;color:inherit;display:flex;flex-direction:column;gap:.2rem;min-height:58px}
+.workshop-step-pill span{font-weight:800}
+.workshop-step-pill small{font-size:.78rem;opacity:.75}
+.workshop-step-pill.active{border-color:var(--primary,#1f6feb);box-shadow:0 0 0 2px rgba(31,111,235,.08)}
+.workshop-step-pill:disabled{opacity:.5;cursor:not-allowed;background:#f6f8fa}
+.workshop-state-card{border:1px solid var(--line,#d9dee5);border-radius:16px;padding:1rem;margin:.75rem 0;background:#fff}
+.workshop-state-card.ready{border-left:5px solid var(--ok,#2da44e)}
+.workshop-state-card.empty{border-left:5px solid var(--warn,#d29922)}
+.workflow-disabled,.is-disabled-by-empty-workshop{opacity:.55;cursor:not-allowed}
+.hidden-by-workflow{display:none!important}
+.workflow-card-disabled{opacity:.55}
+.shell-output-grid-disabled{opacity:.65}
+.shell-secondary-empty{opacity:.75}

@@ -38,7 +38,7 @@ No se incorporan fotografías en esta fase. Las futuras imágenes deberán ser p
 No deben usarse fotografías tomadas de internet sin licencia clara.
 
 
-Versión pública actual: `swiftremo_sql_fase6.72.3_taller_componentes_propios
+Versión pública actual: `swiftremo_sql_fase6.72.4_interfaz_docente_final
 
 
 ## Versión publicada
