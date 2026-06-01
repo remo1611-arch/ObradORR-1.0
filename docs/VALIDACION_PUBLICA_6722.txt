@@ -1,0 +1,13 @@
+OK index.html
+OK app/sqlite.html
+OK db/swiftremo.sqlite
+OK app/wasm/sqlite3.wasm
+OK paquete público limpio sin scripts/sql/migration
+OK sin __pycache__ ni .pyc
+OK node --check app/js/*.js y módulos nuevos
+OK cache ?v=6722
+OK schema_version fase 6.72.2
+OK navegación principal por dominios
+OK vistas legacy encapsuladas por router de dominio
+OK adaptadores de dominio presentes
+OK motor de Histórico encapsulado en history-engine.js

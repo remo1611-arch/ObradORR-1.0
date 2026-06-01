@@ -3,10 +3,22 @@ import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositor
 import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-3.js";
 import { loadRecovery, saveRecovery, clearRecovery } from "./storage-service.js";
 import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson } from "./ui.js";
+import { createAppState } from "./ui/state.js";
+import { createDomainShell } from "./ui/app-shell.js";
+import { createWorkshopDomain } from "./domain/workshop.js";
+import { createTechnicalArchiveDomain } from "./domain/technical-archive.js";
+import { createHistoryDomain } from "./domain/history.js";
+import { createSystemBackupService } from "./domain/system-backup.js";
 
 const swiftDb = new SwiftDB();
 let repo = null;
 let catalogs = null;
+let appState = null;
+let domainShell = null;
+let workshopDomain = null;
+let technicalArchiveDomain = null;
+let historyDomain = null;
+let systemBackupService = null;
 let selectedIngredientId = null;
 let hasSaveError = false;
 let hasPendingSave = false;
@@ -16,8 +28,8 @@ const state = {
   filters: { search: "", active: "active", use: "all", view: "work" },
   elaborations: { search: "", type: "all", active: "active" },
   library: { kind: "elaborations", search: "", active: "active", quality: "all", page: 1, pageSize: 50, selectedKey: "" },
-  practiceSearch: { search: "", type: "all", limit: 12 },
-  quantityDialog: { mode: "add", elaboration: null, selectionItem: null }
+  workshopSearch: { search: "", type: "all", limit: 12 },
+  quantityDialog: { mode: "add", elaboration: null, workshopItem: null }
 };
 
 window.SwiftRemoCore = {
@@ -25,6 +37,9 @@ window.SwiftRemoCore = {
   get repo() { return repo; },
   autosave,
   renderAll,
+  get appState() { return appState?.get?.(); },
+  get domainShell() { return domainShell; },
+  get workshopDomain() { return workshopDomain; },
   toast,
   fmtMoney,
   fmtNumber,
@@ -55,10 +70,10 @@ function migrateLegacyPracticeContextToSqliteV651() {
   if (!repo?.saveWorkSelectionContext) return;
   const previous = currentWorkContextV633();
   if (previous?.meta || previous?.plan || previous?.legacyMigratedV651) return;
-  const legacyMeta = readLocalJsonRawV651(PRACTICE_META_KEY_V632);
-  const legacyPlan = readLocalJsonRawV651(PRACTICE_PLAN_KEY_V627);
-  const scopedMeta = readLocalJsonRawV651(scopedPracticeStorageKeyV645(PRACTICE_META_KEY_V632));
-  const scopedPlan = readLocalJsonRawV651(scopedPracticeStorageKeyV645(PRACTICE_PLAN_KEY_V627));
+  const legacyMeta = readLocalJsonRawV651(WORKSHOP_META_KEY);
+  const legacyPlan = readLocalJsonRawV651(WORKSHOP_PLAN_KEY);
+  const scopedMeta = readLocalJsonRawV651(scopedPracticeStorageKeyV645(WORKSHOP_META_KEY));
+  const scopedPlan = readLocalJsonRawV651(scopedPracticeStorageKeyV645(WORKSHOP_PLAN_KEY));
   const meta = scopedMeta || legacyMeta;
   const plan = scopedPlan || legacyPlan;
   if (!meta && !plan) return;
@@ -79,6 +94,7 @@ function migrateLegacyPracticeContextToSqliteV651() {
 async function init() {
   try {
     bindEvents();
+    initDomainLayer();
     await loadBestAvailableDb();
   } catch (err) {
     console.error(err);
@@ -112,17 +128,17 @@ function bindEvents() {
   bindIfExists("#elaborationSearchV625", "input", ev => { state.elaborations.search = ev.target.value; renderElaborations(); });
   bindIfExists("#elaborationTypeFilterV625", "change", ev => { state.elaborations.type = ev.target.value; renderElaborations(); });
   bindIfExists("#elaborationStatusFilterV625", "change", ev => { state.elaborations.active = ev.target.value; renderElaborations(); });
-  bindIfExists("#libraryKindV666B", "change", ev => { state.library.kind = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderLibraryV666B(); });
-  bindIfExists("#librarySearchV666B", "input", ev => { state.library.search = ev.target.value; state.library.page = 1; renderLibraryV666B(); });
-  bindIfExists("#libraryStatusV666B", "change", ev => { state.library.active = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderLibraryV666B(); });
-  bindIfExists("#libraryQualityV667", "change", ev => { state.library.quality = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderLibraryV666B(); });
-  bindIfExists("#libraryPageSizeV666B", "change", ev => { state.library.pageSize = Number(ev.target.value) || 50; state.library.page = 1; renderLibraryV666B(); });
-  bindIfExists("#practiceSearchV6702", "input", ev => { ensurePracticeSearchStateV6703().search = ev.target.value || ""; renderPracticeSearchV6702(); });
-  bindIfExists("#practiceSearchTypeV6702", "change", ev => { ensurePracticeSearchStateV6703().type = ev.target.value || "all"; renderPracticeSearchV6702(); });
-  bindIfExists("#practiceSearchLimitV6702", "change", ev => { ensurePracticeSearchStateV6703().limit = Number(ev.target.value) || 12; renderPracticeSearchV6702(); });
-  bindIfExists("#practiceSearchClearV6702", "click", () => { state.practiceSearch = { search: "", type: "all", limit: 12 }; const q = document.querySelector("#practiceSearchV6702"); if (q) q.value = ""; const t = document.querySelector("#practiceSearchTypeV6702"); if (t) t.value = "all"; const l = document.querySelector("#practiceSearchLimitV6702"); if (l) l.value = "12"; renderPracticeSearchV6702(); });
-  bindIfExists("#libraryClearFiltersV666C", "click", clearLibraryFiltersV666C);
-  bindIfExists("#libraryCopyReviewV667", "click", copyLibraryReviewReportV667);
+  bindIfExists("#archiveKind", "change", ev => { state.library.kind = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderArchiveCatalog(); });
+  bindIfExists("#archiveSearch", "input", ev => { state.library.search = ev.target.value; state.library.page = 1; renderArchiveCatalog(); });
+  bindIfExists("#archiveStatus", "change", ev => { state.library.active = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderArchiveCatalog(); });
+  bindIfExists("#archiveQuality", "change", ev => { state.library.quality = ev.target.value; state.library.page = 1; state.library.selectedKey = ""; renderArchiveCatalog(); });
+  bindIfExists("#archivePageSize", "change", ev => { state.library.pageSize = Number(ev.target.value) || 50; state.library.page = 1; renderArchiveCatalog(); });
+  bindIfExists("#workshopSearchInput", "input", ev => { ensureWorkshopSearchState().search = ev.target.value || ""; renderWorkshopSearch(); });
+  bindIfExists("#workshopSearchType", "change", ev => { ensureWorkshopSearchState().type = ev.target.value || "all"; renderWorkshopSearch(); });
+  bindIfExists("#workshopSearchLimit", "change", ev => { ensureWorkshopSearchState().limit = Number(ev.target.value) || 12; renderWorkshopSearch(); });
+  bindIfExists("#workshopSearchClear", "click", () => { state.workshopSearch = { search: "", type: "all", limit: 12 }; const q = document.querySelector("#workshopSearchInput"); if (q) q.value = ""; const t = document.querySelector("#workshopSearchType"); if (t) t.value = "all"; const l = document.querySelector("#workshopSearchLimit"); if (l) l.value = "12"; renderWorkshopSearch(); });
+  bindIfExists("#archiveClearFilters", "click", clearArchiveFilters);
+  bindIfExists("#archiveCopyReview", "click", copyArchiveReviewReport);
   $("#newIngredient").addEventListener("click", newIngredientForm);
   $("#clearIngredientForm").addEventListener("click", clearIngredientForm);
   $("#deactivateIngredient").addEventListener("click", deactivateSelectedIngredient);
@@ -132,26 +148,26 @@ function bindEvents() {
   bindIfExists("#copyBaseDiagnosisV663", "click", copyBaseDiagnosisV663);
   bindIfExists("#printQuickSession", "click", () => document.querySelector("#classPrintSessionV41")?.click());
   bindIfExists("#printQuickOrder", "click", () => document.querySelector("#globalPrintOrderV61")?.click());
-  bindIfExists("#printQuickSelectionV623", "click", () => printSelectionBothV638());
-  bindIfExists("#orderPrintCurrentTechnicalV670", "click", () => printSelectionTechnicalOrderV641());
-  bindIfExists("#orderPrintCurrentSimpleV670", "click", () => printSelectionDirectV638({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido simple desde pestaña pedido" }));
-  bindIfExists("#outputPrintDossierV670", "click", () => printSelectionTeachingOrderV642());
-  bindIfExists("#outputPrintSheetsV670", "click", () => printSelectionTeachingV641());
-  bindIfExists("#outputPrintOrderV670", "click", () => printSelectionTechnicalOrderV641());
-  bindIfExists("#outputExportSqliteV670", "click", () => exportSqlite());
-  bindIfExists("#selectionPrintElaborationsV638", "click", () => printSelectionDirectV638({ includeElaborations: true, includeOrder: false, reason: "historial impresión elaboraciones práctica" }));
-  bindIfExists("#selectionPrintOrderV638", "click", () => printSelectionDirectV638({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido práctica" }));
-  bindIfExists("#selectionPrintBothV638", "click", () => printSelectionBothV638());
-  bindIfExists("#selectionPrintTeachingV641", "click", () => printSelectionTeachingV641());
-  bindIfExists("#selectionPrintTechnicalOrderV641", "click", () => printSelectionTechnicalOrderV641());
-  bindIfExists("#selectionPrintTeachingOrderV642", "click", () => printSelectionTeachingOrderV642());
-  bindIfExists("#selectionOpenPrintCenterV642", "click", () => openPrintCenterV642());
-  bindIfExists("#printCenterCancelV642", "click", () => closePrintCenterV642());
-  bindIfExists("#printCenterCloseV642", "click", () => closePrintCenterV642());
-  bindIfExists("#printCenterConfirmV642", "click", () => executePrintCenterV642());
-  bindIfExists("#printCenterDialogV642", "click", ev => { if (ev.target?.id === "printCenterDialogV642") closePrintCenterV642(); });
-  bindIfExists("#selectionClearV623", "click", clearSelection);
-  bindIfExists("#selectionCreateSessionV623", "click", createSessionFromSelection);
+  bindIfExists("#printQuickWorkshop", "click", () => printWorkshopSimpleDossier());
+  bindIfExists("#workshopOrderPrintTechnical", "click", () => printWorkshopTechnicalOrder());
+  bindIfExists("#workshopOrderPrintSimple", "click", () => printWorkshopDirect({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido simple desde pestaña pedido" }));
+  bindIfExists("#workshopPrintDossier", "click", () => printWorkshopTeachingDossier());
+  bindIfExists("#workshopPrintSheets", "click", () => printWorkshopTeachingSheets());
+  bindIfExists("#workshopPrintOrder", "click", () => printWorkshopTechnicalOrder());
+  bindIfExists("#workshopExportSqlite", "click", () => exportSqlite());
+  bindIfExists("#workshopPrintSimpleSheets", "click", () => printWorkshopDirect({ includeElaborations: true, includeOrder: false, reason: "historial impresión elaboraciones práctica" }));
+  bindIfExists("#workshopPrintSimpleOrder", "click", () => printWorkshopDirect({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido práctica" }));
+  bindIfExists("#workshopPrintSimpleDossier", "click", () => printWorkshopSimpleDossier());
+  bindIfExists("#workshopPrintTeachingSheets", "click", () => printWorkshopTeachingSheets());
+  bindIfExists("#workshopPrintTechnicalOrder", "click", () => printWorkshopTechnicalOrder());
+  bindIfExists("#workshopPrintTeachingDossier", "click", () => printWorkshopTeachingDossier());
+  bindIfExists("#workshopOpenPrintCenter", "click", () => openWorkshopPrintDialog());
+  bindIfExists("#workshopPrintDialogCancel", "click", () => closeWorkshopPrintDialog());
+  bindIfExists("#workshopPrintDialogClose", "click", () => closeWorkshopPrintDialog());
+  bindIfExists("#workshopPrintDialogConfirm", "click", () => executeWorkshopPrintDialog());
+  bindIfExists("#workshopPrintDialog", "click", ev => { if (ev.target?.id === "workshopPrintDialog") closeWorkshopPrintDialog(); });
+  bindIfExists("#workshopClear", "click", clearWorkshop);
+  bindIfExists("#workshopArchive", "click", archiveWorkshopAsHistory);
   bindIfExists("#qtyModeV626", "change", handleQuantityModeChange);
   ["qtyScopeV6272", "qtyTeamCountV6272", "qtyPeoplePerTeamV6272", "qtyMainQtyV626", "qtyFlourGV626", "qtyRawDoughGV626", "qtyPiecesV626", "qtyPieceWeightGV626", "qtyBakingLossV626"].forEach(id => {
     bindIfExists("#" + id, "input", updateQuantityComputedV6272);
@@ -164,9 +180,9 @@ function bindEvents() {
     bindIfExists("#" + id, "input", () => { savePracticePlanV627(); renderPracticePlanV627(); });
     bindIfExists("#" + id, "change", () => { savePracticePlanV627(); renderPracticePlanV627(); });
   });
-  ["practiceTitleV632", "practiceDateV632", "practiceCycleV632", "practiceModuleV632", "practiceGroupV632", "practiceResponsibleV632", "practiceNotesV632", "printIncludePracticeDataV637"].forEach(id => {
-    bindIfExists("#" + id, "input", () => { savePracticeMetaV632(); });
-    bindIfExists("#" + id, "change", () => { if (id === "practiceCycleV632") refreshPracticeModulesV632(true); if (id === "practiceModuleV632") applyPracticeModuleDefaultGroupV632(); savePracticeMetaV632(); });
+  ["workshopTitle", "workshopDate", "workshopCycle", "workshopModule", "workshopGroup", "workshopResponsible", "workshopNotes", "printIncludeWorkshopData"].forEach(id => {
+    bindIfExists("#" + id, "input", () => { saveWorkshopMeta(); });
+    bindIfExists("#" + id, "change", () => { if (id === "workshopCycle") refreshWorkshopModules(true); if (id === "workshopModule") applyWorkshopModuleDefaultGroup(); saveWorkshopMeta(); });
   });
   document.addEventListener("click", ev => {
     const libDetailPre = ev.target.closest?.("[data-library-detail]");
@@ -174,22 +190,22 @@ function bindEvents() {
       ev.preventDefault();
       state.library.kind = "elaborations";
       state.library.selectedKey = libDetailPre.dataset.libraryDetail || "";
-      switchTab("library");
-      renderLibraryV666B();
+      switchTab("archive-catalog");
+      renderArchiveCatalog();
       return;
     }
     const focusPracticeSearch = ev.target.closest?.("[data-focus-practice-search]");
     if (focusPracticeSearch) {
       ev.preventDefault();
-      focusPracticeSearchV6703();
+      focusWorkshopSearch();
       return;
     }
     const shellAction = ev.target.closest?.("[data-shell-action]");
     if (shellAction) {
       ev.preventDefault();
       const action = shellAction.dataset.shellAction || "";
-      if (action === "archive-selection") { createSessionFromSelection(); return; }
-      if (action === "clear-selection") { clearSelection(); return; }
+      if (action === "archive-workshop") { archiveWorkshopAsHistory(); return; }
+      if (action === "clear-workshop") { clearWorkshop(); return; }
     }
     const tabButton = ev.target.closest?.("[data-tab]");
     if (tabButton && !tabButton.dataset.tabBound) {
@@ -197,22 +213,22 @@ function bindEvents() {
       switchTab(tabButton.dataset.tab);
       return;
     }
-    const del = ev.target.closest?.("[data-selection-delete]");
-    if (del) { ev.preventDefault(); deleteSelectionItem(del.dataset.selectionDelete); return; }
-    const editSel = ev.target.closest?.("[data-selection-edit]");
-    if (editSel) { ev.preventDefault(); editSelectionItem(editSel.dataset.selectionEdit); return; }
+    const del = ev.target.closest?.("[data-workshop-delete]");
+    if (del) { ev.preventDefault(); deleteWorkshopItem(del.dataset.workshopDelete); return; }
+    const editSel = ev.target.closest?.("[data-workshop-edit]");
+    if (editSel) { ev.preventDefault(); editWorkshopItem(editSel.dataset.workshopEdit); return; }
     const openElab = ev.target.closest?.("[data-open-elaboration]");
     if (openElab) { ev.preventDefault(); openUnifiedElaboration(openElab.dataset.openElaboration); return; }
     const addElab = ev.target.closest?.("[data-add-elaboration-work]");
     if (addElab) { ev.preventDefault(); addUnifiedElaborationToWork(addElab.dataset.addElaborationWork); return; }
     const libPage = ev.target.closest?.("[data-library-page]");
-    if (libPage) { ev.preventDefault(); state.library.page = Number(libPage.dataset.libraryPage) || 1; renderLibraryV666B(); return; }
+    if (libPage) { ev.preventDefault(); state.library.page = Number(libPage.dataset.libraryPage) || 1; renderArchiveCatalog(); return; }
     const libDetail = ev.target.closest?.("[data-library-detail]");
-    if (libDetail) { ev.preventDefault(); state.library.selectedKey = libDetail.dataset.libraryDetail || ""; renderLibraryV666B(); return; }
+    if (libDetail) { ev.preventDefault(); state.library.selectedKey = libDetail.dataset.libraryDetail || ""; renderArchiveCatalog(); return; }
     const libOpen = ev.target.closest?.("[data-library-open]");
     if (libOpen) { ev.preventDefault(); openUnifiedElaboration(libOpen.dataset.libraryOpen); return; }
     const libEditIng = ev.target.closest?.("[data-library-edit-ingredient]");
-    if (libEditIng) { ev.preventDefault(); loadIngredientForm(libEditIng.dataset.libraryEditIngredient); switchTab("ingredients"); return; }
+    if (libEditIng) { ev.preventDefault(); loadIngredientForm(libEditIng.dataset.libraryEditIngredient); switchTab("archive-ingredients"); return; }
   });
   bindScrollTargets();
   bindClassWorkflowAccordion();
@@ -383,39 +399,32 @@ function afterDbLoaded(message, saveLabel = "Guardado", savedAt = null) {
   window.dispatchEvent(new CustomEvent("swiftremo:coreReady", { detail: { message } }));
 }
 
-const SHELL_TAB_GROUPS_V672 = {
-  workshop: new Set(["workshop", "panel", "selection", "order", "print"]),
-  history: new Set(["history", "class"]),
-  "technical-archive": new Set(["technical-archive", "library", "elaborations", "ingredients", "bakery", "culinary", "audit", "margins"]),
-  system: new Set(["system", "data", "sql"])
-};
-function shellAreaForTabV672(tab) {
-  for (const [area, tabs] of Object.entries(SHELL_TAB_GROUPS_V672)) {
-    if (tabs.has(tab)) return area;
-  }
-  return tab || "workshop";
+function initDomainLayer() {
+  if (domainShell) return;
+  appState = createAppState();
+  workshopDomain = createWorkshopDomain({ getRepo: () => repo });
+  technicalArchiveDomain = createTechnicalArchiveDomain({ getRepo: () => repo });
+  historyDomain = createHistoryDomain({ getRepo: () => repo });
+  systemBackupService = createSystemBackupService({ getDb: () => swiftDb });
+  domainShell = createDomainShell({
+    state: appState,
+    onBeforeNavigate: (route) => {
+      if ((route.route === "workshop-order" || route.route === "workshop-output") && repo && !getWorkshopState().hasItems) {
+        toast("Primero añade al menos una elaboración al Taller.", "warn");
+        focusWorkshopSearch();
+        return false;
+      }
+      return true;
+    },
+    onAfterNavigate: () => renderDomainActions(getWorkshopState())
+  });
+  domainShell.init();
 }
 
 function switchTab(tab) {
   if (!tab) return;
-  if ((tab === "order" || tab === "print") && repo && !getWorkflowStateV6704().hasItems) {
-    toast("Primero añade al menos una elaboración a la práctica.", "warn");
-    focusPracticeSearchV6703();
-    return;
-  }
-  const target = $(`#tab-${tab}`);
-  if (!target) {
-    console.warn(`[SwiftRemo] Pestaña no encontrada: ${tab}`);
-    return;
-  }
-  const shellArea = shellAreaForTabV672(tab);
-  $$(`.nav-row button`).forEach(btn => {
-    const btnArea = btn.dataset.shellArea || shellAreaForTabV672(btn.dataset.tab);
-    btn.classList.toggle("active", btnArea === shellArea);
-  });
-  $$(`.tab-section`).forEach(sec => sec.classList.remove("active"));
-  target.classList.add("active");
-  target.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (domainShell?.navigate(tab)) return;
+  console.warn(`[SwiftRemo] Ruta no encontrada: ${tab}`);
 }
 
 async function autosave({ backup = false, reason = "auto" } = {}) {
@@ -446,17 +455,17 @@ function renderAll() {
     renderBaseStatusV663,
     renderPanelQualitySummary,
     renderSessionSummary,
-    renderPracticeMetaV632,
+    renderWorkshopMeta,
     renderPracticePlanV627,
-    renderPracticeSearchV6702,
-    renderLibraryV666B,
+    renderWorkshopSearch,
+    renderArchiveCatalog,
     renderElaborations,
     renderIngredients,
     renderSelection,
     renderOrder,
     renderMargins,
     renderAudit,
-    renderWorkflowStateV6704
+    renderWorkshopState
   ].forEach(fn => {
     try { fn(); }
     catch (err) {
@@ -615,15 +624,15 @@ function renderPanelQualitySummary() {
 }
 
 function renderSessionSummary() {
-  const box = document.querySelector("#sessionSummary");
+  const box = document.querySelector("#workshopSummaryPanel");
   if (!box || !repo) return;
-  const wf = getWorkflowStateV6704();
+  const wf = getWorkshopState();
   if (!wf.hasItems) {
     box.innerHTML = `
       <div class="empty-state empty-state-6271 workflow-empty-panel-6704">
         <b>No hay práctica activa.</b>
         <span>El siguiente paso real es abrir Práctica, buscar una elaboración y definir la cantidad de producción.</span>
-        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Crear práctica</button><button type="button" class="btn ghost" data-tab="library">Consultar Archivo técnico</button></div>
+        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Crear práctica</button><button type="button" class="btn ghost" data-tab="archive-catalog">Consultar Archivo técnico</button></div>
       </div>`;
     return;
   }
@@ -634,13 +643,13 @@ function renderSessionSummary() {
       <div class="kpi"><span>Cocina/Pastelería</span><b>${fmtNumber(wf.culinaryItems || 0,0)}</b></div>
       <div class="kpi"><span>Coste base aprox.</span><b>${fmtMoney(wf.estimatedCost || 0)}</b></div>
     </div>
-    <div class="actions"><button type="button" class="btn primary" data-tab="selection">Continuar práctica</button><button type="button" class="btn ghost" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Imprimir / exportar</button></div>`;
+    <div class="actions"><button type="button" class="btn primary" data-tab="workshop-practice">Continuar práctica</button><button type="button" class="btn ghost" data-tab="workshop-order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="workshop-output">Imprimir / exportar</button></div>`;
 }
 
 
 
-const PRACTICE_PLAN_KEY_V627 = "swiftremo_practice_plan_v627";
-const PRACTICE_META_KEY_V632 = "swiftremo_practice_meta_v632";
+const WORKSHOP_PLAN_KEY = "swiftremo_practice_plan_v627";
+const WORKSHOP_META_KEY = "swiftremo_practice_meta_v632";
 
 function scopedPracticeStorageKeyV645(baseKey) {
   try {
@@ -675,7 +684,7 @@ function writeLocalJsonV645(baseKey, data) {
 }
 
 function localPracticePlanV627() {
-  return readLocalJsonV645(PRACTICE_PLAN_KEY_V627, true);
+  return readLocalJsonV645(WORKSHOP_PLAN_KEY, true);
 }
 
 function currentWorkContextV633() {
@@ -703,7 +712,7 @@ function practicePlanV627() {
 
 function savePracticePlanV627() {
   const data = { productionScaleDisabledV634: true };
-  writeLocalJsonV645(PRACTICE_PLAN_KEY_V627, data);
+  writeLocalJsonV645(WORKSHOP_PLAN_KEY, data);
   savePracticeContextToSqliteV633({ plan: data });
 }
 
@@ -723,81 +732,81 @@ function savePracticeContextToSqliteV633(partial = {}) {
 }
 
 
-function todayIsoV632() { return new Date().toISOString().slice(0, 10); }
+function todayIso() { return new Date().toISOString().slice(0, 10); }
 
-function localPracticeMetaV632() {
-  return readLocalJsonV645(PRACTICE_META_KEY_V632, true) || {};
+function localWorkshopMeta() {
+  return readLocalJsonV645(WORKSHOP_META_KEY, true) || {};
 }
 
-function loadPracticeMetaV632() {
+function loadWorkshopMeta() {
   const contextMeta = currentWorkContextV633().meta;
-  return contextMeta || localPracticeMetaV632();
+  return contextMeta || localWorkshopMeta();
 }
 
-function practiceMetaV632() {
-  const stored = loadPracticeMetaV632() || {};
+function workshopMeta() {
+  const stored = loadWorkshopMeta() || {};
   const get = (id, fallback = "") => {
     const el = document.querySelector("#" + id);
     return el ? el.value : (stored[id] ?? fallback);
   };
   return {
-    title: String(get("practiceTitleV632", stored.practiceTitleV632 || "")).trim(),
-    practiceDate: get("practiceDateV632", stored.practiceDateV632 || todayIsoV632()),
-    cycleId: get("practiceCycleV632", stored.practiceCycleV632 || ""),
-    moduleId: get("practiceModuleV632", stored.practiceModuleV632 || ""),
-    groupName: String(get("practiceGroupV632", stored.practiceGroupV632 || "")).trim(),
-    responsible: String(get("practiceResponsibleV632", stored.practiceResponsibleV632 || "Remo J. Pereira González")).trim(),
-    notes: String(get("practiceNotesV632", stored.practiceNotesV632 || "")).trim(),
-    includePracticeData: document.querySelector("#printIncludePracticeDataV637")
-      ? document.querySelector("#printIncludePracticeDataV637").checked
-      : Boolean(stored.printIncludePracticeDataV637)
+    title: String(get("workshopTitle", stored.workshopTitle || "")).trim(),
+    practiceDate: get("workshopDate", stored.workshopDate || todayIso()),
+    cycleId: get("workshopCycle", stored.workshopCycle || ""),
+    moduleId: get("workshopModule", stored.workshopModule || ""),
+    groupName: String(get("workshopGroup", stored.workshopGroup || "")).trim(),
+    responsible: String(get("workshopResponsible", stored.workshopResponsible || "Remo J. Pereira González")).trim(),
+    notes: String(get("workshopNotes", stored.workshopNotes || "")).trim(),
+    includePracticeData: document.querySelector("#printIncludeWorkshopData")
+      ? document.querySelector("#printIncludeWorkshopData").checked
+      : Boolean(stored.printIncludeWorkshopData)
   };
 }
 
-function savePracticeMetaV632() {
-  const ids = ["practiceTitleV632", "practiceDateV632", "practiceCycleV632", "practiceModuleV632", "practiceGroupV632", "practiceResponsibleV632", "practiceNotesV632", "printIncludePracticeDataV637"];
+function saveWorkshopMeta() {
+  const ids = ["workshopTitle", "workshopDate", "workshopCycle", "workshopModule", "workshopGroup", "workshopResponsible", "workshopNotes", "printIncludeWorkshopData"];
   const data = {};
   ids.forEach(id => { const el = document.querySelector("#" + id); if (el) data[id] = el.type === "checkbox" ? el.checked : el.value; });
-  writeLocalJsonV645(PRACTICE_META_KEY_V632, data);
+  writeLocalJsonV645(WORKSHOP_META_KEY, data);
   savePracticeContextToSqliteV633({ meta: data });
 }
 
-function renderPracticeMetaV632() {
-  const titleEl = document.querySelector("#practiceTitleV632");
+function renderWorkshopMeta() {
+  const titleEl = document.querySelector("#workshopTitle");
   if (!titleEl) return;
-  const meta = practiceMetaV632();
+  const meta = workshopMeta();
   if (!titleEl.value && meta.title) titleEl.value = meta.title;
-  const dateEl = document.querySelector("#practiceDateV632");
-  if (dateEl && !dateEl.value) dateEl.value = meta.practiceDate || todayIsoV632();
-  const groupEl = document.querySelector("#practiceGroupV632");
+  const dateEl = document.querySelector("#workshopDate");
+  if (dateEl && !dateEl.value) dateEl.value = meta.practiceDate || todayIso();
+  const groupEl = document.querySelector("#workshopGroup");
   if (groupEl && !groupEl.value && meta.groupName) groupEl.value = meta.groupName;
-  const respEl = document.querySelector("#practiceResponsibleV632");
+  const respEl = document.querySelector("#workshopResponsible");
   if (respEl && !respEl.value) respEl.value = meta.responsible || "Remo J. Pereira González";
-  const notesEl = document.querySelector("#practiceNotesV632");
+  const notesEl = document.querySelector("#workshopNotes");
   if (notesEl && !notesEl.value && meta.notes) notesEl.value = meta.notes;
-  const includeDataEl = document.querySelector("#printIncludePracticeDataV637");
-  const stored = loadPracticeMetaV632() || {};
-  if (includeDataEl && typeof stored.printIncludePracticeDataV637 === "boolean") includeDataEl.checked = stored.printIncludePracticeDataV637;
+  const includeDataEl = document.querySelector("#printIncludeWorkshopData");
+  const stored = loadWorkshopMeta() || {};
+  if (includeDataEl && typeof stored.printIncludeWorkshopData === "boolean") includeDataEl.checked = stored.printIncludeWorkshopData;
   else if (includeDataEl) includeDataEl.checked = true;
 }
 
-function populatePracticeMetaSelectorsV632() {
+function populateWorkshopMetaSelectors() {
   if (!repo) return;
-  const cycleEl = document.querySelector("#practiceCycleV632");
-  const moduleEl = document.querySelector("#practiceModuleV632");
+  const cycleEl = document.querySelector("#workshopCycle");
+  const moduleEl = document.querySelector("#workshopModule");
   if (!cycleEl || !moduleEl) return;
-  const meta = loadPracticeMetaV632() || {};
+  const meta = loadWorkshopMeta() || {};
   fillSelect(cycleEl, repo.cycles(), { value: "id", label: "name", blank: "Sin ciclo / seleccionar" });
-  if (meta.practiceCycleV632) cycleEl.value = meta.practiceCycleV632;
-  refreshPracticeModulesV632(false);
-  if (meta.practiceModuleV632) moduleEl.value = meta.practiceModuleV632;
-  renderPracticeMetaV632();
+  if (meta.workshopCycle) cycleEl.value = meta.workshopCycle;
+  refreshWorkshopModules(false);
+  if (meta.workshopModule) moduleEl.value = meta.workshopModule;
+  renderWorkshopMeta();
 }
 
-function refreshPracticeModulesV632(resetModule = false) {
+function refreshWorkshopModules(resetModule = false) {
   if (!repo) return;
-  const cycleId = document.querySelector("#practiceCycleV632")?.value || "";
-  const moduleEl = document.querySelector("#practiceModuleV632");
+  const cycleId = document.querySelector("#workshopCycle")?.value || "";
+  const moduleEl = document.querySelector("#workshopModule");
   if (!moduleEl) return;
   const old = moduleEl.value;
   const rows = repo.modules(cycleId || null);
@@ -806,11 +815,11 @@ function refreshPracticeModulesV632(resetModule = false) {
   if (resetModule) moduleEl.value = "";
 }
 
-function applyPracticeModuleDefaultGroupV632() {
+function applyWorkshopModuleDefaultGroup() {
   if (!repo) return;
-  const cycleId = document.querySelector("#practiceCycleV632")?.value || "";
-  const moduleId = document.querySelector("#practiceModuleV632")?.value || "";
-  const groupEl = document.querySelector("#practiceGroupV632");
+  const cycleId = document.querySelector("#workshopCycle")?.value || "";
+  const moduleId = document.querySelector("#workshopModule")?.value || "";
+  const groupEl = document.querySelector("#workshopGroup");
   if (!moduleId || !groupEl || groupEl.value.trim()) return;
   const m = repo.modules(cycleId || null).find(x => x.id === moduleId);
   if (m?.default_group) groupEl.value = m.default_group;
@@ -826,16 +835,16 @@ function suggestedPracticeQuantityV627(mode, elab, item = null) {
 }
 
 
-function foldTextV666B(value) {
+function foldText(value) {
   return String(value ?? "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 }
 
-function librarySearchMatchV666B(row, q) {
+function archiveSearchMatch(row, q) {
   if (!q) return true;
-  const haystack = foldTextV666B([
+  const haystack = foldText([
     row.name, row.typeLabel, row.family, row.subfamily, row.statusLabel,
     row.baseLabel, row.orderGroup, row.unit, row.roleLabel, row.productionLabel,
     row.qualityLabel, ...(row.qualityIssues || [])
@@ -844,16 +853,16 @@ function librarySearchMatchV666B(row, q) {
 }
 
 
-function textLengthV667(value) {
+function textLength(value) {
   return String(value || "").trim().length;
 }
 
-function hasWordV667(text, words) {
-  const folded = foldTextV666B(text || "");
+function hasWord(text, words) {
+  const folded = foldText(text || "");
   return words.some(w => folded.includes(w));
 }
 
-function qualityTypeV667(result) {
+function qualityType(result) {
   if (!result || result.key === "ingredient") return "ingredient";
   if (result.key === "archived") return "archived";
   if (result.criticals?.length) return "poor";
@@ -861,7 +870,7 @@ function qualityTypeV667(result) {
   return "complete";
 }
 
-function qualityLabelV667(type) {
+function qualityLabel(type) {
   return ({
     complete: "Completa",
     review: "Revisable",
@@ -871,11 +880,11 @@ function qualityLabelV667(type) {
   })[type] || "Sin clasificar";
 }
 
-function qualityBadgeTypeV667(type) {
+function qualityBadgeType(type) {
   return ({ complete: "ok", review: "warn", poor: "err", archived: "off", ingredient: "off" })[type] || "off";
 }
 
-function qualityReviewV667(row) {
+function qualityReview(row) {
   if (!row || row.sourceKind === "ingredient") {
     return { key: "ingredient", type: "ingredient", label: "Ingrediente", positives: ["Registro de ingrediente"], warnings: [], criticals: [], info: [] };
   }
@@ -898,10 +907,10 @@ function qualityReviewV667(row) {
   if (Number(row.cost || 0) > 0) positives.push("Coste calculable"); else warnings.push("Coste no calculable o cero");
   if (row.sourceKind === "culinary") {
     const raw = repo.culinaryRecipeById(row.id) || {};
-    const processLen = textLengthV667(raw.process);
-    const appccLen = textLengthV667(raw.appcc_notes);
+    const processLen = textLength(raw.process);
+    const appccLen = textLength(raw.appcc_notes);
     if (processLen >= 80 || stepCount >= 3) positives.push("Proceso suficientemente documentado"); else warnings.push("Proceso breve: conviene revisar técnica y secuencia");
-    if (appccLen >= 25 || hasWordV667(stepText, ["appcc", "pcc", "temperatura", "frio", "caliente", "abat", "conserv", "alerg"])) positives.push("APPCC/puntos críticos presentes"); else warnings.push("APPCC poco visible");
+    if (appccLen >= 25 || hasWord(stepText, ["appcc", "pcc", "temperatura", "frio", "caliente", "abat", "conserv", "alerg"])) positives.push("APPCC/puntos críticos presentes"); else warnings.push("APPCC poco visible");
     if (raw.production_kind === "technical_yield") {
       if (Number(raw.yield_quantity || 0) > 0 || String(row.baseLabel || "").toLowerCase().includes("rendimiento")) positives.push("Rendimiento técnico definido"); else warnings.push("Subelaboración sin rendimiento claro");
     } else {
@@ -919,16 +928,16 @@ function qualityReviewV667(row) {
     if (Math.abs(flourPct - 100) < 0.01) positives.push("Harina al 100 % panadero"); else warnings.push(`Porcentaje de harina no estándar: ${fmtNumber(flourPct, 2)} %`);
     if (hydration > 0) positives.push(`Hidratación calculada: ${fmtNumber(hydration, 1)} %`); else warnings.push("Hidratación no calculable");
     if (hydration > 120) info.push("Hidratación especial: revisar si es papilla, dosa, injera o sin gluten");
-    if (hasWordV667(stepText, ["enfri", "conserv", "abat", "temperatura", "reposo", "ferment", "horne"])) positives.push("Proceso panadero con control técnico"); else warnings.push("Proceso panadero mejorable");
+    if (hasWord(stepText, ["enfri", "conserv", "abat", "temperatura", "reposo", "ferment", "horne"])) positives.push("Proceso panadero con control técnico"); else warnings.push("Proceso panadero mejorable");
     if (raw.status === "validated") positives.push("Estado validado"); else warnings.push(`Estado ${statusLabel(raw.status)}`);
   }
-  const type = qualityTypeV667({ warnings, criticals });
-  return { key: type, type, label: qualityLabelV667(type), positives, warnings, criticals, info };
+  const type = qualityType({ warnings, criticals });
+  return { key: type, type, label: qualityLabel(type), positives, warnings, criticals, info };
 }
 
-function enrichLibraryQualityV667(rows) {
+function enrichArchiveQuality(rows) {
   return rows.map(row => {
-    const quality = qualityReviewV667(row);
+    const quality = qualityReview(row);
     return {
       ...row,
       quality,
@@ -939,18 +948,18 @@ function enrichLibraryQualityV667(rows) {
   });
 }
 
-function qualityMatchesFilterV667(row) {
+function qualityMatchesFilter(row) {
   const filter = state.library.quality || "all";
   if (filter === "all") return true;
   if (filter === "actionable") return ["poor", "review"].includes(row.qualityType);
   return row.qualityType === filter;
 }
 
-function libraryRowsV666B() {
+function archiveRows() {
   if (!repo) return [];
   const kind = state.library.kind || "elaborations";
   const active = state.library.active || "active";
-  const q = foldTextV666B(state.library.search || "").trim();
+  const q = foldText(state.library.search || "").trim();
   let rows = [];
 
   if (kind === "ingredients") {
@@ -981,10 +990,10 @@ function libraryRowsV666B() {
       typeLabel: "Cocina/Pastelería",
       family: r.family || "",
       subfamily: r.subfamily || "",
-      productionLabel: productionKindLabelV666B(r.production_kind),
+      productionLabel: productionKindLabel(r.production_kind),
       statusLabel: statusLabel(r.status),
       active: Number(r.active) === 1,
-      baseLabel: culinaryBaseLabelV666B(r),
+      baseLabel: culinaryBaseLabel(r),
       cost: Number(r.total_cost || 0),
       raw: r
     }));
@@ -1001,7 +1010,7 @@ function libraryRowsV666B() {
       productionLabel: "Porcentaje panadero",
       statusLabel: statusLabel(r.status),
       active: Number(r.active) === 1,
-      baseLabel: bakeryBaseLabelV666B(r),
+      baseLabel: bakeryBaseLabel(r),
       cost: Number(r.total_cost || r.ingredient_cost_total || 0),
       hydration: Number(r.real_hydration_pct || 0),
       raw: r
@@ -1029,31 +1038,31 @@ function libraryRowsV666B() {
     if (active === "active") rows = rows.filter(r => r.active);
     if (active === "inactive") rows = rows.filter(r => !r.active);
   }
-  rows = enrichLibraryQualityV667(rows);
-  if (q) rows = rows.filter(r => librarySearchMatchV666B(r, q));
-  rows = rows.filter(qualityMatchesFilterV667);
+  rows = enrichArchiveQuality(rows);
+  if (q) rows = rows.filter(r => archiveSearchMatch(r, q));
+  rows = rows.filter(qualityMatchesFilter);
   return rows.sort((a, b) => Number(b.active) - Number(a.active) || String(a.name).localeCompare(String(b.name), "es"));
 }
 
-function productionKindLabelV666B(kind) {
+function productionKindLabel(kind) {
   return ({ final_servings: "Raciones", technical_yield: "Rendimiento técnico", dual: "Dual" })[kind] || kind || "Ficha";
 }
 
-function culinaryBaseLabelV666B(r) {
+function culinaryBaseLabel(r) {
   if (r.production_kind === "technical_yield") return "Rendimiento técnico";
   const servings = Number(r.base_servings || 0) > 0 ? `${fmtNumber(r.base_servings, 0)} raciones` : "Sin raciones base";
   const weight = Number(r.serving_weight_g || 0) > 0 ? `${fmtNumber(r.serving_weight_g, 0)} g/ración` : "sin gramaje";
   return `${servings} · ${weight}`;
 }
 
-function bakeryBaseLabelV666B(r) {
+function bakeryBaseLabel(r) {
   const flour = Number(r.base_flour_g || 0) > 0 ? `${fmtNumber(r.base_flour_g, 0)} g harina` : "sin harina base";
   const dough = Number(r.total_raw_dough_g || 0) > 0 ? `${fmtNumber(r.total_raw_dough_g, 0)} g masa` : "";
   const hydration = Number(r.real_hydration_pct || 0) > 0 ? `${fmtNumber(r.real_hydration_pct, 1)} % hidratación` : "";
   return [flour, dough, hydration].filter(Boolean).join(" · ");
 }
 
-function clearLibraryFiltersV666C() {
+function clearArchiveFilters() {
   state.library.kind = "elaborations";
   state.library.search = "";
   state.library.active = "active";
@@ -1061,41 +1070,44 @@ function clearLibraryFiltersV666C() {
   state.library.page = 1;
   state.library.pageSize = 50;
   state.library.selectedKey = "";
-  renderLibraryV666B();
+  renderArchiveCatalog();
   toast("Filtros de biblioteca limpiados.", "ok");
 }
 
-function ensurePracticeSearchStateV6703() {
-  if (!state.practiceSearch) state.practiceSearch = { search: "", type: "all", limit: 12 };
-  state.practiceSearch.search = String(state.practiceSearch.search || "");
-  state.practiceSearch.type = state.practiceSearch.type || "all";
-  state.practiceSearch.limit = Number(state.practiceSearch.limit || 12) || 12;
-  return state.practiceSearch;
+function ensureWorkshopSearchState() {
+  if (!state.workshopSearch) state.workshopSearch = { search: "", type: "all", limit: 12 };
+  state.workshopSearch.search = String(state.workshopSearch.search || "");
+  state.workshopSearch.type = state.workshopSearch.type || "all";
+  state.workshopSearch.limit = Number(state.workshopSearch.limit || 12) || 12;
+  return state.workshopSearch;
 }
 
-function focusPracticeSearchV6703() {
-  switchTab("selection");
+function focusWorkshopSearch() {
+  switchTab("workshop-practice");
   window.setTimeout(() => {
-    const q = document.querySelector("#practiceSearchV6702");
+    const q = document.querySelector("#workshopSearchInput");
     if (!q) return;
     q.focus();
     q.scrollIntoView({ behavior: "smooth", block: "center" });
   }, 80);
 }
 
-function hasWorkSelectionItemsV6703() {
+function hasWorkshopItems() {
   try { return !!repo && typeof repo.workSelectionItems === "function" && repo.workSelectionItems().length > 0; }
   catch { return false; }
 }
 
-function ensureWorkSelectionNotEmptyV6703(message = "Primero añade al menos una elaboración a la práctica.") {
-  if (hasWorkSelectionItemsV6703()) return true;
+function ensureWorkshopNotEmpty(message = "Primero añade al menos una elaboración a la práctica.") {
+  if (hasWorkshopItems()) return true;
   toast(message, "warn");
-  focusPracticeSearchV6703();
+  focusWorkshopSearch();
   return false;
 }
 
-function getWorkflowStateV6704() {
+function getWorkshopState() {
+  if (workshopDomain) {
+    try { return workshopDomain.getState(); } catch (err) { console.warn("[SwiftRemo] Adaptador de Taller no disponible", err); }
+  }
   const empty = {
     hasDb: !!repo,
     hasItems: false,
@@ -1138,22 +1150,22 @@ function getWorkflowStateV6704() {
   }
 }
 
-function workflowStepClassV6704(active) {
+function workshopStepClass(active) {
   return active ? "workflow-step-pill-6704 active" : "workflow-step-pill-6704";
 }
 
-function workflowStepsHtmlV6704(wf) {
+function workshopStepsHtml(wf) {
   const has = wf.hasItems;
   return `
     <div class="workflow-steps-6704" aria-label="Estado del flujo de práctica">
-      <span class="${workflowStepClassV6704(true)}">1 · Práctica</span>
-      <span class="${workflowStepClassV6704(has)}">2 · Pedido</span>
-      <span class="${workflowStepClassV6704(has)}">3 · Salida</span>
-      <span class="${workflowStepClassV6704(has)}">4 · Archivo</span>
+      <span class="${workshopStepClass(true)}">1 · Práctica</span>
+      <span class="${workshopStepClass(has)}">2 · Pedido</span>
+      <span class="${workshopStepClass(has)}">3 · Salida</span>
+      <span class="${workshopStepClass(has)}">4 · Archivo</span>
     </div>`;
 }
 
-function workflowSummaryHtmlV6704(wf, context = "panel") {
+function workshopSummaryHtml(wf, context = "panel") {
   if (!wf.hasItems) {
     return `
       <div class="workflow-state-card-6704 empty">
@@ -1161,8 +1173,8 @@ function workflowSummaryHtmlV6704(wf, context = "panel") {
           <b>Práctica vacía</b>
           <span>La app mantiene bloqueados Pedido y Salida hasta que añadas una elaboración. El siguiente paso real es buscar y añadir.</span>
         </div>
-        ${workflowStepsHtmlV6704(wf)}
-        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="library">Abrir Archivo técnico</button></div>
+        ${workshopStepsHtml(wf)}
+        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="archive-catalog">Abrir Archivo técnico</button></div>
       </div>`;
   }
   return `
@@ -1171,58 +1183,58 @@ function workflowSummaryHtmlV6704(wf, context = "panel") {
         <b>Práctica activa</b>
         <span>${fmtNumber(wf.itemCount,0)} elaboración(es) · ${fmtNumber(wf.orderLineCount,0)} línea(s) de pedido · coste estimado ${fmtMoney(wf.orderCost || wf.estimatedCost || 0)}.</span>
       </div>
-      ${workflowStepsHtmlV6704(wf)}
-      <div class="actions"><button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Imprimir / exportar</button></div>
+      ${workshopStepsHtml(wf)}
+      <div class="actions"><button type="button" class="btn primary" data-tab="workshop-order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="workshop-output">Imprimir / exportar</button></div>
     </div>`;
 }
 
 
-function shellActionButtonHtmlV671(wf, area = "practice") {
+function domainActionButtonHtml(wf, area = "practice") {
   if (!wf?.hasItems) {
     if (area === "order") {
-      return `<button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="selection">Volver al Taller</button>`;
+      return `<button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="workshop-practice">Volver al Taller</button>`;
     }
-    return `<button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="library">Archivo técnico</button>`;
+    return `<button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="archive-catalog">Archivo técnico</button>`;
   }
   if (area === "order") {
-    return `<button type="button" class="btn primary" data-tab="print">Imprimir / exportar</button><button type="button" class="btn ghost" data-tab="selection">Volver al Taller</button>`;
+    return `<button type="button" class="btn primary" data-tab="workshop-output">Imprimir / exportar</button><button type="button" class="btn ghost" data-tab="workshop-practice">Volver al Taller</button>`;
   }
   if (area === "practice-next") {
-    return `<button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Imprimir / exportar</button><button type="button" class="btn ghost" data-tab="audit">Revisar calidad</button>`;
+    return `<button type="button" class="btn primary" data-tab="workshop-order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="workshop-output">Imprimir / exportar</button><button type="button" class="btn ghost" data-tab="archive-review">Revisar calidad</button>`;
   }
-  return `<button type="button" class="btn primary" data-tab="order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="print">Imprimir / exportar</button><button type="button" class="btn ghost" data-shell-action="archive-selection">Archivar como sesión</button><button type="button" class="btn danger" data-shell-action="clear-selection">Vaciar</button>`;
+  return `<button type="button" class="btn primary" data-tab="workshop-order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="workshop-output">Imprimir / exportar</button><button type="button" class="btn ghost" data-shell-action="archive-workshop">Archivar como sesión</button><button type="button" class="btn danger" data-shell-action="clear-workshop">Vaciar</button>`;
 }
 
-function renderShellActionsV671(wf) {
-  const practiceActions = document.querySelector("#practiceActionsV671");
-  if (practiceActions) practiceActions.innerHTML = shellActionButtonHtmlV671(wf, "practice");
-  const practiceNext = document.querySelector("#practiceNextActionsV671");
-  if (practiceNext) practiceNext.innerHTML = shellActionButtonHtmlV671(wf, "practice-next");
-  const orderActions = document.querySelector("#orderActionsV671");
-  if (orderActions) orderActions.innerHTML = shellActionButtonHtmlV671(wf, "order");
-  const outputGrid = document.querySelector("#outputActionsGridV671");
+function renderDomainActions(wf) {
+  const practiceActions = document.querySelector("#workshopActions");
+  if (practiceActions) practiceActions.innerHTML = domainActionButtonHtml(wf, "practice");
+  const practiceNext = document.querySelector("#workshopNextActions");
+  if (practiceNext) practiceNext.innerHTML = domainActionButtonHtml(wf, "practice-next");
+  const orderActions = document.querySelector("#workshopOrderActions");
+  if (orderActions) orderActions.innerHTML = domainActionButtonHtml(wf, "order");
+  const outputGrid = document.querySelector("#workshopOutputActionsGrid");
   if (outputGrid) outputGrid.classList.toggle("shell-output-grid-disabled-671", !wf.hasItems);
-  const printHistoryCard = document.querySelector("#printHistoryCardV623");
+  const printHistoryCard = document.querySelector("#workshopPrintHistoryCard");
   if (printHistoryCard) printHistoryCard.classList.toggle("shell-secondary-empty-671", printHistoryCard.classList.contains("is-empty"));
 }
 
-function applyWorkflowButtonStateV6704(wf) {
+function applyWorkshopButtonState(wf) {
   const disabledSelectors = [
-    "button[data-tab='order']",
-    "button[data-tab='print']",
+    "button[data-tab='workshop-order']",
+    "button[data-tab='workshop-output']",
     "button[data-requires-work-items='1']",
-    "#orderPrintCurrentTechnicalV670",
-    "#orderPrintCurrentSimpleV670",
-    "#outputPrintDossierV670",
-    "#outputPrintSheetsV670",
-    "#outputPrintOrderV670",
-    "#selectionOpenPrintCenterV642",
-    "#selectionPrintElaborationsV638",
-    "#selectionPrintOrderV638",
-    "#selectionPrintBothV638",
-    "#selectionPrintTeachingV641",
-    "#selectionPrintTechnicalOrderV641",
-    "#selectionPrintTeachingOrderV642"
+    "#workshopOrderPrintTechnical",
+    "#workshopOrderPrintSimple",
+    "#workshopPrintDossier",
+    "#workshopPrintSheets",
+    "#workshopPrintOrder",
+    "#workshopOpenPrintCenter",
+    "#workshopPrintSimpleSheets",
+    "#workshopPrintSimpleOrder",
+    "#workshopPrintSimpleDossier",
+    "#workshopPrintTeachingSheets",
+    "#workshopPrintTechnicalOrder",
+    "#workshopPrintTeachingDossier"
   ];
   document.querySelectorAll(disabledSelectors.join(",")).forEach(btn => {
     btn.disabled = !wf.hasItems;
@@ -1234,51 +1246,51 @@ function applyWorkflowButtonStateV6704(wf) {
   });
 
   const hideWhenEmpty = [
-    "#selectionCreateSessionV623",
-    "#selectionClearV623"
+    "#workshopArchive",
+    "#workshopClear"
   ];
   document.querySelectorAll(hideWhenEmpty.join(",")).forEach(btn => {
     btn.classList.toggle("hidden-by-workflow-6704", !wf.hasItems);
   });
 
-  document.querySelectorAll("#outputPrintDossierV670, #outputPrintSheetsV670, #outputPrintOrderV670, #selectionOpenPrintCenterV642").forEach(btn => {
+  document.querySelectorAll("#workshopPrintDossier, #workshopPrintSheets, #workshopPrintOrder, #workshopOpenPrintCenter").forEach(btn => {
     const card = btn.closest(".print-profile-card-618");
     if (card) card.classList.toggle("workflow-card-disabled-6704", !wf.hasItems);
   });
   document.body.dataset.workflowState = wf.stage;
 }
 
-function renderWorkflowStateV6704() {
+function renderWorkshopState() {
   if (!repo) return;
-  const wf = getWorkflowStateV6704();
-  const panel = document.querySelector("#workflowPanelV6704");
-  if (panel) panel.innerHTML = workflowSummaryHtmlV6704(wf, "panel");
-  const practice = document.querySelector("#workflowPracticeV6704");
-  if (practice) practice.innerHTML = workflowSummaryHtmlV6704(wf, "practice");
-  const order = document.querySelector("#orderStateHintV6704");
+  const wf = getWorkshopState();
+  const panel = document.querySelector("#workshopStatePanel");
+  if (panel) panel.innerHTML = workshopSummaryHtml(wf, "panel");
+  const practice = document.querySelector("#workshopPracticeState");
+  if (practice) practice.innerHTML = workshopSummaryHtml(wf, "practice");
+  const order = document.querySelector("#workshopOrderState");
   if (order) {
     order.innerHTML = wf.hasItems
       ? `<div class="workflow-state-card-6704 ready"><b>Pedido disponible</b><span>Revisa cantidades, unidades, proveedor, zona y coste. La impresión se hace desde Salida.</span></div>`
       : `<div class="workflow-state-card-6704 empty"><b>Pedido bloqueado</b><span>El pedido se genera automáticamente cuando la práctica tiene elaboraciones.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
   }
-  const output = document.querySelector("#outputStateHintV6704");
+  const output = document.querySelector("#workshopOutputState");
   if (output) {
     output.innerHTML = wf.hasItems
       ? `<div class="workflow-state-card-6704 ready"><b>Salida preparada</b><span>Centro único para generar dossier, fichas, pedido u opciones avanzadas.</span></div>`
       : `<div class="workflow-state-card-6704 empty"><b>Salida no disponible todavía</b><span>Añade al menos una elaboración para activar la impresión y la exportación documental.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
   }
-  renderShellActionsV671(wf);
-  applyWorkflowButtonStateV6704(wf);
+  renderDomainActions(wf);
+  applyWorkshopButtonState(wf);
 }
 
-function updatePracticeActionStateV6703() {
-  renderWorkflowStateV6704();
+function updateWorkshopActionState() {
+  renderWorkshopState();
 }
 
-function renderPracticeSearchV6702() {
-  const box = document.querySelector("#practiceSearchResultsV6702");
+function renderWorkshopSearch() {
+  const box = document.querySelector("#workshopSearchResults");
   if (!box || !repo) return;
-  const ps = ensurePracticeSearchStateV6703();
+  const ps = ensureWorkshopSearchState();
   const q = String(ps.search || "").trim();
   const type = ps.type || "all";
   const limit = Math.max(4, Math.min(30, Number(ps.limit || 12)));
@@ -1310,22 +1322,22 @@ function renderPracticeSearchV6702() {
             <span>${esc(r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería")} · ${esc(r.family || "Sin familia")} · ${esc(r.base_label || "Sin base definida")}</span>
           </div>
           <div class="practice-search-card-actions-6702">
-            <button type="button" class="btn ghost compact" data-library-detail="${esc(r.uid)}" data-tab="library">Detalle</button>
+            <button type="button" class="btn ghost compact" data-library-detail="${esc(r.uid)}" data-tab="archive-catalog">Detalle</button>
             <button type="button" class="btn primary compact" data-add-elaboration-work="${esc(r.uid)}">Añadir</button>
           </div>
         </article>`).join("")}
     </div>`;
 }
 
-function renderLibraryV666B() {
-  const tableEl = document.querySelector("#libraryTableV666B");
+function renderArchiveCatalog() {
+  const tableEl = document.querySelector("#archiveTable");
   if (!tableEl || !repo) return;
   const controls = {
-    kind: document.querySelector("#libraryKindV666B"),
-    search: document.querySelector("#librarySearchV666B"),
-    status: document.querySelector("#libraryStatusV666B"),
-    quality: document.querySelector("#libraryQualityV667"),
-    pageSize: document.querySelector("#libraryPageSizeV666B")
+    kind: document.querySelector("#archiveKind"),
+    search: document.querySelector("#archiveSearch"),
+    status: document.querySelector("#archiveStatus"),
+    quality: document.querySelector("#archiveQuality"),
+    pageSize: document.querySelector("#archivePageSize")
   };
   if (controls.kind && controls.kind.value !== state.library.kind) controls.kind.value = state.library.kind;
   if (controls.search && controls.search.value !== state.library.search) controls.search.value = state.library.search;
@@ -1333,31 +1345,31 @@ function renderLibraryV666B() {
   if (controls.quality && controls.quality.value !== state.library.quality) controls.quality.value = state.library.quality || "all";
   if (controls.pageSize && Number(controls.pageSize.value) !== Number(state.library.pageSize)) controls.pageSize.value = String(state.library.pageSize || 50);
 
-  const rows = libraryRowsV666B();
+  const rows = archiveRows();
   const size = Math.max(1, Number(state.library.pageSize || 50));
   const totalPages = Math.max(1, Math.ceil(rows.length / size));
   state.library.page = Math.min(Math.max(1, Number(state.library.page || 1)), totalPages);
   const start = (state.library.page - 1) * size;
   const pageRows = rows.slice(start, start + size);
 
-  renderLibrarySummaryV666B(rows);
-  const pager = libraryPagerHtmlV666B(rows.length, start, pageRows.length, totalPages);
-  const top = document.querySelector("#libraryPagerTopV666B");
-  const bottom = document.querySelector("#libraryPagerBottomV666B");
+  renderArchiveSummary(rows);
+  const pager = archivePagerHtml(rows.length, start, pageRows.length, totalPages);
+  const top = document.querySelector("#archivePagerTop");
+  const bottom = document.querySelector("#archivePagerBottom");
   if (top) top.innerHTML = pager;
   if (bottom) bottom.innerHTML = pager;
 
-  tableEl.innerHTML = table(libraryHeadersV666B(), pageRows, {
+  tableEl.innerHTML = table(archiveHeaders(), pageRows, {
     rowAttrs: r => r.key === state.library.selectedKey ? "class='selected-row'" : ""
   });
 
   const stillVisible = rows.some(r => r.key === state.library.selectedKey);
   if (!stillVisible) state.library.selectedKey = "";
-  renderLibraryDetailV666B(state.library.selectedKey);
+  renderArchiveDetail(state.library.selectedKey);
 }
 
-function renderLibrarySummaryV666B(rows) {
-  const el = document.querySelector("#librarySummaryV666B");
+function renderArchiveSummary(rows) {
+  const el = document.querySelector("#archiveSummary");
   if (!el) return;
   const all = rows.length;
   const complete = rows.filter(r => r.qualityType === "complete").length;
@@ -1374,7 +1386,7 @@ function renderLibrarySummaryV666B(rows) {
     <div class="kpi"><span>Ingredientes</span><b>${fmtNumber(ingredients, 0)}</b></div>`;
 }
 
-function libraryPagerHtmlV666B(total, start, count, totalPages) {
+function archivePagerHtml(total, start, count, totalPages) {
   const page = Number(state.library.page || 1);
   const from = total ? start + 1 : 0;
   const to = start + count;
@@ -1388,27 +1400,27 @@ function libraryPagerHtmlV666B(total, start, count, totalPages) {
     <button type="button" class="btn ghost mini-btn-666b" ${disabledNext} data-library-page="${totalPages}">Final</button>`;
 }
 
-function libraryHeadersV666B() {
+function archiveHeaders() {
   return [
     { label: "Nombre", render: r => `<button type="button" class="link-btn" data-library-detail="${esc(r.key)}">${esc(r.name)}</button>` },
     { label: "Tipo", render: r => esc(r.typeLabel) },
     { label: "Familia", render: r => esc([r.family, r.subfamily].filter(Boolean).join(" · ")) },
     { label: "Base técnica", render: r => esc(r.baseLabel || "—") },
-    { label: "Calidad", render: r => badge(r.qualityLabel || "—", qualityBadgeTypeV667(r.qualityType)) },
+    { label: "Calidad", render: r => badge(r.qualityLabel || "—", qualityBadgeType(r.qualityType)) },
     { label: "Estado", render: r => badge(r.statusLabel || (r.active ? "Activo" : "Inactivo"), r.active ? "ok" : "off") },
     { label: "Coste", render: r => Number.isFinite(r.cost) && r.cost > 0 ? fmtMoney(r.cost) : "—" },
-    { label: "Acciones", render: r => libraryActionsHtmlV666B(r) }
+    { label: "Acciones", render: r => archiveActionsHtml(r) }
   ];
 }
 
-function libraryActionsHtmlV666B(r) {
+function archiveActionsHtml(r) {
   const detail = `<button type="button" class="btn ghost mini-btn-666b" data-library-detail="${esc(r.key)}">Detalle</button>`;
   if (r.sourceKind === "ingredient") return detail;
   return `${detail} <button type="button" class="btn ghost mini-btn-666b" data-library-open="${esc(r.uid)}">Editar</button> <button type="button" class="btn primary mini-btn-666b" data-add-elaboration-work="${esc(r.uid)}">Añadir</button>`;
 }
 
-function renderLibraryDetailV666B(key) {
-  const el = document.querySelector("#libraryDetailV666B");
+function renderArchiveDetail(key) {
+  const el = document.querySelector("#archiveDetail");
   if (!el) return;
   if (!key) {
     el.className = "library-detail-666b muted";
@@ -1416,13 +1428,13 @@ function renderLibraryDetailV666B(key) {
     return;
   }
   if (key.startsWith("ingredient:")) {
-    renderIngredientDetailV666B(el, key.slice("ingredient:".length));
+    renderArchiveIngredientDetail(el, key.slice("ingredient:".length));
   } else {
-    renderElaborationDetailV666B(el, key);
+    renderArchiveElaborationDetail(el, key);
   }
 }
 
-function renderIngredientDetailV666B(el, id) {
+function renderArchiveIngredientDetail(el, id) {
   const row = repo.ingredients({ search: "", active: "all", use: "all" }).find(r => r.id === id);
   const raw = repo.ingredientById(id);
   if (!row || !raw) {
@@ -1456,27 +1468,27 @@ function renderIngredientDetailV666B(el, id) {
 }
 
 
-function qualityListHtmlV667(title, items, cls = "") {
+function qualityListHtml(title, items, cls = "") {
   if (!items || !items.length) return "";
   return `<div class="quality-box-667 ${esc(cls)}"><b>${esc(title)}</b><ul>${items.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
 }
 
-function qualityDetailHtmlV667(q) {
+function qualityDetailHtml(q) {
   if (!q || q.type === "ingredient") return "";
   return `<section class="quality-review-667">
-    <div class="quality-title-667">${badge(q.label, qualityBadgeTypeV667(q.type))}<span>Auditoría orientativa de ficha</span></div>
+    <div class="quality-title-667">${badge(q.label, qualityBadgeType(q.type))}<span>Auditoría orientativa de ficha</span></div>
     <div class="quality-grid-667">
-      ${qualityListHtmlV667("Fortalezas", q.positives, "ok")}
-      ${qualityListHtmlV667("A revisar", q.warnings, "warn")}
-      ${qualityListHtmlV667("Crítico", q.criticals, "err")}
-      ${qualityListHtmlV667("Información", q.info, "info")}
+      ${qualityListHtml("Fortalezas", q.positives, "ok")}
+      ${qualityListHtml("A revisar", q.warnings, "warn")}
+      ${qualityListHtml("Crítico", q.criticals, "err")}
+      ${qualityListHtml("Información", q.info, "info")}
     </div>
   </section>`;
 }
 
-function copyLibraryReviewReportV667() {
+function copyArchiveReviewReport() {
   if (!repo) return;
-  const rows = libraryRowsV666B();
+  const rows = archiveRows();
   const counts = rows.reduce((acc, r) => { acc[r.qualityType || "other"] = (acc[r.qualityType || "other"] || 0) + 1; return acc; }, {});
   const actionable = rows.filter(r => ["poor", "review"].includes(r.qualityType)).slice(0, 80);
   const lines = [
@@ -1499,7 +1511,7 @@ function copyLibraryReviewReportV667() {
   );
 }
 
-function renderElaborationDetailV666B(el, uid) {
+function renderArchiveElaborationDetail(el, uid) {
   const r = repo.unifiedElaborationByUid(uid);
   if (!r) {
     el.className = "library-detail-666b err";
@@ -1517,7 +1529,7 @@ function renderElaborationDetailV666B(el, uid) {
           ${badge(r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería", r.source_type === "bakery" ? "warn" : "ok")}
           ${badge(r.production_label || r.production_model || "Modelo", r.source_type === "bakery" ? "warn" : "off")}
           ${badge(statusLabel(r.status), r.status === "validated" ? "ok" : r.status === "archived" ? "off" : "warn")}
-          ${badge(qualityReviewV667({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) }).label, qualityBadgeTypeV667(qualityReviewV667({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) }).type))}
+          ${badge(qualityReview({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) }).label, qualityBadgeType(qualityReview({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) }).type))}
         </div>
       </div>
       <div class="actions">
@@ -1533,7 +1545,7 @@ function renderElaborationDetailV666B(el, uid) {
       <div><span>Ingredientes</span><b>${fmtNumber(lines.length, 0)}</b></div>
       <div><span>Proceso</span><b>${fmtNumber(steps.length, 0)} bloque${steps.length === 1 ? "" : "s"}</b></div>
     </div>
-    ${qualityDetailHtmlV667(qualityReviewV667({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) }))}
+    ${qualityDetailHtml(qualityReview({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) }))}
     <h4>Ingredientes / líneas técnicas</h4>
     <div class="wide">${table([
       { label: "Línea", render: x => esc(x.line_name || "—") },
@@ -1649,7 +1661,7 @@ function quantityContractLabel(elab) {
 function openQuantityDialogForElaboration(elab, item = null) {
   const dialog = document.querySelector("#quantityDialogV626");
   if (!dialog) return fallbackPromptQuantity(elab, item);
-  state.quantityDialog = { mode: item ? "edit" : "add", elaboration: elab, selectionItem: item || null };
+  state.quantityDialog = { mode: item ? "edit" : "add", elaboration: elab, workshopItem: item || null };
   const modes = allowedQuantityModesFor(elab);
   const selectedMode = defaultQuantityModeFor(elab, item);
   document.querySelector("#qtyUidV626").value = elab.uid || `${elab.source_type}:${elab.source_id}`;
@@ -1753,7 +1765,7 @@ function scopedNotesSuffixV6272(mode) {
 function handleQuantityModeChange(ev) {
   const mode = ev?.target?.value || document.querySelector("#qtyModeV626")?.value || "servings";
   const elab = state.quantityDialog.elaboration;
-  const item = state.quantityDialog.selectionItem;
+  const item = state.quantityDialog.workshopItem;
   if (mode === "servings" || mode === "yield") {
     const main = document.querySelector("#qtyMainQtyV626");
     if (main) main.value = quantityValueForMode(mode, elab, item);
@@ -1836,8 +1848,8 @@ async function saveQuantityDialog() {
       $flour_g: null,
       $raw_dough_g: null,
       $baking_loss_pct: parseDecimalInput(document.querySelector("#qtyBakingLossV626")?.value) ?? 0,
-      $print_a4: state.quantityDialog.selectionItem?.print_a4 ?? 1,
-      $sort_order: state.quantityDialog.selectionItem?.sort_order ?? 100,
+      $print_a4: state.quantityDialog.workshopItem?.print_a4 ?? 1,
+      $sort_order: state.quantityDialog.workshopItem?.sort_order ?? 100,
       $notes: ((document.querySelector("#qtyNotesV626")?.value || "") + scopedNotesSuffixV6272(mode)).trim() || null
     };
     updatePracticePlanFromQuantityScopeV6272();
@@ -1859,11 +1871,11 @@ async function saveQuantityDialog() {
     closeQuantityDialog();
     renderSelection();
     await autosave({ backup: false, reason: state.quantityDialog.mode === "edit" ? "editar cantidad práctica actual" : "añadir con cantidad práctica actual" });
-    switchTab("selection");
+    switchTab("workshop-practice");
   } catch (err) { console.error(err); toast(err.message || "No se pudo guardar la cantidad.", "err"); }
 }
 
-function editSelectionItem(id) {
+function editWorkshopItem(id) {
   const item = repo?.workSelectionItems().find(r => r.selection_item_id === id);
   if (!item) return toast("No se encontró la línea de la práctica actual.", "err");
   const uid = item.item_type === "bakery" ? `bakery:${item.bakery_recipe_id}` : `culinary:${item.culinary_recipe_id}`;
@@ -1889,13 +1901,13 @@ function openUnifiedElaboration(uid) {
   const r = repo?.unifiedElaborationByUid(uid);
   if (!r) return toast("No se encontró la elaboración.", "err");
   if (r.source_type === "bakery") {
-    switchTab("bakery");
+    switchTab("archive-bakery");
     setTimeout(() => {
       const sel = document.querySelector("#bakeryRecipeSelectV37");
       if (sel) { sel.value = r.source_id; sel.dispatchEvent(new Event("change", { bubbles: true })); }
     }, 80);
   } else {
-    switchTab("culinary");
+    switchTab("archive-culinary");
     setTimeout(() => {
       const sel = document.querySelector("#culinaryRecipeSelectV51");
       if (sel) { sel.value = r.source_id; sel.dispatchEvent(new Event("change", { bubbles: true })); }
@@ -1984,10 +1996,10 @@ function renderAudit() {
 
 function renderSelection() {
   if (!repo) return;
-  const summaryEl = document.querySelector("#selectionSummaryV623");
-  const itemsEl = document.querySelector("#selectionItemsV623");
-  const historyEl = document.querySelector("#printHistoryV623");
-  const historyCard = document.querySelector("#printHistoryCardV623");
+  const summaryEl = document.querySelector("#workshopSelectionSummary");
+  const itemsEl = document.querySelector("#workshopItemsList");
+  const historyEl = document.querySelector("#workshopPrintHistory");
+  const historyCard = document.querySelector("#workshopPrintHistoryCard");
   if (!summaryEl || !itemsEl) return;
   const s = repo.workSelectionSummary();
   const rows = repo.workSelectionItems();
@@ -2003,7 +2015,7 @@ function renderSelection() {
       <div class="empty-action-card-628">
         <b>No has añadido elaboraciones.</b>
         <span>Las cantidades se decidirán al añadir cada elaboración: cantidad total de esta práctica.</span>
-        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir desde el buscador</button><button type="button" class="btn ghost" data-tab="library">Abrir Biblioteca completa</button></div>
+        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir desde el buscador</button><button type="button" class="btn ghost" data-tab="archive-catalog">Abrir Biblioteca completa</button></div>
       </div>`;
   } else {
     summaryEl.classList.remove("empty-practice-summary");
@@ -2015,10 +2027,10 @@ function renderSelection() {
     itemsEl.innerHTML = table([
       { label: "Tipo", render: r => r.item_type === "bakery" ? "Panadería" : "Cocina/Pastelería" },
       { label: "Elaboración", key: "item_name" },
-      { label: "Modo", render: r => selectionModeLabel(r) },
-      { label: "Cantidad", render: r => `<span class="quantity-chip-626">${selectionQuantityLabel(r)}</span>` },
+      { label: "Modo", render: r => workshopModeLabel(r) },
+      { label: "Cantidad", render: r => `<span class="quantity-chip-626">${workshopQuantityLabel(r)}</span>` },
       { label: "Coste base", render: r => fmtMoney(r.estimated_cost) },
-      { label: "", render: r => `<div class="quantity-inline-actions-626"><button type="button" class="btn compact" data-selection-edit="${esc(r.selection_item_id)}">Cambiar</button><button type="button" class="btn danger compact" data-selection-delete="${esc(r.selection_item_id)}">Quitar</button></div>` }
+      { label: "", render: r => `<div class="quantity-inline-actions-626"><button type="button" class="btn compact" data-workshop-edit="${esc(r.selection_item_id)}">Cambiar</button><button type="button" class="btn danger compact" data-workshop-delete="${esc(r.selection_item_id)}">Quitar</button></div>` }
     ], rows);
   }
   if (historyEl) {
@@ -2033,7 +2045,7 @@ function renderSelection() {
       { label: "Coste", render: r => fmtMoney(r.total_cost) }
     ], jobs) : "";
   }
-  updatePracticeActionStateV6703();
+  updateWorkshopActionState();
 }
 
 async function addWorkSelectionItem(item) {
@@ -2064,7 +2076,7 @@ async function addWorkSelectionItem(item) {
   } catch (err) { console.error(err); toast(err.message || "No se pudo añadir a la práctica actual.", "err"); }
 }
 
-async function deleteSelectionItem(id) {
+async function deleteWorkshopItem(id) {
   try {
     repo.deleteWorkSelectionItem(id);
     renderSelection();
@@ -2074,35 +2086,35 @@ async function deleteSelectionItem(id) {
   } catch (err) { console.error(err); toast(err.message, "err"); }
 }
 
-async function clearSelection() {
+async function clearWorkshop() {
   try {
-    const wf = getWorkflowStateV6704();
+    const wf = getWorkshopState();
     if (!wf.hasItems) {
       toast("No hay elaboraciones que vaciar.", "warn");
-      focusPracticeSearchV6703();
+      focusWorkshopSearch();
       return;
     }
     if (!confirm(`Vas a vaciar una práctica con ${fmtNumber(wf.itemCount,0)} elaboración(es). No se borran fichas, fórmulas, biblioteca ni sesiones archivadas.`)) return;
     repo.clearWorkSelection();
     renderSelection();
     renderOrder();
-    renderWorkflowStateV6704();
-    const activeTab = document.querySelector(".tab-section.active")?.id?.replace("tab-", "");
-    if (activeTab === "order" || activeTab === "print") switchTab("selection");
+    renderWorkshopState();
+    const activeRoute = domainShell?.getActive?.()?.route || "";
+    if (activeRoute === "workshop-order" || activeRoute === "workshop-output") switchTab("workshop-practice");
     await autosave({ backup: false, reason: "vaciar práctica actual" });
     toast("Práctica actual vaciada.", "warn");
   } catch (err) { console.error(err); toast(err.message, "err"); }
 }
 
-async function createSessionFromSelection() {
+async function archiveWorkshopAsHistory() {
   try {
-    if (!ensureWorkSelectionNotEmptyV6703("Primero añade al menos una elaboración antes de archivar la sesión.")) return;
-    const meta = practiceMetaV632();
+    if (!ensureWorkshopNotEmpty("Primero añade al menos una elaboración antes de archivar la sesión.")) return;
+    const meta = workshopMeta();
     const plan = practicePlanV627();
-    const title = meta.title || `Práctica ${meta.practiceDate || todayIsoV632()}`;
+    const title = meta.title || `Práctica ${meta.practiceDate || todayIso()}`;
     const id = repo.createSessionFromWorkSelection({
       title,
-      practiceDate: meta.practiceDate || todayIsoV632(),
+      practiceDate: meta.practiceDate || todayIso(),
       cycleId: meta.cycleId || null,
       moduleId: meta.moduleId || null,
       groupName: meta.groupName || null,
@@ -2116,17 +2128,17 @@ async function createSessionFromSelection() {
     await autosave({ backup: false, reason: "crear sesión desde práctica actual" });
     renderAll();
     toast("Sesión guardada con los datos de práctica.");
-    switchTab("class");
+    switchTab("history-records");
     window.dispatchEvent(new CustomEvent("swiftremo:databaseChanged", { detail: { message: "Sesión guardada con datos de práctica." } }));
   } catch (err) { console.error(err); toast(err.message, "err"); }
 }
 
-function practicePrintMetadataV632() {
-  const meta = practiceMetaV632();
+function workshopPrintMetadata() {
+  const meta = workshopMeta();
   const plan = practicePlanV627();
   return {
-    title: meta.title || `Práctica ${meta.practiceDate || todayIsoV632()}`,
-    practiceDate: meta.practiceDate || todayIsoV632(),
+    title: meta.title || `Práctica ${meta.practiceDate || todayIso()}`,
+    practiceDate: meta.practiceDate || todayIso(),
     cycleId: meta.cycleId || null,
     moduleId: meta.moduleId || null,
     groupName: meta.groupName || null,
@@ -2144,18 +2156,18 @@ function printOptionsV637(overrides = {}) {
   return {
     includeElaborations: overrides.includeElaborations !== undefined ? Boolean(overrides.includeElaborations) : true,
     includeOrder: overrides.includeOrder !== undefined ? Boolean(overrides.includeOrder) : true,
-    includePracticeData: document.querySelector("#printIncludePracticeDataV637")?.checked === true,
+    includePracticeData: document.querySelector("#printIncludeWorkshopData")?.checked === true,
     subrecipeMode: overrides.subrecipeMode || document.querySelector('input[name="printSubrecipeModeV646"]:checked')?.value || "expanded",
     processMode: overrides.processMode || document.querySelector('input[name="printProcessModeV649"]:checked')?.value || "show"
   };
 }
 
-async function printSelectionDirectV638({ includeElaborations = true, includeOrder = true, reason = "historial impresión práctica actual" } = {}) {
+async function printWorkshopDirect({ includeElaborations = true, includeOrder = true, reason = "historial impresión práctica actual" } = {}) {
   try {
-    if (!ensureWorkSelectionNotEmptyV6703("Primero añade al menos una elaboración antes de imprimir.")) return;
+    if (!ensureWorkshopNotEmpty("Primero añade al menos una elaboración antes de imprimir.")) return;
     const opts = printOptionsV637({ includeElaborations, includeOrder });
     if (!opts.includeElaborations && !opts.includeOrder) { toast("Selecciona elaboraciones, pedido o ambos para imprimir.", "warn"); return; }
-    printWorkSelection(swiftDb, "WORK_CURRENT", { ...opts, profile: "docente", metadata: practicePrintMetadataV632(), subrecipeMode: opts.subrecipeMode, processMode: opts.processMode });
+    printWorkSelection(swiftDb, "WORK_CURRENT", { ...opts, profile: "docente", metadata: workshopPrintMetadata(), subrecipeMode: opts.subrecipeMode, processMode: opts.processMode });
     await autosave({ backup: false, reason });
     renderSelection();
   } catch (err) {
@@ -2164,23 +2176,23 @@ async function printSelectionDirectV638({ includeElaborations = true, includeOrd
   }
 }
 
-async function printSelectionBothV638() {
-  return printSelectionDirectV638({ includeElaborations: true, includeOrder: true, reason: "historial impresión elaboraciones y pedido práctica" });
+async function printWorkshopSimpleDossier() {
+  return printWorkshopDirect({ includeElaborations: true, includeOrder: true, reason: "historial impresión elaboraciones y pedido práctica" });
 }
 
 async function printSelection() {
-  return printSelectionBothV638();
+  return printWorkshopSimpleDossier();
 }
 
 async function printSelectionOrder() {
-  return printSelectionDirectV638({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido práctica" });
+  return printWorkshopDirect({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido práctica" });
 }
 
-async function printSelectionTeachingV641() {
+async function printWorkshopTeachingSheets() {
   try {
-    if (!ensureWorkSelectionNotEmptyV6703("Primero añade al menos una elaboración antes de imprimir fichas.")) return;
+    if (!ensureWorkshopNotEmpty("Primero añade al menos una elaboración antes de imprimir fichas.")) return;
     const opts = printOptionsV637({ includeElaborations: true, includeOrder: false });
-    printWorkSelectionTeachingSheets(swiftDb, "WORK_CURRENT", { profile: "ficha_docente_completa", metadata: practicePrintMetadataV632(), includePracticeData: opts.includePracticeData, subrecipeMode: opts.subrecipeMode, processMode: opts.processMode });
+    printWorkSelectionTeachingSheets(swiftDb, "WORK_CURRENT", { profile: "ficha_docente_completa", metadata: workshopPrintMetadata(), includePracticeData: opts.includePracticeData, subrecipeMode: opts.subrecipeMode, processMode: opts.processMode });
     await autosave({ backup: false, reason: "historial impresión ficha docente completa práctica" });
     renderSelection();
   } catch (err) {
@@ -2189,11 +2201,11 @@ async function printSelectionTeachingV641() {
   }
 }
 
-async function printSelectionTechnicalOrderV641() {
+async function printWorkshopTechnicalOrder() {
   try {
-    if (!ensureWorkSelectionNotEmptyV6703("Primero añade al menos una elaboración antes de imprimir el pedido.")) return;
+    if (!ensureWorkshopNotEmpty("Primero añade al menos una elaboración antes de imprimir el pedido.")) return;
     const opts = printOptionsV637({ includeElaborations: false, includeOrder: true });
-    printWorkSelectionTechnicalOrder(swiftDb, "WORK_CURRENT", { profile: "pedido_tecnico", metadata: practicePrintMetadataV632(), includePracticeData: opts.includePracticeData });
+    printWorkSelectionTechnicalOrder(swiftDb, "WORK_CURRENT", { profile: "pedido_tecnico", metadata: workshopPrintMetadata(), includePracticeData: opts.includePracticeData });
     await autosave({ backup: false, reason: "historial impresión pedido técnico práctica" });
     renderSelection();
   } catch (err) {
@@ -2203,50 +2215,50 @@ async function printSelectionTechnicalOrderV641() {
 }
 
 
-function openPrintCenterV642() {
-  if (!ensureWorkSelectionNotEmptyV6703("Primero añade al menos una elaboración antes de abrir la salida.")) return;
-  const dialog = document.querySelector("#printCenterDialogV642");
-  if (!dialog) return printSelectionBothV638();
-  const selected = dialog.querySelector('input[name="printProfileV642"]:checked');
+function openWorkshopPrintDialog() {
+  if (!ensureWorkshopNotEmpty("Primero añade al menos una elaboración antes de abrir la salida.")) return;
+  const dialog = document.querySelector("#workshopPrintDialog");
+  if (!dialog) return printWorkshopSimpleDossier();
+  const selected = dialog.querySelector('input[name="workshopPrintProfile"]:checked');
   if (!selected) {
-    const fallback = dialog.querySelector('input[name="printProfileV642"][value="both"]');
+    const fallback = dialog.querySelector('input[name="workshopPrintProfile"][value="both"]');
     if (fallback) fallback.checked = true;
   }
   const count = repo?.workSelectionItems ? repo.workSelectionItems("WORK_CURRENT").length : 0;
-  const summary = dialog.querySelector("#printCenterSelectionSummaryV642");
+  const summary = dialog.querySelector("#workshopPrintDialogSummary");
   if (summary) summary.textContent = count ? `${fmtNumber(count,0)} elaboración(es) en la práctica actual.` : "La práctica actual está vacía.";
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "open");
 }
 
-function closePrintCenterV642() {
-  const dialog = document.querySelector("#printCenterDialogV642");
+function closeWorkshopPrintDialog() {
+  const dialog = document.querySelector("#workshopPrintDialog");
   if (!dialog) return;
   if (typeof dialog.close === "function" && dialog.open) dialog.close();
   else dialog.removeAttribute("open");
 }
 
-function selectedPrintProfileV642() {
-  return document.querySelector('input[name="printProfileV642"]:checked')?.value || "both";
+function selectedWorkshopPrintProfile() {
+  return document.querySelector('input[name="workshopPrintProfile"]:checked')?.value || "both";
 }
 
-async function executePrintCenterV642() {
-  const profile = selectedPrintProfileV642();
-  closePrintCenterV642();
-  if (profile === "elaborations") return printSelectionDirectV638({ includeElaborations: true, includeOrder: false, reason: "historial impresión ficha técnica práctica" });
-  if (profile === "order") return printSelectionDirectV638({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido simple práctica" });
-  if (profile === "both") return printSelectionBothV638();
-  if (profile === "teaching") return printSelectionTeachingV641();
-  if (profile === "technical_order") return printSelectionTechnicalOrderV641();
-  if (profile === "teaching_order") return printSelectionTeachingOrderV642();
-  return printSelectionBothV638();
+async function executeWorkshopPrintDialog() {
+  const profile = selectedWorkshopPrintProfile();
+  closeWorkshopPrintDialog();
+  if (profile === "elaborations") return printWorkshopDirect({ includeElaborations: true, includeOrder: false, reason: "historial impresión ficha técnica práctica" });
+  if (profile === "order") return printWorkshopDirect({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido simple práctica" });
+  if (profile === "both") return printWorkshopSimpleDossier();
+  if (profile === "teaching") return printWorkshopTeachingSheets();
+  if (profile === "technical_order") return printWorkshopTechnicalOrder();
+  if (profile === "teaching_order") return printWorkshopTeachingDossier();
+  return printWorkshopSimpleDossier();
 }
 
-async function printSelectionTeachingOrderV642() {
+async function printWorkshopTeachingDossier() {
   try {
-    if (!ensureWorkSelectionNotEmptyV6703("Primero añade al menos una elaboración antes de imprimir el dossier.")) return;
+    if (!ensureWorkshopNotEmpty("Primero añade al menos una elaboración antes de imprimir el dossier.")) return;
     const opts = printOptionsV637({ includeElaborations: true, includeOrder: true });
-    printWorkSelectionTeachingSheetsWithOrder(swiftDb, "WORK_CURRENT", { profile: "ficha_docente_mas_pedido", metadata: practicePrintMetadataV632(), includePracticeData: opts.includePracticeData, subrecipeMode: opts.subrecipeMode, processMode: opts.processMode });
+    printWorkSelectionTeachingSheetsWithOrder(swiftDb, "WORK_CURRENT", { profile: "ficha_docente_mas_pedido", metadata: workshopPrintMetadata(), includePracticeData: opts.includePracticeData, subrecipeMode: opts.subrecipeMode, processMode: opts.processMode });
     await autosave({ backup: false, reason: "historial impresión ficha docente más pedido práctica" });
     renderSelection();
   } catch (err) {
@@ -2255,8 +2267,8 @@ async function printSelectionTeachingOrderV642() {
   }
 }
 
-function selectionModeLabel(r) { return ({ flour:"Harina", raw_dough:"Masa cruda", pieces:"Piezas", servings:"Raciones", yield:"Rendimiento" })[r.production_mode] || r.production_mode || "—"; }
-function selectionQuantityLabel(r) {
+function workshopModeLabel(r) { return ({ flour:"Harina", raw_dough:"Masa cruda", pieces:"Piezas", servings:"Raciones", yield:"Rendimiento" })[r.production_mode] || r.production_mode || "—"; }
+function workshopQuantityLabel(r) {
   if (r.production_mode === "servings") return `${fmtNumber(r.servings,0)} raciones`;
   if (r.production_mode === "yield") return `${fmtNumber(r.main_qty,3)} ${r.yield_unit || "unidad"}`;
   if (r.production_mode === "flour") return `${fmtNumber(r.flour_g,0)} g harina`;
@@ -2264,11 +2276,11 @@ function selectionQuantityLabel(r) {
   if (r.production_mode === "pieces") return `${fmtNumber(r.pieces,0)} piezas × ${fmtNumber(r.piece_weight_g,0)} g`;
   return "—";
 }
-function printSourceLabel(v) { return ({ recipe:"Ficha", selection:"Práctica actual", session:"Sesión", order:"Pedido" })[v] || v || "—"; }
+function printSourceLabel(v) { return ({ recipe:"Ficha", selection:"Práctica actual", session:"Histórico", order:"Pedido" })[v] || v || "—"; }
 
 function renderOrder() {
   const tableEl = document.querySelector("#orderTable");
-  const summaryEl = document.querySelector("#orderSummaryV670");
+  const summaryEl = document.querySelector("#workshopOrderSummary");
   if (!tableEl || !repo) return;
   const rows = typeof repo.workSelectionOrder === "function" ? repo.workSelectionOrder("WORK_CURRENT") : repo.order();
   const summary = repo.workSelectionSummary ? repo.workSelectionSummary() : { total_items: 0, estimated_base_cost: 0 };
@@ -2285,12 +2297,12 @@ function renderOrder() {
       <div class="empty-action-card-628">
         <b>Pedido vacío.</b>
         <span>Añade elaboraciones desde Práctica y define cantidades para calcular el pedido.</span>
-        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="selection">Ir al Taller</button></div>
+        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="workshop-practice">Ir al Taller</button></div>
       </div>`;
-    updatePracticeActionStateV6703();
+    updateWorkshopActionState();
     return;
   }
-  updatePracticeActionStateV6703();
+  updateWorkshopActionState();
   tableEl.innerHTML = table([
     { label: "Grupo", key: "order_group" },
     { label: "Ingrediente", key: "ingredient" },
@@ -2327,7 +2339,7 @@ function populateCatalogs() {
   fillSelect($("#ing_storage_zone_id"), catalogs.storageZones, { empty: "Sin zona" });
   $("#ing_family_id").addEventListener("change", filterSubfamilies);
   filterSubfamilies();
-  populatePracticeMetaSelectorsV632();
+  populateWorkshopMetaSelectors();
 }
 
 function filterSubfamilies() {
@@ -2335,7 +2347,7 @@ function filterSubfamilies() {
   fillSelect($("#ing_subfamily_id"), catalogs.subfamilies.filter(s => !familyId || s.family_id === familyId), { empty: "Sin subfamilia" });
 }
 
-function newIngredientForm() { clearIngredientForm(); switchTab("ingredients"); $("#ing_name").focus(); }
+function newIngredientForm() { clearIngredientForm(); switchTab("archive-ingredients"); $("#ing_name").focus(); }
 
 function clearIngredientForm(shouldRender = true) {
   selectedIngredientId = null;

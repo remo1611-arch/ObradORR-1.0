@@ -1205,7 +1205,7 @@ body[data-workflow-state="empty"] #tab-order .order-guidance-619{display:none;}
 }
 
 
-/* Fase 6.72.1 · shell docente limpio por áreas de dominio */
+/* Fase 6.72.2 · shell docente limpio por áreas de dominio */
 .nav-row-672 button[data-shell-area="workshop"]{background:#eaf6ef;border-color:#b8dcc8;color:#1f6a43}
 .nav-row-672 button[data-shell-area="history"]{background:#f2f0fb;border-color:#cfc7ee;color:#4c3f7a}
 .nav-row-672 button[data-shell-area="technical-archive"]{background:#fff8de;border-color:#e5cb78;color:#7b5600}
@@ -1217,3 +1217,10 @@ body[data-workflow-state="empty"] #tab-order .order-guidance-619{display:none;}
 .shell-area-card-672 .command-card-619{min-height:110px;text-align:left}
 @media(max-width:980px){.shell-step-grid-672,.technical-grid-672{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.shell-step-grid-672,.technical-grid-672{grid-template-columns:1fr}}
+
+/* Fase 6.72.2 · shell real por dominios */
+.domain-view-host{margin-top:1rem;display:grid;gap:1rem;}
+.domain-nested-view[hidden]{display:none!important;}
+.domain-nested-view{display:block;}
+.tab-section.has-domain-view > .shell-area-card-672{margin-bottom:1rem;}
+.nav-row button[aria-current="page"]{box-shadow:inset 0 -3px 0 currentColor;}

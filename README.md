@@ -38,7 +38,7 @@ No se incorporan fotografías en esta fase. Las futuras imágenes deberán ser p
 No deben usarse fotografías tomadas de internet sin licencia clara.
 
 
-Versión pública actual: `swiftremo_sql_fase6.72.1_shell_docente_dominios
+Versión pública actual: `swiftremo_sql_fase6.72.2_adaptadores_dominios_taller_real
 
 
 ## Versión publicada
@@ -46,6 +46,6 @@ Versión pública actual: `swiftremo_sql_fase6.72.1_shell_docente_dominios
 Fase 6.71 · Shell docente limpio.
 
 
-## Interfaz docente 6.72.1
+## Interfaz docente 6.72.2
 
 La navegación principal se organiza en cuatro dominios: **Taller / Histórico / Archivo técnico / Sistema**. Las pantallas internas heredadas se conservan como transición funcional hasta completar la sustitución por adaptadores.

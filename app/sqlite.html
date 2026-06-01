@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>SwiftRemo SQL · Aula taller</title>
-  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6721">
+  <link rel="stylesheet" href="./js/swiftremo-ui.css?v=6722">
 </head>
 <body>
   <header class="app-header">
@@ -42,24 +42,24 @@
             </div>
             <div class="actions">
               <button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button>
-              <button type="button" class="btn ghost" data-tab="selection">Ver práctica activa</button>
+              <button type="button" class="btn ghost" data-tab="workshop-practice">Ver práctica activa</button>
             </div>
           </div>
 
           <div class="shell-step-grid-672">
-            <button type="button" class="command-card-619 primary shell-primary-card-671" data-tab="selection"><strong>1 · Preparar práctica</strong><span>Datos docentes, buscador rápido, cantidades y observaciones de aula.</span></button>
-            <button type="button" class="command-card-619" data-tab="order" data-requires-work-items="1"><strong>2 · Revisar pedido</strong><span>Necesidades consolidadas por familia, unidad, coste, zona y proveedor.</span></button>
-            <button type="button" class="command-card-619" data-tab="print" data-requires-work-items="1"><strong>3 · Imprimir / exportar</strong><span>Dossier completo, fichas docentes o pedido técnico.</span></button>
-            <button type="button" class="command-card-619 shell-secondary-card-671" data-shell-action="archive-selection"><strong>4 · Archivar práctica</strong><span>Guardar fotografía cerrada en Histórico cuando la práctica esté lista.</span></button>
+            <button type="button" class="command-card-619 primary shell-primary-card-671" data-tab="workshop-practice"><strong>1 · Preparar práctica</strong><span>Datos docentes, buscador rápido, cantidades y observaciones de aula.</span></button>
+            <button type="button" class="command-card-619" data-tab="workshop-order" data-requires-work-items="1"><strong>2 · Revisar pedido</strong><span>Necesidades consolidadas por familia, unidad, coste, zona y proveedor.</span></button>
+            <button type="button" class="command-card-619" data-tab="workshop-output" data-requires-work-items="1"><strong>3 · Imprimir / exportar</strong><span>Dossier completo, fichas docentes o pedido técnico.</span></button>
+            <button type="button" class="command-card-619 shell-secondary-card-671" data-shell-action="archive-workshop"><strong>4 · Archivar práctica</strong><span>Guardar fotografía cerrada en Histórico cuando la práctica esté lista.</span></button>
           </div>
 
           <div id="kpis" class="kpi-grid"></div>
-          <div id="workflowPanelV6704" class="workflow-host-6704"></div>
-          <div id="sessionSummary" class="wide shell-summary-host-672"></div>
+          <div id="workshopStatePanel" class="workflow-host-6704"></div>
+          <div id="workshopSummaryPanel" class="wide shell-summary-host-672"></div>
           <div class="actions shell-actions-672">
             <button type="button" class="btn ghost" data-tab="technical-archive">Buscar en Archivo técnico</button>
             <button type="button" class="btn ghost" data-tab="history">Usar histórico</button>
-            <button type="button" class="btn danger" data-shell-action="clear-selection">Descartar práctica actual</button>
+            <button type="button" class="btn danger" data-shell-action="clear-workshop">Descartar práctica actual</button>
           </div>
         </div>
       </section>
@@ -72,14 +72,14 @@
               <p class="small">Prácticas archivadas o sesiones cerradas. El histórico no se edita directamente: se consulta, se imprime, se exporta o se usa como nueva práctica.</p>
             </div>
             <div class="actions">
-              <button type="button" class="btn primary" data-tab="class">Abrir histórico técnico</button>
-              <button type="button" class="btn ghost" data-tab="selection">Volver al Taller</button>
+              <button type="button" class="btn primary" data-tab="history-records">Abrir histórico técnico</button>
+              <button type="button" class="btn ghost" data-tab="workshop-practice">Volver al Taller</button>
             </div>
           </div>
           <div class="shell-step-grid-672">
-            <button type="button" class="command-card-619" data-tab="class"><strong>Ver prácticas cerradas</strong><span>Consulta sesiones guardadas y documentación asociada.</span></button>
-            <button type="button" class="command-card-619" data-tab="selection"><strong>Usar como nueva</strong><span>Clona o reconstruye una práctica en el Taller actual cuando proceda.</span></button>
-            <button type="button" class="command-card-619" data-tab="print"><strong>Imprimir práctica</strong><span>Solo disponible cuando haya una práctica activa o selección recuperada.</span></button>
+            <button type="button" class="command-card-619" data-tab="history-records"><strong>Ver prácticas cerradas</strong><span>Consulta sesiones guardadas y documentación asociada.</span></button>
+            <button type="button" class="command-card-619" data-tab="workshop-practice"><strong>Usar como nueva</strong><span>Clona o reconstruye una práctica en el Taller actual cuando proceda.</span></button>
+            <button type="button" class="command-card-619" data-tab="workshop-output"><strong>Imprimir práctica</strong><span>Solo disponible cuando haya una práctica activa o selección recuperada.</span></button>
           </div>
         </div>
       </section>
@@ -92,17 +92,17 @@
               <p class="small">Verdad maestra: elaboraciones, ingredientes, subelaboraciones y revisión técnica. Añadir al Taller no altera la ficha maestra.</p>
             </div>
             <div class="actions">
-              <button type="button" class="btn primary" data-tab="library">Abrir catálogo</button>
-              <button type="button" class="btn ghost" data-tab="audit">Revisión</button>
+              <button type="button" class="btn primary" data-tab="archive-catalog">Abrir catálogo</button>
+              <button type="button" class="btn ghost" data-tab="archive-review">Revisión</button>
             </div>
           </div>
           <div class="shell-step-grid-672 technical-grid-672">
-            <button type="button" class="command-card-619 primary" data-tab="library"><strong>Catálogo docente</strong><span>Buscar, filtrar, ver detalle y añadir al Taller.</span></button>
-            <button type="button" class="command-card-619" data-tab="elaborations"><strong>Elaboraciones</strong><span>Vista unificada de fichas culinarias, fórmulas y subelaboraciones.</span></button>
-            <button type="button" class="command-card-619" data-tab="ingredients"><strong>Ingredientes</strong><span>Alta, revisión y desactivación lógica de materias primas.</span></button>
-            <button type="button" class="command-card-619" data-tab="culinary"><strong>Fichas cocina/pastelería</strong><span>Editor técnico de fichas maestras.</span></button>
-            <button type="button" class="command-card-619" data-tab="bakery"><strong>Fórmulas panaderas</strong><span>Formulación, prefermentos, acabados y conservación.</span></button>
-            <button type="button" class="command-card-619" data-tab="audit"><strong>Revisión técnica</strong><span>Calidad, incidencias, auditoría de fichas y estado de base.</span></button>
+            <button type="button" class="command-card-619 primary" data-tab="archive-catalog"><strong>Catálogo docente</strong><span>Buscar, filtrar, ver detalle y añadir al Taller.</span></button>
+            <button type="button" class="command-card-619" data-tab="archive-elaborations"><strong>Elaboraciones</strong><span>Vista unificada de fichas culinarias, fórmulas y subelaboraciones.</span></button>
+            <button type="button" class="command-card-619" data-tab="archive-ingredients"><strong>Ingredientes</strong><span>Alta, revisión y desactivación lógica de materias primas.</span></button>
+            <button type="button" class="command-card-619" data-tab="archive-culinary"><strong>Fichas cocina/pastelería</strong><span>Editor técnico de fichas maestras.</span></button>
+            <button type="button" class="command-card-619" data-tab="archive-bakery"><strong>Fórmulas panaderas</strong><span>Formulación, prefermentos, acabados y conservación.</span></button>
+            <button type="button" class="command-card-619" data-tab="archive-review"><strong>Revisión técnica</strong><span>Calidad, incidencias, auditoría de fichas y estado de base.</span></button>
           </div>
           <div id="baseStatusPanelV663" class="base-status-card-v663 muted">
             <div class="base-status-title-v663">Estado de la base pendiente de cargar</div>
@@ -120,19 +120,19 @@
               <p class="small">Copias, importación/exportación, base inicial, recuperación, versión y herramientas técnicas. Las acciones de infraestructura viven aquí.</p>
             </div>
             <div class="actions">
-              <button type="button" class="btn primary" data-tab="data">Datos y copias</button>
-              <button type="button" class="btn ghost" data-tab="sql">SQL técnico</button>
+              <button type="button" class="btn primary" data-tab="system-data">Datos y copias</button>
+              <button type="button" class="btn ghost" data-tab="system-sql">SQL técnico</button>
             </div>
           </div>
           <div class="shell-step-grid-672">
-            <button type="button" class="command-card-619 primary" data-tab="data"><strong>Copias SQLite</strong><span>Descargar, importar, restaurar base inicial o exportar JSON técnico.</span></button>
-            <button type="button" class="command-card-619" data-tab="sql"><strong>SQL técnico</strong><span>Consulta puntual para diagnóstico, no para flujo docente ordinario.</span></button>
-            <button type="button" class="command-card-619" data-tab="audit"><strong>Estado de base</strong><span>Comprobar versión, calidad y metadatos antes de publicar.</span></button>
+            <button type="button" class="command-card-619 primary" data-tab="system-data"><strong>Copias SQLite</strong><span>Descargar, importar, restaurar base inicial o exportar JSON técnico.</span></button>
+            <button type="button" class="command-card-619" data-tab="system-sql"><strong>SQL técnico</strong><span>Consulta puntual para diagnóstico, no para flujo docente ordinario.</span></button>
+            <button type="button" class="command-card-619" data-tab="archive-review"><strong>Estado de base</strong><span>Comprobar versión, calidad y metadatos antes de publicar.</span></button>
           </div>
         </div>
       </section>
 
-      <section id="tab-library" class="tab-section">
+      <section id="view-archive-catalog" class="tab-section">
         <div class="card workspace-hero-619 library-hero-666b">
           <div class="section-head">
             <div>
@@ -140,15 +140,15 @@
               <p class="small">Consulta completa de ingredientes, fichas de cocina/pastelería y fórmulas panaderas. Catálogo de selección y revisión. Añade elaboraciones a la práctica; las pantallas de edición avanzada quedan accesibles desde los detalles.</p>
             </div>
             <div class="actions">
-              <button id="libraryCopyReviewV667" type="button" class="btn ghost">Copiar informe</button>
-              <button id="libraryClearFiltersV666C" type="button" class="btn ghost">Limpiar filtros</button>
-              <button type="button" class="btn primary" data-tab="selection">Preparar práctica</button>
+              <button id="archiveCopyReview" type="button" class="btn ghost">Copiar informe</button>
+              <button id="archiveClearFilters" type="button" class="btn ghost">Limpiar filtros</button>
+              <button type="button" class="btn primary" data-tab="workshop-practice">Preparar práctica</button>
             </div>
           </div>
 
           <div class="filters-grid library-filters-666b">
             <label>Catálogo
-              <select id="libraryKindV666B">
+              <select id="archiveKind">
                 <option value="elaborations">Todas las elaboraciones</option>
                 <option value="ingredients">Ingredientes</option>
                 <option value="culinary">Fichas cocina/pastelería</option>
@@ -156,17 +156,17 @@
               </select>
             </label>
             <label>Buscar
-              <input id="librarySearchV666B" placeholder="Nombre, familia, subfamilia, ingrediente, rol…">
+              <input id="archiveSearch" placeholder="Nombre, familia, subfamilia, ingrediente, rol…">
             </label>
             <label>Estado
-              <select id="libraryStatusV666B">
+              <select id="archiveStatus">
                 <option value="active">Activos</option>
                 <option value="all">Todos</option>
                 <option value="inactive">Archivados / inactivos</option>
               </select>
             </label>
             <label>Calidad ficha
-              <select id="libraryQualityV667">
+              <select id="archiveQuality">
                 <option value="all">Todas</option>
                 <option value="complete">Completas</option>
                 <option value="actionable">Revisables + pobres</option>
@@ -176,7 +176,7 @@
               </select>
             </label>
             <label>Por página
-              <select id="libraryPageSizeV666B">
+              <select id="archivePageSize">
                 <option value="25">25</option>
                 <option value="50" selected>50</option>
                 <option value="100">100</option>
@@ -185,7 +185,7 @@
             </label>
           </div>
 
-          <div id="librarySummaryV666B" class="kpi-grid"></div>
+          <div id="archiveSummary" class="kpi-grid"></div>
         </div>
 
         <div class="card library-list-card-666b">
@@ -194,10 +194,10 @@
               <h2>Resultados paginados</h2>
               <p class="small">Usa “Detalle” para revisar ingredientes, proceso, APPCC, rendimiento y líneas técnicas sin cambiar de práctica.</p>
             </div>
-            <div id="libraryPagerTopV666B" class="library-pager-666b"></div>
+            <div id="archivePagerTop" class="library-pager-666b"></div>
           </div>
-          <div id="libraryTableV666B" class="wide library-table-666b"></div>
-          <div id="libraryPagerBottomV666B" class="library-pager-666b bottom"></div>
+          <div id="archiveTable" class="wide library-table-666b"></div>
+          <div id="archivePagerBottom" class="library-pager-666b bottom"></div>
         </div>
 
         <div class="card library-detail-card-666b">
@@ -207,11 +207,11 @@
               <p class="small">Consulta técnica y auditoría orientativa. La edición sigue estando en las pantallas de ingredientes, cocina/pastelería o panadería.</p>
             </div>
           </div>
-          <div id="libraryDetailV666B" class="library-detail-666b muted">Selecciona un registro para ver su detalle.</div>
+          <div id="archiveDetail" class="library-detail-666b muted">Selecciona un registro para ver su detalle.</div>
         </div>
       </section>
 
-      <section id="tab-elaborations" class="tab-section">
+      <section id="view-archive-elaborations" class="tab-section">
         <div class="card workspace-hero-619 elaborations-hero-625">
           <div class="section-head">
             <div>
@@ -219,9 +219,9 @@
               <p class="small">Zona técnica para abrir fichas o fórmulas concretas. Para el flujo diario usa Práctica → Pedido → Salida.</p>
             </div>
             <div class="actions">
-              <button type="button" class="btn primary" data-tab="selection">Ver práctica</button>
-              <button type="button" class="btn ghost" data-tab="culinary">Crear ficha técnica</button>
-              <button type="button" class="btn ghost" data-tab="bakery">Crear fórmula panadera</button>
+              <button type="button" class="btn primary" data-tab="workshop-practice">Ver práctica</button>
+              <button type="button" class="btn ghost" data-tab="archive-culinary">Crear ficha técnica</button>
+              <button type="button" class="btn ghost" data-tab="archive-bakery">Crear fórmula panadera</button>
             </div>
           </div>
           <div class="unified-note-625"><b>Modelo 6.25:</b> toda receta, ficha, fórmula o subelaboración se trata como una <b>Elaboración</b>. Lo que cambia es su modelo de producción: raciones, rendimiento, porcentaje panadero, piezas o uso dual.</div>
@@ -259,7 +259,7 @@
         </div>
       </section>
 
-      <section id="tab-ingredients" class="tab-section">
+      <section id="view-archive-ingredients" class="tab-section">
         <div class="card">
           <div class="section-head">
             <div>
@@ -298,7 +298,7 @@
           <div class="section-toolbar-619">
             <button type="button" class="toolbar-chip-619" data-scroll-target="#ingredientsTable">Ver resultados</button>
             <button type="button" class="toolbar-chip-619" data-scroll-target="#ingredientFormTitle">Editar seleccionado</button>
-            <button type="button" class="toolbar-chip-619" data-tab="audit">Revisar calidad</button>
+            <button type="button" class="toolbar-chip-619" data-tab="archive-review">Revisar calidad</button>
           </div>
           <div class="view-hint-618">Vista trabajo: tarjetas compactas para editar rápido. Vista auditoría: tabla completa para revisión masiva.</div>
           <div id="ingredientsTable" class="wide ingredients-output-618"></div>
@@ -400,7 +400,7 @@
         </div>
       </section>
 
-      <section id="tab-bakery" class="tab-section">
+      <section id="view-archive-bakery" class="tab-section">
         <div class="card workspace-hero-619 bakery-hero-619">
           <div class="section-head">
             <div>
@@ -409,7 +409,7 @@
             </div>
             <div class="actions">
               <button id="bakeryNewRecipeV40" type="button" class="btn ghost">Nueva formulación</button>
-              <button id="bakeryAddSelectionV623" type="button" class="btn ghost">Añadir a práctica</button>
+              <button id="bakeryAddToWorkshop" type="button" class="btn ghost">Añadir a práctica</button>
               <button id="bakeryPrintRecipeV40" type="button" class="btn success">Imprimir ficha</button>
               <button id="bakeryReloadV37" type="button" class="btn ghost">Recalcular fórmula</button>
             </div>
@@ -740,7 +740,7 @@
       </section>
 
 
-      <section id="tab-culinary" class="tab-section">
+      <section id="view-archive-culinary" class="tab-section">
         <div class="card workspace-hero-619 culinary-hero-619">
           <div class="section-head">
             <div>
@@ -751,7 +751,7 @@
             <div class="actions">
               <button id="culinaryNewRecipeV51" type="button" class="btn ghost">Nueva ficha</button>
               <button id="culinarySaveRecipeV51" type="button" class="btn primary">Guardar ficha</button>
-              <button id="culinaryAddSelectionV623" type="button" class="btn ghost">Añadir a práctica</button>
+              <button id="culinaryAddToWorkshop" type="button" class="btn ghost">Añadir a práctica</button>
               <button id="culinaryPrintRecipeV51" type="button" class="btn success">Imprimir ficha</button>
             </div>
           </div>
@@ -760,7 +760,7 @@
             <button type="button" class="toolbar-chip-619" data-scroll-target="#culinaryRecipeSelectV51">Seleccionar ficha</button>
             <button type="button" class="toolbar-chip-619" data-scroll-target="#culinaryRecipeFormV51">Datos técnicos</button>
             <button type="button" class="toolbar-chip-619" data-scroll-target="#culinaryLinesTableV51">Ingredientes</button>
-            <button type="button" class="toolbar-chip-619" data-tab="class">Añadir a clase</button>
+            <button type="button" class="toolbar-chip-619" data-tab="history-records">Añadir a clase</button>
           </div>
           <label>Ficha técnica
             <select id="culinaryRecipeSelectV51"></select>
@@ -855,7 +855,7 @@
       </section>
 
 
-      <section id="tab-class" class="tab-section">
+      <section id="view-history-records" class="tab-section">
         <div class="card class-control-card">
           <div class="section-head">
             <div>
@@ -1023,21 +1023,21 @@
           <div class="class-print-actions">
             <button type="button" class="btn success" onclick="document.querySelector('#classPrintSessionV41')?.click()">Imprimir sesión</button>
             <button type="button" class="btn ghost" onclick="document.querySelector('#classPrintOrderV61')?.click()">Imprimir pedido</button>
-            <button type="button" class="btn primary" data-tab="print" data-requires-work-items="1">Abrir Salida</button>
+            <button type="button" class="btn primary" data-tab="workshop-output" data-requires-work-items="1">Abrir Salida</button>
           </div>
         </details>
       </section>
 
 
 
-      <section id="tab-selection" class="tab-section">
-        <div class="card workspace-hero-619 selection-hero-623">
+      <section id="view-workshop-practice" class="tab-section">
+        <div class="card workspace-hero-619 workshop-hero">
           <div class="section-head">
             <div>
               <h2>Práctica</h2>
               <p class="small">Ajusta las elaboraciones seleccionadas, cantidades totales y datos docentes de esta práctica. La impresión se concentra en Salida.</p>
             </div>
-            <div id="practiceActionsV671" class="actions practice-main-actions-642 shell-actions-671">
+            <div id="workshopActions" class="actions practice-main-actions-642 shell-actions-671">
               <button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button>
             </div>
           </div>
@@ -1045,16 +1045,16 @@
             La práctica solo ajusta cantidades y datos docentes. Para generar documentos, abre la pestaña Salida.
           </div>
           <div class="sr-only print-compat-buttons-642" aria-hidden="true">
-            <button id="selectionPrintElaborationsV638" type="button">Ficha técnica</button>
-            <button id="selectionPrintOrderV638" type="button">Pedido</button>
-            <button id="selectionPrintBothV638" type="button">Ficha técnica + pedido</button>
-            <button id="selectionPrintTeachingV641" type="button">Ficha técnica completa</button>
-            <button id="selectionPrintTechnicalOrderV641" type="button">Pedido completo</button>
-            <button id="selectionPrintTeachingOrderV642" type="button">Ficha técnica completa + pedido completo</button>
+            <button id="workshopPrintSimpleSheets" type="button">Ficha técnica</button>
+            <button id="workshopPrintSimpleOrder" type="button">Pedido</button>
+            <button id="workshopPrintSimpleDossier" type="button">Ficha técnica + pedido</button>
+            <button id="workshopPrintTeachingSheets" type="button">Ficha técnica completa</button>
+            <button id="workshopPrintTechnicalOrder" type="button">Pedido completo</button>
+            <button id="workshopPrintTeachingDossier" type="button">Ficha técnica completa + pedido completo</button>
           </div>
-          <div id="selectionSummaryV623" class="kpi-grid"></div>
+          <div id="workshopSelectionSummary" class="kpi-grid"></div>
           <div class="work-current-note-624"><b>Flujo recomendado:</b> añade elaboraciones, indica producción total, revisa el pedido y genera documentos exclusivamente desde Salida.</div>
-          <div id="workflowPracticeV6704" class="workflow-host-6704"></div>
+          <div id="workshopPracticeState" class="workflow-host-6704"></div>
           <div class="practice-steps-628" aria-label="Pasos de preparación">
             <div class="practice-step-628"><b>1 · Elaboraciones</b><span>Busca y añade fichas o fórmulas.</span></div>
             <div class="practice-step-628"><b>2 · Cantidades</b><span>Cantidad total de esta práctica.</span></div>
@@ -1065,28 +1065,28 @@
             <summary><span><b>Datos de la práctica</b><small>Opcional: fecha, ciclo, módulo, grupo y docente para imprimir o guardar como sesión.</small></span></summary>
             <div class="form-grid compact practice-meta-grid-632">
               <label class="full">Nombre de la práctica
-                <input id="practiceTitleV632" placeholder="Ej. Masas fermentadas · práctica 3">
+                <input id="workshopTitle" placeholder="Ej. Masas fermentadas · práctica 3">
               </label>
               <label>Fecha
-                <input id="practiceDateV632" type="date">
+                <input id="workshopDate" type="date">
               </label>
               <label>Ciclo
-                <select id="practiceCycleV632"></select>
+                <select id="workshopCycle"></select>
               </label>
               <label>Módulo
-                <select id="practiceModuleV632"></select>
+                <select id="workshopModule"></select>
               </label>
               <label>Grupo académico
-                <input id="practiceGroupV632" placeholder="Ej. 1º Dirección de Cocina">
+                <input id="workshopGroup" placeholder="Ej. 1º Dirección de Cocina">
               </label>
               <label>Docente responsable
-                <input id="practiceResponsibleV632" placeholder="Docente responsable">
+                <input id="workshopResponsible" placeholder="Docente responsable">
               </label>
               <label class="full">Notas docentes
-                <textarea id="practiceNotesV632" rows="2" placeholder="Mise en place, alergias, servicio, material, organización del aula…"></textarea>
+                <textarea id="workshopNotes" rows="2" placeholder="Mise en place, alergias, servicio, material, organización del aula…"></textarea>
               </label>
               <label class="full practice-print-data-toggle-638">
-                <input id="printIncludePracticeDataV637" type="checkbox" checked> Datos docentes visibles en la impresión
+                <input id="printIncludeWorkshopData" type="checkbox" checked> Datos docentes visibles en la impresión
               </label>
             </div>
           </details>
@@ -1097,31 +1097,31 @@
                 <h3>Buscar y añadir elaboraciones</h3>
                 <p class="small">Añade fichas o fórmulas directamente a la práctica actual. Archivo técnico queda para revisión avanzada del catálogo.</p>
               </div>
-              <button type="button" class="btn ghost" data-tab="library">Abrir Archivo técnico</button>
+              <button type="button" class="btn ghost" data-tab="archive-catalog">Abrir Archivo técnico</button>
             </div>
             <div class="form-grid compact practice-search-grid-6702">
               <label class="full">Buscar elaboración
-                <input id="practiceSearchV6702" type="search" placeholder="Ej. croquetas, torta de nata, pan, caldo…" autocomplete="off">
+                <input id="workshopSearchInput" type="search" placeholder="Ej. croquetas, torta de nata, pan, caldo…" autocomplete="off">
               </label>
               <label>Tipo
-                <select id="practiceSearchTypeV6702">
+                <select id="workshopSearchType">
                   <option value="all">Todas</option>
                   <option value="culinary">Cocina/Pastelería</option>
                   <option value="bakery">Panadería</option>
                 </select>
               </label>
               <label>Mostrar
-                <select id="practiceSearchLimitV6702">
+                <select id="workshopSearchLimit">
                   <option value="8">8 resultados</option>
                   <option value="12" selected>12 resultados</option>
                   <option value="20">20 resultados</option>
                 </select>
               </label>
               <div class="practice-search-actions-6702">
-                <button id="practiceSearchClearV6702" type="button" class="btn ghost">Limpiar búsqueda</button>
+                <button id="workshopSearchClear" type="button" class="btn ghost">Limpiar búsqueda</button>
               </div>
             </div>
-            <div id="practiceSearchResultsV6702" class="practice-search-results-6702"></div>
+            <div id="workshopSearchResults" class="practice-search-results-6702"></div>
           </div>
 
           <div class="hidden-compat-634" hidden>
@@ -1133,10 +1133,10 @@
             <input id="practiceSafetyMarginV627" type="hidden" value="0">
             <div id="practicePlanHintV627"></div>
           </div>
-          <div class="selection-guidance-623">
+          <div class="workshop-guidance">
             <b>Siguiente paso:</b> busca una elaboración en esta pestaña, añádela y decide la cantidad total en el cuadro de producción.
           </div>
-          <div id="practiceNextActionsV671" class="actions practice-main-actions-636 shell-actions-671"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div>
+          <div id="workshopNextActions" class="actions practice-main-actions-636 shell-actions-671"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div>
         </div>
         <div class="card">
           <div class="section-head">
@@ -1145,59 +1145,59 @@
               <p class="small">Cada elaboración conserva su receta patrón. Aquí solo decides la producción concreta de esta práctica.</p>
             </div>
           </div>
-          <div id="selectionItemsV623" class="wide"></div>
+          <div id="workshopItemsList" class="wide"></div>
         </div>
-        <div id="printHistoryCardV623" class="card history-card-secondary">
+        <div id="workshopPrintHistoryCard" class="card history-card-secondary">
           <div class="section-head">
             <div>
               <h2>Historial de impresión</h2>
               <p class="small">Registro automático de impresiones realizadas desde fichas, práctica actual, pedido o sesión.</p>
             </div>
           </div>
-          <div id="printHistoryV623" class="wide"></div>
+          <div id="workshopPrintHistory" class="wide"></div>
         </div>
       </section>
 
 
 
-      <dialog id="printCenterDialogV642" class="quantity-dialog-626 print-center-dialog-642">
+      <dialog id="workshopPrintDialog" class="quantity-dialog-626 print-center-dialog-642">
         <form method="dialog" class="quantity-form-626 print-center-form-642">
           <div class="section-head quantity-head-626">
             <div>
               <h2>Imprimir / exportar PDF</h2>
               <p class="small">Escoge un documento simple o completo. La opción recomendada aparece marcada por defecto.</p>
             </div>
-            <button id="printCenterCloseV642" type="button" class="btn ghost" aria-label="Cerrar">Cerrar</button>
+            <button id="workshopPrintDialogClose" type="button" class="btn ghost" aria-label="Cerrar">Cerrar</button>
           </div>
-          <div id="printCenterSelectionSummaryV642" class="quantity-contract-626">Práctica actual.</div>
+          <div id="workshopPrintDialogSummary" class="quantity-contract-626">Práctica actual.</div>
           <div class="print-profile-section-642">
             <h3>¿Qué quieres imprimir?</h3>
             <p class="small">Documento simple</p>
             <label class="print-profile-card-642 recommended-642">
-              <input type="radio" name="printProfileV642" value="both" checked>
+              <input type="radio" name="workshopPrintProfile" value="both" checked>
               <span><b>Ficha técnica + pedido</b><small>Opción recomendada: producción resumida y pedido limpio agrupado.</small></span>
             </label>
             <label class="print-profile-card-642">
-              <input type="radio" name="printProfileV642" value="elaborations">
+              <input type="radio" name="workshopPrintProfile" value="elaborations">
               <span><b>Ficha técnica</b><small>Solo producción: elaboraciones, cantidades e ingredientes.</small></span>
             </label>
             <label class="print-profile-card-642">
-              <input type="radio" name="printProfileV642" value="order">
+              <input type="radio" name="workshopPrintProfile" value="order">
               <span><b>Pedido</b><small>Solo listado de compra agrupado por familias. Sin origen ni proveedor visible.</small></span>
             </label>
           </div>
           <div class="print-profile-section-642 print-profile-complete-643">
             <p class="small">Documento completo</p>
             <label class="print-profile-card-642">
-              <input type="radio" name="printProfileV642" value="teaching">
+              <input type="radio" name="workshopPrintProfile" value="teaching">
               <span><b>Ficha técnica completa</b><small>Escandallo/formulación, coste, alérgenos y proceso técnico.</small></span>
             </label>
             <label class="print-profile-card-642">
-              <input type="radio" name="printProfileV642" value="technical_order">
+              <input type="radio" name="workshopPrintProfile" value="technical_order">
               <span><b>Pedido completo</b><small>Incluye proveedor, zona, coste y origen/usado en.</small></span>
             </label>
             <label class="print-profile-card-642">
-              <input type="radio" name="printProfileV642" value="teaching_order">
+              <input type="radio" name="workshopPrintProfile" value="teaching_order">
               <span><b>Ficha técnica completa + pedido completo</b><small>Dossier completo: fichas técnicas ampliadas y pedido completo al final.</small></span>
             </label>
           </div>
@@ -1224,8 +1224,8 @@
             </label>
           </div>
           <div class="form-actions quantity-actions-626 print-center-actions-642">
-            <button id="printCenterConfirmV642" type="button" class="btn primary">Vista previa / imprimir</button>
-            <button id="printCenterCancelV642" type="button" class="btn ghost">Cancelar</button>
+            <button id="workshopPrintDialogConfirm" type="button" class="btn primary">Vista previa / imprimir</button>
+            <button id="workshopPrintDialogCancel" type="button" class="btn ghost">Cancelar</button>
           </div>
         </form>
       </dialog>
@@ -1288,78 +1288,78 @@
         </form>
       </dialog>
 
-      <section id="tab-order" class="tab-section">
+      <section id="view-workshop-order" class="tab-section">
         <div class="card order-hero-670">
           <div class="section-head">
             <div>
               <h2>Pedido de la práctica actual</h2>
               <p class="small">Revisión técnica de necesidades antes de imprimir: grupo de pedido, ingrediente, cantidad, unidad, coste, proveedor, zona y uso.</p>
             </div>
-            <div id="orderActionsV671" class="actions shell-actions-671">
-              <button type="button" class="btn ghost" data-tab="selection">Volver a práctica</button>
+            <div id="workshopOrderActions" class="actions shell-actions-671">
+              <button type="button" class="btn ghost" data-tab="workshop-practice">Volver a práctica</button>
             </div>
           </div>
-          <div id="orderSummaryV670" class="kpi-grid"></div>
+          <div id="workshopOrderSummary" class="kpi-grid"></div>
           <div class="order-guidance-619">
             <b>Lectura recomendada:</b> revisa primero cantidades y unidades; después proveedor, zona y coste. El pedido se calcula desde la práctica actual, no desde una sesión histórica.
           </div>
-          <div id="orderStateHintV6704" class="workflow-host-6704"></div>
+          <div id="workshopOrderState" class="workflow-host-6704"></div>
           <div id="orderTable" class="wide order-table-619"></div>
         </div>
       </section>
 
-      <section id="tab-print" class="tab-section">
+      <section id="view-workshop-output" class="tab-section">
         <div class="card panel-hero print-panel-618 output-hero-670">
           <div class="section-head">
             <div>
               <h2>Salida · imprimir y exportar</h2>
               <p class="small">Centro documental de la práctica actual. Genera fichas, pedido o dossier completo sin mezclarlo con la edición de cantidades.</p>
             </div>
-            <button type="button" class="btn ghost" data-tab="selection">Volver a práctica</button>
+            <button type="button" class="btn ghost" data-tab="workshop-practice">Volver a práctica</button>
           </div>
           <div class="print-mode-note-619">
             <b>PDF limpio:</b> en el cuadro de impresión del navegador desactiva “Encabezados y pies” si aparecen fecha, URL o numeración externa.
           </div>
-          <div id="outputStateHintV6704" class="workflow-host-6704"></div>
-          <div id="outputActionsGridV671" class="print-profile-grid-618 print-profile-grid-619 output-grid-670 shell-output-grid-671">
+          <div id="workshopOutputState" class="workflow-host-6704"></div>
+          <div id="workshopOutputActionsGrid" class="print-profile-grid-618 print-profile-grid-619 output-grid-670 shell-output-grid-671">
             <div class="print-profile-card-618 recommended-output-670">
               <b>Dossier completo</b>
               <span>Portada, fichas técnicas completas y pedido técnico final. Es la salida recomendada para aula-taller.</span>
-              <button id="outputPrintDossierV670" type="button" class="btn success">Vista previa / imprimir dossier</button>
+              <button id="workshopPrintDossier" type="button" class="btn success">Vista previa / imprimir dossier</button>
             </div>
             <div class="print-profile-card-618">
               <b>Solo fichas</b>
               <span>Fichas técnicas completas de las elaboraciones seleccionadas, con proceso, APPCC y alérgenos.</span>
-              <button id="outputPrintSheetsV670" type="button" class="btn success">Imprimir fichas</button>
+              <button id="workshopPrintSheets" type="button" class="btn success">Imprimir fichas</button>
             </div>
             <div class="print-profile-card-618">
               <b>Solo pedido</b>
               <span>Pedido técnico completo con unidades, proveedor, zona, coste y uso en elaboraciones.</span>
-              <button id="outputPrintOrderV670" type="button" class="btn success">Imprimir pedido</button>
+              <button id="workshopPrintOrder" type="button" class="btn success">Imprimir pedido</button>
             </div>
             <div class="print-profile-card-618">
               <b>Salida personalizada</b>
               <span>Elige simple/completa, pedido, fichas y modo de subelaboraciones.</span>
-              <button id="selectionOpenPrintCenterV642" type="button" class="btn primary">Abrir opciones de salida</button>
+              <button id="workshopOpenPrintCenter" type="button" class="btn primary">Abrir opciones de salida</button>
             </div>
 
           </div>
         </div>
       </section>
 
-      <section id="tab-margins" class="tab-section">
+      <section id="view-workshop-margins" class="tab-section">
         <div class="card"><h2>Costes y márgenes</h2><div id="marginsTable" class="wide"></div></div>
       </section>
 
 
-      <section id="tab-data" class="tab-section">
+      <section id="view-system-data" class="tab-section">
         <div class="card data-hero-670">
           <div class="section-head">
             <div>
               <h2>Datos y copias</h2>
               <p class="small">La app pública carga una base inicial. Tus cambios viven en tu navegador y debes exportar una copia SQLite para conservarlos o compartirlos.</p>
             </div>
-            <button type="button" class="btn ghost" data-tab="selection">Volver a práctica</button>
+            <button type="button" class="btn ghost" data-tab="workshop-practice">Volver a práctica</button>
           </div>
           <div class="save-status-card">
             <div id="saveIndicator" class="save-indicator saving">Preparando guardado…</div>
@@ -1383,7 +1383,7 @@
         </div>
       </section>
 
-      <section id="tab-audit" class="tab-section">
+      <section id="view-archive-review" class="tab-section">
 
         <div class="card">
           <div class="section-head">
@@ -1416,7 +1416,7 @@
         </div>
       </section>
 
-      <section id="tab-sql" class="tab-section">
+      <section id="view-system-sql" class="tab-section">
         <div class="card">
           <h2>SQL debug</h2>
           <p class="small">Solo se permiten consultas <code>SELECT</code>.</p>
@@ -1433,15 +1433,15 @@
     console.log("SwiftRemo fase6.71 interfaz guiada por estado cargada");
   </script>
   <div id="swiftremoPrintPreview631" hidden></div>
-  <script type="module" src="./js/app.js?v=6721"></script>
-  <script type="module" src="./js/bakery-main-v3-7.js?v=6721"></script>
-  <script type="module" src="./js/preferments-v3-8.js?v=6721"></script>
-  <script type="module" src="./js/extras-v3-9.js?v=6721"></script>
-  <script type="module" src="./js/culinary-main-v5-1.js?v=6721"></script>
-  <script type="module" src="./js/session-v4-1.js?v=6721"></script>
-  <script type="module" src="./js/combobox-v6-9.js?v=6721"></script>
+  <script type="module" src="./js/app.js?v=6722"></script>
+  <script type="module" src="./js/bakery-main-v3-7.js?v=6722"></script>
+  <script type="module" src="./js/preferments-v3-8.js?v=6722"></script>
+  <script type="module" src="./js/extras-v3-9.js?v=6722"></script>
+  <script type="module" src="./js/culinary-main-v5-1.js?v=6722"></script>
+  <script type="module" src="./js/history-engine.js?v=6722"></script>
+  <script type="module" src="./js/combobox-v6-9.js?v=6722"></script>
   <script type="module">
-    import { printClassOrder } from "./js/print-service-v6-3.js?v=6721";
+    import { printClassOrder } from "./js/print-service-v6-3.js?v=6722";
     import { toast } from "./js/ui.js";
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.querySelector("#globalPrintOrderV61");
