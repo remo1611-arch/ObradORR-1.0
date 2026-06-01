@@ -1,0 +1,1610 @@
+import { SwiftDB } from "./db-service.js";
+import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js";
+import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print-service-v6-1.js";
+import { loadRecovery, saveRecovery, clearRecovery } from "./storage-service.js";
+import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson } from "./ui.js";
+
+const swiftDb = new SwiftDB();
+let repo = null;
+let catalogs = null;
+let selectedIngredientId = null;
+let hasSaveError = false;
+let hasPendingSave = false;
+let practiceContextSaveTimer = null;
+
+const state = {
+  filters: { search: "", active: "active", use: "all", view: "work" },
+  elaborations: { search: "", type: "all", active: "active" },
+  quantityDialog: { mode: "add", elaboration: null, selectionItem: null }
+};
+
+window.SwiftRemoCore = {
+  swiftDb,
+  get repo() { return repo; },
+  autosave,
+  renderAll,
+  toast,
+  fmtMoney,
+  fmtNumber,
+  esc,
+  addWorkSelectionItem,
+  renderAll
+};
+
+window.addEventListener("DOMContentLoaded", init);
+
+function cancelPendingPracticeContextSave(reason = "") {
+  if (practiceContextSaveTimer) {
+    clearTimeout(practiceContextSaveTimer);
+    practiceContextSaveTimer = null;
+  }
+  hasPendingSave = false;
+  if (reason) console.info(`[SwiftRemo] Guardado diferido de práctica cancelado: ${reason}`);
+}
+
+function readLocalJsonRawV651(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function migrateLegacyPracticeContextToSqliteV651() {
+  if (!repo?.saveWorkSelectionContext) return;
+  const previous = currentWorkContextV633();
+  if (previous?.meta || previous?.plan || previous?.legacyMigratedV651) return;
+  const legacyMeta = readLocalJsonRawV651(PRACTICE_META_KEY_V632);
+  const legacyPlan = readLocalJsonRawV651(PRACTICE_PLAN_KEY_V627);
+  const scopedMeta = readLocalJsonRawV651(scopedPracticeStorageKeyV645(PRACTICE_META_KEY_V632));
+  const scopedPlan = readLocalJsonRawV651(scopedPracticeStorageKeyV645(PRACTICE_PLAN_KEY_V627));
+  const meta = scopedMeta || legacyMeta;
+  const plan = scopedPlan || legacyPlan;
+  if (!meta && !plan) return;
+  try {
+    repo.saveWorkSelectionContext({
+      ...previous,
+      ...(meta ? { meta } : {}),
+      ...(plan ? { plan } : {}),
+      legacyMigratedV651: true,
+      updatedAt: new Date().toISOString()
+    });
+    console.info("[SwiftRemo] Contexto de práctica legacy migrado a SQLite.");
+  } catch (err) {
+    console.warn("[SwiftRemo] No se pudo migrar contexto legacy a SQLite", err);
+  }
+}
+
+async function init() {
+  try {
+    bindEvents();
+    await loadBestAvailableDb();
+  } catch (err) {
+    console.error(err);
+    setState("Error JS", "error");
+    setStatus(err.message, "err");
+    setSaveIndicator("No se pudo iniciar", "err", "Descarga o importa una copia si tienes cambios.");
+  }
+}
+
+
+function bindIfExists(selector, eventName, handler) {
+  const el = document.querySelector(selector);
+  if (el) el.addEventListener(eventName, handler);
+}
+
+function bindEvents() {
+  $$(`[data-tab]`).forEach(btn => {
+    if (btn.dataset.tabBound === "1") return;
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+    btn.dataset.tabBound = "1";
+  });
+  $("#loadInitialDb").addEventListener("click", loadInitialDbWithConfirm);
+  $("#sqliteFile").addEventListener("change", loadSqliteFile);
+  $("#exportSqlite").addEventListener("click", exportSqlite);
+  $("#exportJson").addEventListener("click", exportJson);
+
+  $("#ingredientSearch").addEventListener("input", ev => { state.filters.search = ev.target.value; renderIngredients(); });
+  $("#ingredientActiveFilter").addEventListener("change", ev => { state.filters.active = ev.target.value; renderIngredients(); });
+  $("#ingredientUseFilter").addEventListener("change", ev => { state.filters.use = ev.target.value; renderIngredients(); });
+  bindIfExists("#ingredientViewMode", "change", ev => { state.filters.view = ev.target.value; renderIngredients(); });
+  bindIfExists("#elaborationSearchV625", "input", ev => { state.elaborations.search = ev.target.value; renderElaborations(); });
+  bindIfExists("#elaborationTypeFilterV625", "change", ev => { state.elaborations.type = ev.target.value; renderElaborations(); });
+  bindIfExists("#elaborationStatusFilterV625", "change", ev => { state.elaborations.active = ev.target.value; renderElaborations(); });
+  $("#newIngredient").addEventListener("click", newIngredientForm);
+  $("#clearIngredientForm").addEventListener("click", clearIngredientForm);
+  $("#deactivateIngredient").addEventListener("click", deactivateSelectedIngredient);
+  $("#ingredientForm").addEventListener("submit", saveIngredientFromForm);
+  $("#runSql").addEventListener("click", runSql);
+  bindIfExists("#refreshAudit", "click", () => { renderBaseStatusV663(); renderAudit(); });
+  bindIfExists("#copyBaseDiagnosisV663", "click", copyBaseDiagnosisV663);
+  bindIfExists("#printQuickSession", "click", () => document.querySelector("#classPrintSessionV41")?.click());
+  bindIfExists("#printQuickOrder", "click", () => document.querySelector("#globalPrintOrderV61")?.click());
+  bindIfExists("#printQuickSelectionV623", "click", () => printSelectionBothV638());
+  bindIfExists("#selectionPrintElaborationsV638", "click", () => printSelectionDirectV638({ includeElaborations: true, includeOrder: false, reason: "historial impresión elaboraciones práctica" }));
+  bindIfExists("#selectionPrintOrderV638", "click", () => printSelectionDirectV638({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido práctica" }));
+  bindIfExists("#selectionPrintBothV638", "click", () => printSelectionBothV638());
+  bindIfExists("#selectionPrintTeachingV641", "click", () => printSelectionTeachingV641());
+  bindIfExists("#selectionPrintTechnicalOrderV641", "click", () => printSelectionTechnicalOrderV641());
+  bindIfExists("#selectionPrintTeachingOrderV642", "click", () => printSelectionTeachingOrderV642());
+  bindIfExists("#selectionOpenPrintCenterV642", "click", () => openPrintCenterV642());
+  bindIfExists("#printCenterCancelV642", "click", () => closePrintCenterV642());
+  bindIfExists("#printCenterCloseV642", "click", () => closePrintCenterV642());
+  bindIfExists("#printCenterConfirmV642", "click", () => executePrintCenterV642());
+  bindIfExists("#printCenterDialogV642", "click", ev => { if (ev.target?.id === "printCenterDialogV642") closePrintCenterV642(); });
+  bindIfExists("#selectionClearV623", "click", clearSelection);
+  bindIfExists("#selectionCreateSessionV623", "click", createSessionFromSelection);
+  bindIfExists("#qtyModeV626", "change", handleQuantityModeChange);
+  ["qtyScopeV6272", "qtyTeamCountV6272", "qtyPeoplePerTeamV6272", "qtyMainQtyV626", "qtyFlourGV626", "qtyRawDoughGV626", "qtyPiecesV626", "qtyPieceWeightGV626", "qtyBakingLossV626"].forEach(id => {
+    bindIfExists("#" + id, "input", updateQuantityComputedV6272);
+    bindIfExists("#" + id, "change", updateQuantityComputedV6272);
+  });
+  bindIfExists("#qtyConfirmV626", "click", saveQuantityDialog);
+  bindIfExists("#qtyCancelV626", "click", closeQuantityDialog);
+  bindIfExists("#qtyCloseV626", "click", closeQuantityDialog);
+  ["practiceTeamCountV627", "practicePeoplePerTeamV627", "practiceStudentCountV627", "practiceServingsPerPersonV627", "practicePiecesPerPersonV627", "practiceSafetyMarginV627"].forEach(id => {
+    bindIfExists("#" + id, "input", () => { savePracticePlanV627(); renderPracticePlanV627(); });
+    bindIfExists("#" + id, "change", () => { savePracticePlanV627(); renderPracticePlanV627(); });
+  });
+  ["practiceTitleV632", "practiceDateV632", "practiceCycleV632", "practiceModuleV632", "practiceGroupV632", "practiceResponsibleV632", "practiceNotesV632", "printIncludePracticeDataV637"].forEach(id => {
+    bindIfExists("#" + id, "input", () => { savePracticeMetaV632(); });
+    bindIfExists("#" + id, "change", () => { if (id === "practiceCycleV632") refreshPracticeModulesV632(true); if (id === "practiceModuleV632") applyPracticeModuleDefaultGroupV632(); savePracticeMetaV632(); });
+  });
+  document.addEventListener("click", ev => {
+    const tabButton = ev.target.closest?.("[data-tab]");
+    if (tabButton && !tabButton.dataset.tabBound) {
+      ev.preventDefault();
+      switchTab(tabButton.dataset.tab);
+      return;
+    }
+    const del = ev.target.closest?.("[data-selection-delete]");
+    if (del) { ev.preventDefault(); deleteSelectionItem(del.dataset.selectionDelete); return; }
+    const editSel = ev.target.closest?.("[data-selection-edit]");
+    if (editSel) { ev.preventDefault(); editSelectionItem(editSel.dataset.selectionEdit); return; }
+    const openElab = ev.target.closest?.("[data-open-elaboration]");
+    if (openElab) { ev.preventDefault(); openUnifiedElaboration(openElab.dataset.openElaboration); return; }
+    const addElab = ev.target.closest?.("[data-add-elaboration-work]");
+    if (addElab) { ev.preventDefault(); addUnifiedElaborationToWork(addElab.dataset.addElaborationWork); return; }
+  });
+  bindScrollTargets();
+  bindClassWorkflowAccordion();
+  window.addEventListener("swiftremo:databaseChanged", async ev => {
+    try {
+      await loadBestAvailableDb();
+      if (ev?.detail?.message) toast(ev.detail.message);
+    } catch (err) {
+      console.error(err);
+      toast("No se pudo actualizar el panel tras cambios externos.", "err");
+    }
+  });
+
+  window.addEventListener("beforeunload", ev => {
+    if (hasSaveError || hasPendingSave) {
+      ev.preventDefault();
+      ev.returnValue = hasPendingSave
+        ? "Hay cambios de práctica pendientes de guardado automático. Espera unos segundos o guarda antes de cerrar."
+        : "Hay cambios que no se han podido guardar automáticamente. Descarga una copia antes de cerrar.";
+    }
+  });
+}
+
+function bindScrollTargets() {
+  document.querySelectorAll("[data-scroll-target]").forEach(btn => {
+    if (btn.dataset.scrollBound === "1") return;
+    btn.addEventListener("click", () => {
+      const selector = btn.dataset.scrollTarget;
+      const target = selector ? document.querySelector(selector) : null;
+      if (!target) return;
+      const tab = target.closest(".tab-section")?.id?.replace("tab-", "");
+      if (tab) switchTab(tab);
+      const details = target.closest("details");
+      if (details) details.open = true;
+      setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+    });
+    btn.dataset.scrollBound = "1";
+  });
+}
+
+function bindClassWorkflowAccordion() {
+  const buttons = Array.from(document.querySelectorAll("[data-class-step-target]"));
+  const panels = Array.from(document.querySelectorAll(".class-workflow-step"));
+  if (!panels.length) return;
+
+  const hint = document.querySelector("#classWorkflowHint");
+
+  const labelFor = panel => {
+    const summary = panel.querySelector("summary");
+    return summary?.innerText?.replace(/\s+/g, " ")?.trim() || "paso seleccionado";
+  };
+
+  const setActive = panel => {
+    panels.forEach(item => {
+      const isActive = item === panel;
+      item.classList.toggle("active", isActive);
+      if (item.tagName === "DETAILS" && !isActive) item.open = false;
+    });
+
+    if (panel?.tagName === "DETAILS") panel.open = true;
+
+    buttons.forEach(btn => {
+      const target = btn.dataset.classStepTarget ? document.querySelector(btn.dataset.classStepTarget) : null;
+      const isActive = target === panel;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+
+    if (hint && panel) hint.textContent = `Bloque abierto: ${labelFor(panel)}.`;
+  };
+
+  panels.forEach(panel => {
+    if (panel.dataset.accordionBound === "1") return;
+    const summary = panel.querySelector("summary");
+    if (summary) {
+      summary.addEventListener("click", ev => {
+        if (panel.open) {
+          ev.preventDefault();
+          setActive(panel);
+        }
+      });
+    }
+    panel.addEventListener("toggle", () => {
+      if (panel.open) setActive(panel);
+    });
+    panel.dataset.accordionBound = "1";
+  });
+
+  buttons.forEach(btn => {
+    if (btn.dataset.classStepBound === "1") return;
+    btn.addEventListener("click", ev => {
+      ev.preventDefault();
+      const panel = btn.dataset.classStepTarget ? document.querySelector(btn.dataset.classStepTarget) : null;
+      if (panel) setActive(panel);
+    });
+    btn.dataset.classStepBound = "1";
+  });
+
+  const initial = panels.find(panel => panel.hasAttribute("open"))
+    || document.querySelector("#classAddDetails")
+    || panels[0];
+  setActive(initial);
+}
+
+async function loadBestAvailableDb() {
+  cancelPendingPracticeContextSave("carga de base");
+  setState("Cargando…", "loading");
+  setSaveIndicator("Cargando…", "saving", "Buscando base de trabajo.");
+  const recovery = await loadRecovery();
+  if (recovery?.bytes) {
+    try {
+      await swiftDb.loadFromBytesAsync(new Uint8Array(recovery.bytes));
+      afterDbLoaded("Base de trabajo restaurada.", "Guardado", recovery.savedAt);
+      return;
+    } catch (err) {
+      console.error("[SwiftRemo] Recuperación no válida. Recovery corrupta. Se limpia y se carga base inicial.", err);
+      try { await clearRecovery(); } catch (clearErr) { console.warn("[SwiftRemo] No se pudo limpiar la recuperación corrupta", clearErr); }
+      setStatus("Recuperación no válida. La recuperación interna no se pudo abrir. Se ha limpiado y se carga la base inicial; importa una copia .sqlite si necesitas recuperar cambios.", "warn");
+      setSaveIndicator("Recuperación limpiada", "err", "Se cargará una base inicial limpia.");
+      await loadInitialDb(true);
+      return;
+    }
+  }
+  await loadInitialDb(false);
+}
+
+async function loadInitialDbWithConfirm() {
+  if (!confirm("¿Usar la base inicial? Si no has descargado una copia, podrías perder los cambios actuales.")) return;
+  await clearRecovery();
+  await loadInitialDb(true);
+}
+
+async function loadInitialDb(saveAsCurrent = true) {
+  cancelPendingPracticeContextSave("base inicial");
+  setState("Cargando base…", "loading");
+  setStatus("Cargando base inicial…", "warn");
+  await swiftDb.loadFromUrl("../db/swiftremo.sqlite");
+  if (saveAsCurrent) await autosave({ backup: true, reason: "base inicial" });
+  afterDbLoaded("Base inicial cargada.", "Guardado", new Date().toISOString());
+}
+
+async function loadSqliteFile(ev) {
+  cancelPendingPracticeContextSave("importación SQLite");
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  try {
+    await swiftDb.loadFromFile(file);
+    await autosave({ backup: true, reason: "importación" });
+    afterDbLoaded(`Copia importada: ${file.name}`, "Guardado", new Date().toISOString());
+  } catch (err) {
+    console.error(err); toast(err.message, "err");
+    setSaveIndicator("Error al importar", "err", err.message);
+  }
+}
+
+function afterDbLoaded(message, saveLabel = "Guardado", savedAt = null) {
+  repo = new Repository(swiftDb);
+  catalogs = repo.catalogs();
+  selectedIngredientId = null;
+  hasSaveError = false;
+  populateCatalogs();
+  clearIngredientForm(false);
+  migrateLegacyPracticeContextToSqliteV651();
+  renderAll();
+  setState("Listo", "clean");
+  setStatus(message, "ok");
+  setSaveIndicator(saveLabel, "ok", savedAt ? `Última actualización: ${formatDate(savedAt)}` : "Listo.");
+  window.dispatchEvent(new CustomEvent("swiftremo:coreReady", { detail: { message } }));
+}
+
+function switchTab(tab) {
+  if (!tab) return;
+  const target = $(`#tab-${tab}`);
+  if (!target) {
+    console.warn(`[SwiftRemo] Pestaña no encontrada: ${tab}`);
+    return;
+  }
+  $$(`.nav-row button`).forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
+  $$(`.tab-section`).forEach(sec => sec.classList.remove("active"));
+  target.classList.add("active");
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function autosave({ backup = false, reason = "auto" } = {}) {
+  try {
+    setState("Guardando…", "saving");
+    setSaveIndicator("Guardando…", "saving", "Actualizando base de trabajo.");
+    const bytes = swiftDb.exportBytes();
+    const saved = await saveRecovery(bytes, { backup, reason });
+    hasSaveError = false;
+    setState("Guardado", "clean");
+    setSaveIndicator("Guardado", "ok", `Última actualización: ${formatDate(saved.savedAt)}`);
+    setStatus("Cambios guardados.", "ok");
+    return saved;
+  } catch (err) {
+    console.error(err);
+    hasSaveError = true;
+    setState("Error de guardado", "error");
+    setSaveIndicator("No se pudo guardar", "err", "Descarga una copia .sqlite para no perder cambios.");
+    setStatus("No se pudo guardar automáticamente. Descarga una copia .sqlite.", "err");
+    toast("No se pudo guardar. Descarga una copia .sqlite.", "err");
+    throw err;
+  }
+}
+
+function renderAll() {
+  [
+    renderKpis,
+    renderBaseStatusV663,
+    renderPanelQualitySummary,
+    renderSessionSummary,
+    renderPracticeMetaV632,
+    renderPracticePlanV627,
+    renderElaborations,
+    renderIngredients,
+    renderSelection,
+    renderOrder,
+    renderMargins,
+    renderAudit
+  ].forEach(fn => {
+    try { fn(); }
+    catch (err) {
+      console.error(`[SwiftRemo] Error renderizando ${fn.name}`, err);
+      const quality = document.querySelector("#panelQualitySummary");
+      if (quality && fn.name === "renderPanelQualitySummary") {
+        quality.className = "quality-strip warn";
+        quality.innerHTML = "<b>Calidad no disponible en este momento.</b><span>Abre Revisar calidad o recarga la app.</span>";
+      }
+    }
+  });
+}
+
+function renderKpis() {
+  const k = repo.kpis();
+  $("#kpis").innerHTML = `
+    <div class="kpi"><span>Ingredientes activos</span><b>${k.ingredients}</b></div>
+    <div class="kpi"><span>Elaboraciones</span><b>${Number(k.bakeryRecipes || 0) + Number(k.culinaryRecipes || 0)}</b></div>
+    <div class="kpi"><span>Práctica actual</span><b>${k.workItems || 0}</b></div>
+    <div class="kpi"><span>Coste práctica</span><b>${fmtMoney(k.workCost || 0)}</b></div>`;
+}
+
+
+
+
+function statusBadgeV663(label, tone = "off") {
+  return `<span class="badge ${esc(tone)}">${esc(label)}</span>`;
+}
+
+function baseStatusDiagnosisTextV663(st) {
+  if (!st) return "SwiftRemo · diagnóstico no disponible";
+  return [
+    "SwiftRemo · Estado de la base",
+    `Release: ${st.releaseLabel}`,
+    `Schema: ${st.schemaVersion}`,
+    `Estado: ${st.statusLabel}`,
+    `Quality gate: ${st.qualityGate}`,
+    `Ingredientes: ${st.ingredientsActive} activos · ${st.ingredientsArchived} archivados · ${st.ingredientsTotal} totales`,
+    `Fichas cocina/pastelería: ${st.culinaryActive} activas · ${st.culinaryArchived} archivadas · ${st.culinaryTotal} totales`,
+    `Fórmulas panaderas: ${st.bakeryActive} activas · ${st.bakeryArchived} archivadas · ${st.bakeryTotal} totales`,
+    `No validadas: ${st.culinaryNotValidated + st.bakeryNotValidated}`,
+    `Duplicados activos: ingredientes ${st.duplicateIngredientNames} · elaboraciones ${st.duplicateElaborationNames}`,
+    `Auditoría visible: ${st.blockers} bloqueadores · ${st.warnings} avisos · ${st.infos} informativos`,
+    `Controles: ${st.checks || "n/d"}`
+  ].join("\n");
+}
+
+function baseStatusHtmlV663(st, compact = false) {
+  if (!st) {
+    return `<div class="base-status-title-v663">Estado no disponible</div><div class="small">La base todavía no está cargada.</div>`;
+  }
+  const notValidated = Number(st.culinaryNotValidated || 0) + Number(st.bakeryNotValidated || 0);
+  const duplicateTotal = Number(st.duplicateIngredientNames || 0) + Number(st.duplicateElaborationNames || 0);
+  const diagnostic = st.blockers
+    ? "Hay errores bloqueantes. Revisa la pestaña Calidad antes de imprimir o escandallar."
+    : st.warnings
+      ? "La base es operativa, pero hay avisos técnicos documentados."
+      : "La base no presenta errores ni avisos bloqueantes en la auditoría visible.";
+  const details = compact ? "" : `
+    <div class="base-status-metadata-v663">
+      <div><b>Versión</b><span>${esc(st.releaseLabel)}</span></div>
+      <div><b>Schema</b><span>${esc(st.schemaVersion)}</span></div>
+      <div><b>Quality gate</b><span>${esc(st.qualityGate)}</span></div>
+    </div>`;
+  return `
+    <div class="base-status-head-v663">
+      <div>
+        <div class="base-status-title-v663">${esc(st.statusLabel)}</div>
+        <div class="small">${esc(diagnostic)}</div>
+      </div>
+      ${statusBadgeV663(st.blockers ? "Bloqueada" : st.warnings ? "Con avisos" : "Apta", st.statusClass)}
+    </div>
+    <div class="base-status-grid-v663">
+      <div><span>Ingredientes activos</span><b>${fmtNumber(st.ingredientsActive,0)}</b><small>${fmtNumber(st.ingredientsArchived,0)} archivados</small></div>
+      <div><span>Fichas activas</span><b>${fmtNumber(st.culinaryActive,0)}</b><small>Cocina/Pastelería</small></div>
+      <div><span>Fórmulas activas</span><b>${fmtNumber(st.bakeryActive,0)}</b><small>Panadería</small></div>
+      <div><span>Bloqueadores</span><b>${fmtNumber(st.blockers,0)}</b><small>${fmtNumber(st.warnings,0)} avisos · ${fmtNumber(st.infos,0)} info</small></div>
+      <div><span>No validadas</span><b>${fmtNumber(notValidated,0)}</b><small>Activas pendientes</small></div>
+      <div><span>Duplicados activos</span><b>${fmtNumber(duplicateTotal,0)}</b><small>${fmtNumber(st.duplicateIngredientNames,0)} ingredientes · ${fmtNumber(st.duplicateElaborationNames,0)} elaboraciones</small></div>
+    </div>
+    ${details}`;
+}
+
+function renderBaseStatusV663() {
+  const targets = [document.querySelector("#baseStatusPanelV663"), document.querySelector("#baseStatusAuditV663")].filter(Boolean);
+  if (!targets.length) return;
+  if (!repo) {
+    targets.forEach(el => {
+      el.className = "base-status-card-v663 muted";
+      el.innerHTML = `<div class="base-status-title-v663">Estado pendiente de cargar</div><div class="small">SQLite todavía se está preparando.</div>`;
+    });
+    return;
+  }
+  try {
+    const st = repo.baseStatusV663();
+    targets.forEach(el => {
+      const compact = el.id === "baseStatusPanelV663";
+      el.className = `base-status-card-v663 ${st.statusClass || "muted"}`;
+      el.innerHTML = baseStatusHtmlV663(st, compact);
+    });
+  } catch (err) {
+    console.error("[SwiftRemo] No se pudo renderizar el estado de la base", err);
+    targets.forEach(el => {
+      el.className = "base-status-card-v663 warn";
+      el.innerHTML = `<div class="base-status-title-v663">Estado no disponible</div><div class="small">Abre Calidad o recarga la app.</div>`;
+    });
+  }
+}
+
+async function copyBaseDiagnosisV663() {
+  if (!repo) return toast("La base todavía no está cargada.", "warn");
+  const text = baseStatusDiagnosisTextV663(repo.baseStatusV663());
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+    }
+    toast("Diagnóstico copiado.");
+  } catch (err) {
+    console.error(err);
+    toast("No se pudo copiar el diagnóstico.", "err");
+  }
+}
+
+function renderPanelQualitySummary() {
+  const el = document.querySelector("#panelQualitySummary");
+  if (!el) return;
+  if (!repo) {
+    el.className = "quality-strip muted";
+    el.innerHTML = "<b>Calidad pendiente de cargar.</b><span>La base todavía se está preparando.</span>";
+    return;
+  }
+  try {
+    const rows = repo.technicalAudit();
+    const errors = rows.filter(r => r.severity === "error").length;
+    const warns = rows.filter(r => r.severity === "warn").length;
+    const infos = rows.filter(r => r.severity === "info").length;
+    const cls = errors ? "quality-strip err" : warns ? "quality-strip warn" : "quality-strip ok";
+    const label = errors ? "Revisión obligatoria antes de imprimir" : warns ? "Operativa con avisos técnicos" : "Sin errores críticos";
+    el.className = cls;
+    el.innerHTML = `<b>${esc(label)}</b><span>${errors} errores · ${warns} avisos · ${infos} notas</span>`;
+  } catch (err) {
+    console.error("[SwiftRemo] No se pudo cargar la calidad", err);
+    el.className = "quality-strip warn";
+    el.innerHTML = `<b>Calidad no disponible.</b><span>Entra en Revisar calidad o recarga la app.</span>`;
+  }
+}
+
+function renderSessionSummary() {
+  const box = document.querySelector("#sessionSummary");
+  if (!box || !repo) return;
+  const s = repo.workSelectionSummary?.() || {};
+  const count = Number(s.total_items || 0);
+  if (!count) {
+    box.innerHTML = `
+      <div class="empty-state empty-state-6271">
+        <b>No hay práctica activa.</b>
+        <span>Empieza en <button type="button" class="link-button" data-tab="selection">Práctica</button> o busca una elaboración para imprimir una ficha suelta.</span>
+      </div>`;
+    return;
+  }
+  box.innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi"><span>Elaboraciones</span><b>${fmtNumber(s.total_items || 0,0)}</b></div>
+      <div class="kpi"><span>Panadería</span><b>${fmtNumber(s.bakery_items || 0,0)}</b></div>
+      <div class="kpi"><span>Cocina/Pastelería</span><b>${fmtNumber(s.culinary_items || 0,0)}</b></div>
+      <div class="kpi"><span>Coste base aprox.</span><b>${fmtMoney(s.estimated_base_cost || 0)}</b></div>
+    </div>
+    <div class="actions"><button type="button" class="btn primary" data-tab="selection">Continuar práctica</button></div>`;
+}
+
+
+
+const PRACTICE_PLAN_KEY_V627 = "swiftremo_practice_plan_v627";
+const PRACTICE_META_KEY_V632 = "swiftremo_practice_meta_v632";
+
+function scopedPracticeStorageKeyV645(baseKey) {
+  try {
+    const version = swiftDb?.isLoaded?.() ? swiftDb.selectValue("SELECT value FROM app_meta WHERE key='schema_version'") : "sin_db";
+    return `${baseKey}_${String(version || "sin_version").replace(/[^a-z0-9_\-\.]+/gi, "_")}`;
+  } catch {
+    return baseKey;
+  }
+}
+
+function readLocalJsonV645(baseKey, fallbackLegacy = false) {
+  try {
+    // Fase 6.51: cuando SQLite ya está cargada, el contexto de práctica vive en work_selections.context_json.
+    // Evita arrastrar metadatos antiguos de localStorage al importar o cambiar de base.
+    if (swiftDb?.isLoaded?.()) return null;
+    const scoped = localStorage.getItem(scopedPracticeStorageKeyV645(baseKey));
+    if (scoped) return JSON.parse(scoped);
+    if (fallbackLegacy) {
+      const legacy = localStorage.getItem(baseKey);
+      return legacy ? JSON.parse(legacy) : null;
+    }
+    return null;
+  } catch { return null; }
+}
+
+function writeLocalJsonV645(baseKey, data) {
+  try {
+    // Fase 6.51: localStorage solo es prearranque/compatibilidad. Con SQLite cargada, no se duplica contexto.
+    if (swiftDb?.isLoaded?.()) return;
+    localStorage.setItem(scopedPracticeStorageKeyV645(baseKey), JSON.stringify(data));
+  } catch {}
+}
+
+function localPracticePlanV627() {
+  return readLocalJsonV645(PRACTICE_PLAN_KEY_V627, true);
+}
+
+function currentWorkContextV633() {
+  try { return repo?.workSelectionContext?.() || {}; }
+  catch { return {}; }
+}
+
+function loadPracticePlanV627() {
+  const contextPlan = currentWorkContextV633().plan;
+  return contextPlan || localPracticePlanV627();
+}
+
+function practicePlanV627() {
+  // Fase 6.34: se elimina la escala por alumnado de la UX estable.
+  // Se conservan claves antiguas solo por compatibilidad con sesiones/exportaciones previas.
+  return {
+    teamCount: 1,
+    peoplePerTeam: 1,
+    totalStudents: 0,
+    servingsPerPerson: 0,
+    piecesPerPerson: 0,
+    safetyMarginPct: 0
+  };
+}
+
+function savePracticePlanV627() {
+  const data = { productionScaleDisabledV634: true };
+  writeLocalJsonV645(PRACTICE_PLAN_KEY_V627, data);
+  savePracticeContextToSqliteV633({ plan: data });
+}
+
+function savePracticeContextToSqliteV633(partial = {}) {
+  if (!repo?.saveWorkSelectionContext) return;
+  const previous = currentWorkContextV633();
+  const next = { ...previous, ...partial, updatedAt: new Date().toISOString() };
+  try { repo.saveWorkSelectionContext(next); }
+  catch (err) { console.error("[SwiftRemo] No se pudo guardar contexto de práctica", err); return; }
+  if (practiceContextSaveTimer) clearTimeout(practiceContextSaveTimer);
+  hasPendingSave = true;
+  practiceContextSaveTimer = setTimeout(() => {
+    autosave({ backup: false, reason: "contexto práctica" })
+      .then(() => { hasPendingSave = false; practiceContextSaveTimer = null; })
+      .catch(err => { hasSaveError = true; console.error(err); });
+  }, 650);
+}
+
+
+function todayIsoV632() { return new Date().toISOString().slice(0, 10); }
+
+function localPracticeMetaV632() {
+  return readLocalJsonV645(PRACTICE_META_KEY_V632, true) || {};
+}
+
+function loadPracticeMetaV632() {
+  const contextMeta = currentWorkContextV633().meta;
+  return contextMeta || localPracticeMetaV632();
+}
+
+function practiceMetaV632() {
+  const stored = loadPracticeMetaV632() || {};
+  const get = (id, fallback = "") => {
+    const el = document.querySelector("#" + id);
+    return el ? el.value : (stored[id] ?? fallback);
+  };
+  return {
+    title: String(get("practiceTitleV632", stored.practiceTitleV632 || "")).trim(),
+    practiceDate: get("practiceDateV632", stored.practiceDateV632 || todayIsoV632()),
+    cycleId: get("practiceCycleV632", stored.practiceCycleV632 || ""),
+    moduleId: get("practiceModuleV632", stored.practiceModuleV632 || ""),
+    groupName: String(get("practiceGroupV632", stored.practiceGroupV632 || "")).trim(),
+    responsible: String(get("practiceResponsibleV632", stored.practiceResponsibleV632 || "Remo J. Pereira González")).trim(),
+    notes: String(get("practiceNotesV632", stored.practiceNotesV632 || "")).trim(),
+    includePracticeData: document.querySelector("#printIncludePracticeDataV637")
+      ? document.querySelector("#printIncludePracticeDataV637").checked
+      : Boolean(stored.printIncludePracticeDataV637)
+  };
+}
+
+function savePracticeMetaV632() {
+  const ids = ["practiceTitleV632", "practiceDateV632", "practiceCycleV632", "practiceModuleV632", "practiceGroupV632", "practiceResponsibleV632", "practiceNotesV632", "printIncludePracticeDataV637"];
+  const data = {};
+  ids.forEach(id => { const el = document.querySelector("#" + id); if (el) data[id] = el.type === "checkbox" ? el.checked : el.value; });
+  writeLocalJsonV645(PRACTICE_META_KEY_V632, data);
+  savePracticeContextToSqliteV633({ meta: data });
+}
+
+function renderPracticeMetaV632() {
+  const titleEl = document.querySelector("#practiceTitleV632");
+  if (!titleEl) return;
+  const meta = practiceMetaV632();
+  if (!titleEl.value && meta.title) titleEl.value = meta.title;
+  const dateEl = document.querySelector("#practiceDateV632");
+  if (dateEl && !dateEl.value) dateEl.value = meta.practiceDate || todayIsoV632();
+  const groupEl = document.querySelector("#practiceGroupV632");
+  if (groupEl && !groupEl.value && meta.groupName) groupEl.value = meta.groupName;
+  const respEl = document.querySelector("#practiceResponsibleV632");
+  if (respEl && !respEl.value) respEl.value = meta.responsible || "Remo J. Pereira González";
+  const notesEl = document.querySelector("#practiceNotesV632");
+  if (notesEl && !notesEl.value && meta.notes) notesEl.value = meta.notes;
+  const includeDataEl = document.querySelector("#printIncludePracticeDataV637");
+  const stored = loadPracticeMetaV632() || {};
+  if (includeDataEl && typeof stored.printIncludePracticeDataV637 === "boolean") includeDataEl.checked = stored.printIncludePracticeDataV637;
+}
+
+function populatePracticeMetaSelectorsV632() {
+  if (!repo) return;
+  const cycleEl = document.querySelector("#practiceCycleV632");
+  const moduleEl = document.querySelector("#practiceModuleV632");
+  if (!cycleEl || !moduleEl) return;
+  const meta = loadPracticeMetaV632() || {};
+  fillSelect(cycleEl, repo.cycles(), { value: "id", label: "name", blank: "Sin ciclo / seleccionar" });
+  if (meta.practiceCycleV632) cycleEl.value = meta.practiceCycleV632;
+  refreshPracticeModulesV632(false);
+  if (meta.practiceModuleV632) moduleEl.value = meta.practiceModuleV632;
+  renderPracticeMetaV632();
+}
+
+function refreshPracticeModulesV632(resetModule = false) {
+  if (!repo) return;
+  const cycleId = document.querySelector("#practiceCycleV632")?.value || "";
+  const moduleEl = document.querySelector("#practiceModuleV632");
+  if (!moduleEl) return;
+  const old = moduleEl.value;
+  const rows = repo.modules(cycleId || null);
+  fillSelect(moduleEl, rows, { value: "id", label: r => `${r.module_code || ""} · ${r.module_name}`, blank: "Sin módulo / seleccionar" });
+  if (!resetModule && old && rows.some(r => r.id === old)) moduleEl.value = old;
+  if (resetModule) moduleEl.value = "";
+}
+
+function applyPracticeModuleDefaultGroupV632() {
+  if (!repo) return;
+  const cycleId = document.querySelector("#practiceCycleV632")?.value || "";
+  const moduleId = document.querySelector("#practiceModuleV632")?.value || "";
+  const groupEl = document.querySelector("#practiceGroupV632");
+  if (!moduleId || !groupEl || groupEl.value.trim()) return;
+  const m = repo.modules(cycleId || null).find(x => x.id === moduleId);
+  if (m?.default_group) groupEl.value = m.default_group;
+}
+
+function renderPracticePlanV627() {
+  const box = document.querySelector("#practicePlanHintV627");
+  if (box) box.textContent = "";
+}
+
+function suggestedPracticeQuantityV627(mode, elab, item = null) {
+  return null;
+}
+
+function renderElaborations() {
+  const listEl = document.querySelector("#elaborationsListV625");
+  const summaryEl = document.querySelector("#elaborationsSummaryV625");
+  if (!listEl || !summaryEl || !repo) return;
+  const rows = repo.unifiedElaborations(state.elaborations);
+  const total = rows.length;
+  const bakery = rows.filter(r => r.source_type === "bakery").length;
+  const culinary = rows.filter(r => r.source_type === "culinary").length;
+  const technical = rows.filter(r => r.production_kind === "technical_yield").length;
+  summaryEl.innerHTML = `
+    <div class="kpi"><span>Resultados</span><b>${fmtNumber(total,0)}</b></div>
+    <div class="kpi"><span>Cocina/Pastelería</span><b>${fmtNumber(culinary,0)}</b></div>
+    <div class="kpi"><span>Panadería</span><b>${fmtNumber(bakery,0)}</b></div>
+    <div class="kpi"><span>Subelaboraciones</span><b>${fmtNumber(technical,0)}</b></div>`;
+  if (!rows.length) {
+    listEl.innerHTML = "<p class='small'>Sin elaboraciones con estos filtros.</p>";
+    return;
+  }
+  const visible = rows.slice(0, 120);
+  const note = rows.length > visible.length
+    ? `<div class="view-hint-618 strong">Mostrando ${visible.length} de ${rows.length}. Usa el buscador para acotar.</div>`
+    : `<div class="view-hint-618 strong">Mostrando ${rows.length} elaboración${rows.length === 1 ? "" : "es"}.</div>`;
+  listEl.innerHTML = note + visible.map(renderElaborationCard).join("");
+}
+
+function renderElaborationCard(r) {
+  const typeBadge = r.source_type === "bakery"
+    ? badge("Panadería", "warn")
+    : badge("Cocina/Pastelería", "ok");
+  const modelBadge = badge(r.production_label || r.production_model || "Modelo", r.source_type === "bakery" ? "warn" : "off");
+  const activeCls = r.active ? "" : " inactive";
+  return `
+    <article class="elaboration-card-625${activeCls}">
+      <div class="elaboration-title-625">
+        <b>${esc(r.name)}</b>
+        ${badge(statusLabel(r.status), r.status === "validated" ? "ok" : r.status === "archived" ? "off" : "warn")}
+      </div>
+      <div class="elaboration-meta-625">
+        <span>${esc(r.family || "Sin familia")}</span>
+        <span>${esc(r.subfamily || "Sin subfamilia")}</span>
+      </div>
+      <div class="elaboration-badges-625">
+        ${typeBadge}
+        ${modelBadge}
+        ${r.production_kind === "dual" ? badge("Dual", "warn") : ""}
+      </div>
+      <div class="elaboration-base-625">${esc(r.base_label || "Sin base definida")} · Coste base: <b>${fmtMoney(r.total_cost || 0)}</b></div>
+      <div class="elaboration-actions-625">
+        <button type="button" class="btn primary" data-open-elaboration="${esc(r.uid)}">Abrir / editar</button>
+        <button type="button" class="btn ghost" data-add-elaboration-work="${esc(r.uid)}">Añadir a la práctica</button>
+      </div>
+    </article>`;
+}
+
+function statusLabel(v) {
+  return ({ draft: "Borrador", reviewed: "Revisada", validated: "Validada", archived: "Archivada" })[v] || v || "—";
+}
+
+async function addUnifiedElaborationToWork(uid) {
+  try {
+    if (!repo) throw new Error("La base todavía no está preparada.");
+    const r = repo.unifiedElaborationByUid(uid);
+    if (!r) throw new Error("No se encontró la elaboración seleccionada.");
+    openQuantityDialogForElaboration(r);
+  } catch (err) { console.error(err); toast(err.message || "No se pudo preparar la cantidad.", "err"); }
+}
+
+function allowedQuantityModesFor(elab) {
+  if (!elab) return [];
+  if (elab.source_type === "bakery") {
+    return [
+      { value: "flour", label: "Harina total" },
+      { value: "raw_dough", label: "Masa total" },
+      { value: "pieces", label: "Nº piezas" }
+    ];
+  }
+  if (elab.production_kind === "technical_yield") return [{ value: "yield", label: "Rendimiento técnico" }];
+  if (elab.production_kind === "dual") return [
+    { value: "servings", label: "Raciones" },
+    { value: "yield", label: "Rendimiento técnico" }
+  ];
+  return [{ value: "servings", label: "Raciones" }];
+}
+
+function defaultQuantityModeFor(elab, item = null) {
+  if (item?.production_mode) return item.production_mode;
+  if (elab?.source_type === "bakery") return "flour";
+  if (elab?.production_kind === "technical_yield") return "yield";
+  if (elab?.production_kind === "dual") return elab.default_production_mode === "yield" ? "yield" : "servings";
+  return "servings";
+}
+
+function quantityContractLabel(elab) {
+  if (!elab) return "Selecciona un modo válido.";
+  if (elab.source_type === "bakery") return "Panadería/Bollería: produce por harina, masa o piezas. No se usan raciones.";
+  if (elab.production_kind === "technical_yield") return "Subelaboración técnica: produce por rendimiento en su unidad base.";
+  if (elab.production_kind === "dual") return "Elaboración dual: puede producirse por raciones o por rendimiento técnico.";
+  return "Ficha final de cocina/pastelería: produce por raciones.";
+}
+
+function openQuantityDialogForElaboration(elab, item = null) {
+  const dialog = document.querySelector("#quantityDialogV626");
+  if (!dialog) return fallbackPromptQuantity(elab, item);
+  state.quantityDialog = { mode: item ? "edit" : "add", elaboration: elab, selectionItem: item || null };
+  const modes = allowedQuantityModesFor(elab);
+  const selectedMode = defaultQuantityModeFor(elab, item);
+  document.querySelector("#qtyUidV626").value = elab.uid || `${elab.source_type}:${elab.source_id}`;
+  document.querySelector("#qtySelectionItemIdV626").value = item?.selection_item_id || "";
+  document.querySelector("#qtyItemTypeV626").value = elab.source_type;
+  document.querySelector("#qtyCulinaryRecipeIdV626").value = elab.source_type === "culinary" ? elab.source_id : "";
+  document.querySelector("#qtyBakeryRecipeIdV626").value = elab.source_type === "bakery" ? elab.source_id : "";
+  document.querySelector("#qtyTitleV626").textContent = item ? "Cambiar cantidad" : "Añadir a la práctica";
+  document.querySelector("#qtySubtitleV626").textContent = `${elab.name} · ${elab.production_label || elab.category_label || "Elaboración"}`;
+  document.querySelector("#qtyContractV626").textContent = quantityContractLabel(elab);
+  const modeSel = document.querySelector("#qtyModeV626");
+  modeSel.innerHTML = modes.map(m => `<option value="${esc(m.value)}">${esc(m.label)}</option>`).join("");
+  modeSel.value = modes.some(m => m.value === selectedMode) ? selectedMode : modes[0]?.value || "servings";
+  document.querySelector("#qtyMainQtyV626").value = quantityValueForMode(modeSel.value, elab, item);
+  document.querySelector("#qtyFlourGV626").value = quantityValueForMode("flour", elab, item);
+  document.querySelector("#qtyRawDoughGV626").value = quantityValueForMode("raw_dough", elab, item);
+  document.querySelector("#qtyPiecesV626").value = quantityValueForMode("pieces", elab, item, "pieces");
+  document.querySelector("#qtyPieceWeightGV626").value = item?.piece_weight_g || elab.base_raw_piece_weight_g || 250;
+  document.querySelector("#qtyBakingLossV626").value = item?.baking_loss_pct ?? elab.baking_loss_pct ?? 0;
+  document.querySelector("#qtyNotesV626").value = item?.notes || "";
+  prepareQuantityScopeV6272(item);
+  syncQuantityDialogFields();
+  updateQuantityComputedV6272();
+  if (typeof dialog.showModal === "function") dialog.showModal();
+  else dialog.setAttribute("open", "open");
+}
+
+function quantityValueForMode(mode, elab, item, subfield = null) {
+  const clean = v => (v === null || v === undefined || v === "") ? "" : String(v).replace(".", ",");
+  const suggested = suggestedPracticeQuantityV627(mode, elab, item);
+  if (mode === "servings") return clean(item?.servings ?? suggested ?? elab.base_servings ?? 1);
+  if (mode === "yield") return clean(item?.main_qty ?? elab.yield_quantity ?? 1);
+  if (mode === "flour") return clean(item?.flour_g ?? elab.base_flour_g ?? 1000);
+  if (mode === "raw_dough") return clean(item?.raw_dough_g ?? 1000);
+  if (mode === "pieces") return clean(subfield === "pieces" ? (item?.pieces ?? suggested ?? elab.base_pieces ?? 1) : (item?.pieces ?? suggested ?? elab.base_pieces ?? 1));
+  return "";
+}
+
+
+function prepareQuantityScopeV6272(item = null) {
+  const plan = practicePlanV627();
+  const teamEl = document.querySelector("#qtyTeamCountV6272");
+  const peopleEl = document.querySelector("#qtyPeoplePerTeamV6272");
+  const scopeEl = document.querySelector("#qtyScopeV6272");
+  if (teamEl) teamEl.value = 1;
+  if (peopleEl) peopleEl.value = plan.totalStudents || 1;
+  if (scopeEl) scopeEl.value = item ? "total" : "total";
+}
+
+function quantityScopeDataV6272() {
+  return { scope: "total", teamCount: 1, peoplePerTeam: 1, multiplier: 1 };
+}
+
+function quantityScopeLabelV6272(scope) {
+  return "total de la práctica";
+}
+
+function currentQuantityRawValueV6272(mode) {
+  if (mode === "servings" || mode === "yield") return parseDecimalInput(document.querySelector("#qtyMainQtyV626")?.value) || 0;
+  if (mode === "flour") return parseDecimalInput(document.querySelector("#qtyFlourGV626")?.value) || 0;
+  if (mode === "raw_dough") return parseDecimalInput(document.querySelector("#qtyRawDoughGV626")?.value) || 0;
+  if (mode === "pieces") return parseDecimalInput(document.querySelector("#qtyPiecesV626")?.value) || 0;
+  return 0;
+}
+
+function currentQuantityUnitV6272(mode) {
+  const elab = state.quantityDialog.elaboration;
+  if (mode === "servings") return "raciones";
+  if (mode === "yield") return elab?.yield_unit || "unidad(es) de rendimiento";
+  if (mode === "flour") return "g de harina";
+  if (mode === "raw_dough") return "g de masa";
+  if (mode === "pieces") return "piezas";
+  return "unidades";
+}
+
+function updateQuantityComputedV6272() {
+  const box = document.querySelector("#qtyComputedV6272");
+  if (!box) return;
+  const mode = document.querySelector("#qtyModeV626")?.value || "servings";
+  const raw = currentQuantityRawValueV6272(mode);
+  const { scope, teamCount, peoplePerTeam, multiplier } = quantityScopeDataV6272();
+  const unit = currentQuantityUnitV6272(mode);
+  const total = raw * multiplier;
+  box.innerHTML = `<b>Cantidad total:</b> ${fmtNumber(total, mode === "pieces" || mode === "servings" ? 0 : 3)} ${esc(unit)} <span class="muted">para esta práctica.</span>`;
+}
+
+function scopedPositiveValueV6272(selector, label) {
+  const value = positiveOrError(document.querySelector(selector)?.value, label);
+  const { multiplier } = quantityScopeDataV6272();
+  return value * multiplier;
+}
+
+function updatePracticePlanFromQuantityScopeV6272() {
+  // Fase 6.34: sin escala por alumnado.
+}
+
+function scopedNotesSuffixV6272(mode) {
+  return "";
+}
+
+function handleQuantityModeChange(ev) {
+  const mode = ev?.target?.value || document.querySelector("#qtyModeV626")?.value || "servings";
+  const elab = state.quantityDialog.elaboration;
+  const item = state.quantityDialog.selectionItem;
+  if (mode === "servings" || mode === "yield") {
+    const main = document.querySelector("#qtyMainQtyV626");
+    if (main) main.value = quantityValueForMode(mode, elab, item);
+  }
+  if (mode === "flour") {
+    const input = document.querySelector("#qtyFlourGV626");
+    if (input) input.value = quantityValueForMode("flour", elab, item);
+  }
+  if (mode === "raw_dough") {
+    const input = document.querySelector("#qtyRawDoughGV626");
+    if (input) input.value = quantityValueForMode("raw_dough", elab, item);
+  }
+  if (mode === "pieces") {
+    const pieces = document.querySelector("#qtyPiecesV626");
+    if (pieces) pieces.value = quantityValueForMode("pieces", elab, item, "pieces");
+  }
+  syncQuantityDialogFields();
+  updateQuantityComputedV6272();
+}
+
+function syncQuantityDialogFields() {
+  const mode = document.querySelector("#qtyModeV626")?.value || "servings";
+  const elab = state.quantityDialog.elaboration;
+  const show = (id, visible) => { const node = document.querySelector(id); if (node) node.classList.toggle("hidden", !visible); };
+  show("#qtyMainWrapV626", mode === "servings" || mode === "yield");
+  show("#qtyFlourWrapV626", mode === "flour");
+  show("#qtyRawDoughWrapV626", mode === "raw_dough");
+  show("#qtyPiecesWrapV626", mode === "pieces");
+  show("#qtyPieceWeightWrapV626", mode === "pieces");
+  show("#qtyLossWrapV626", elab?.source_type === "bakery" && (mode === "pieces" || mode === "raw_dough"));
+  const mainWrap = document.querySelector("#qtyMainWrapV626");
+  const unit = document.querySelector("#qtyMainUnitV626");
+  if (mainWrap && unit) {
+    if (mode === "servings") unit.textContent = "raciones";
+    else if (mode === "yield") unit.textContent = elab?.yield_unit || "unidad de rendimiento";
+    else unit.textContent = "";
+  }
+  const confirm = document.querySelector("#qtyConfirmV626");
+  if (confirm) confirm.textContent = state.quantityDialog.mode === "edit" ? "Guardar cantidad" : "Añadir a la práctica";
+  updateQuantityComputedV6272();
+}
+
+function closeQuantityDialog() {
+  const dialog = document.querySelector("#quantityDialogV626");
+  if (!dialog) return;
+  if (typeof dialog.close === "function" && dialog.open) dialog.close();
+  else dialog.removeAttribute("open");
+}
+
+function parseDecimalInput(value) {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim().replace(/\s+/g, "").replace(",", ".");
+  if (!normalized) return null;
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+function positiveOrError(value, label) {
+  const n = parseDecimalInput(value);
+  if (!(n > 0)) throw new Error(`${label} debe ser mayor que 0.`);
+  return n;
+}
+
+async function saveQuantityDialog() {
+  try {
+    const elab = state.quantityDialog.elaboration;
+    if (!elab) throw new Error("No hay elaboración seleccionada.");
+    const mode = document.querySelector("#qtyModeV626")?.value || defaultQuantityModeFor(elab);
+    const itemId = document.querySelector("#qtySelectionItemIdV626")?.value || "";
+    const data = {
+      $id: itemId || slugWorkSelectionItemId(),
+      $item_type: elab.source_type,
+      $culinary_recipe_id: elab.source_type === "culinary" ? elab.source_id : null,
+      $bakery_recipe_id: elab.source_type === "bakery" ? elab.source_id : null,
+      $production_mode: mode,
+      $main_qty: null,
+      $servings: null,
+      $pieces: null,
+      $piece_weight_g: null,
+      $flour_g: null,
+      $raw_dough_g: null,
+      $baking_loss_pct: parseDecimalInput(document.querySelector("#qtyBakingLossV626")?.value) ?? 0,
+      $print_a4: state.quantityDialog.selectionItem?.print_a4 ?? 1,
+      $sort_order: state.quantityDialog.selectionItem?.sort_order ?? 100,
+      $notes: ((document.querySelector("#qtyNotesV626")?.value || "") + scopedNotesSuffixV6272(mode)).trim() || null
+    };
+    updatePracticePlanFromQuantityScopeV6272();
+    if (mode === "servings") data.$servings = scopedPositiveValueV6272("#qtyMainQtyV626", "Las raciones");
+    if (mode === "yield") data.$main_qty = scopedPositiveValueV6272("#qtyMainQtyV626", "El rendimiento");
+    if (mode === "flour") data.$flour_g = scopedPositiveValueV6272("#qtyFlourGV626", "La harina total");
+    if (mode === "raw_dough") data.$raw_dough_g = scopedPositiveValueV6272("#qtyRawDoughGV626", "La masa total");
+    if (mode === "pieces") {
+      data.$pieces = scopedPositiveValueV6272("#qtyPiecesV626", "El número de piezas");
+      data.$piece_weight_g = positiveOrError(document.querySelector("#qtyPieceWeightGV626")?.value, "El peso por pieza");
+    }
+    if (state.quantityDialog.mode === "edit" && itemId) {
+      repo.updateWorkSelectionItem(data);
+      toast("Cantidad actualizada.");
+    } else {
+      repo.addWorkSelectionItem(data);
+      toast("Añadido a la práctica con cantidad definida.");
+    }
+    closeQuantityDialog();
+    renderSelection();
+    await autosave({ backup: false, reason: state.quantityDialog.mode === "edit" ? "editar cantidad práctica actual" : "añadir con cantidad práctica actual" });
+    switchTab("selection");
+  } catch (err) { console.error(err); toast(err.message || "No se pudo guardar la cantidad.", "err"); }
+}
+
+function editSelectionItem(id) {
+  const item = repo?.workSelectionItems().find(r => r.selection_item_id === id);
+  if (!item) return toast("No se encontró la línea de la práctica actual.", "err");
+  const uid = item.item_type === "bakery" ? `bakery:${item.bakery_recipe_id}` : `culinary:${item.culinary_recipe_id}`;
+  const elab = repo.unifiedElaborationByUid(uid);
+  if (!elab) return toast("No se encontró la elaboración asociada.", "err");
+  openQuantityDialogForElaboration(elab, item);
+}
+
+function fallbackPromptQuantity(elab, item = null) {
+  const mode = defaultQuantityModeFor(elab, item);
+  const label = mode === "servings" ? "raciones" : mode === "yield" ? (elab.yield_unit || "rendimiento") : mode === "flour" ? "g de harina" : "cantidad";
+  const value = prompt(`Cantidad para ${elab.name} (${label})`, quantityValueForMode(mode, elab, item));
+  if (value === null) return;
+  const fake = { production_mode: mode, notes: item?.notes || "" };
+  if (mode === "servings") fake.servings = positiveOrError(value, "Las raciones");
+  else if (mode === "yield") fake.main_qty = positiveOrError(value, "El rendimiento");
+  else if (mode === "flour") fake.flour_g = positiveOrError(value, "La harina total");
+  addWorkSelectionItem({ item_type: elab.source_type, culinary_recipe_id: elab.source_type === "culinary" ? elab.source_id : null, bakery_recipe_id: elab.source_type === "bakery" ? elab.source_id : null, ...fake });
+}
+
+
+function openUnifiedElaboration(uid) {
+  const r = repo?.unifiedElaborationByUid(uid);
+  if (!r) return toast("No se encontró la elaboración.", "err");
+  if (r.source_type === "bakery") {
+    switchTab("bakery");
+    setTimeout(() => {
+      const sel = document.querySelector("#bakeryRecipeSelectV37");
+      if (sel) { sel.value = r.source_id; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+    }, 80);
+  } else {
+    switchTab("culinary");
+    setTimeout(() => {
+      const sel = document.querySelector("#culinaryRecipeSelectV51");
+      if (sel) { sel.value = r.source_id; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+    }, 80);
+  }
+}
+
+function renderIngredients() {
+  const rows = repo.ingredients(state.filters);
+  const viewMode = state.filters.view || "work";
+  const output = $("#ingredientsTable");
+  const modeSelect = document.querySelector("#ingredientViewMode");
+  if (modeSelect && modeSelect.value !== viewMode) modeSelect.value = viewMode;
+
+  if (viewMode === "work") {
+    output.classList.remove("wide");
+    output.innerHTML = renderIngredientCards(rows);
+  } else {
+    output.classList.add("wide");
+    output.innerHTML = table([
+      { label: "Nombre", render: r => `<button type="button" class="link-btn" data-edit-ing="${esc(r.id)}">${esc(r.name)}</button>` },
+      { label: "Familia", key: "family" },
+      { label: "Unidad", key: "base_unit" },
+      { label: "Coste neto", render: r => fmtMoney(r.cost_per_base_unit_after_waste) },
+      { label: "Cocina", render: r => badge(r.use_culinary ? "Sí" : "No", r.use_culinary ? "ok" : "off") },
+      { label: "Panadería", render: r => badge(r.use_bakery ? "Sí" : "No", r.use_bakery ? "ok" : "off") },
+      { label: "Rol", render: r => r.bakery_role ? roleLabel(r.bakery_role) : "" },
+      { label: "Coef.", render: r => fmtNumber(r.hydration_factor, 2) },
+      { label: "Estado", render: r => badge(r.active ? "Activo" : "Inactivo", r.active ? "ok" : "off") }
+    ], rows, { rowAttrs: r => r.id === selectedIngredientId ? "class='selected-row'" : "" });
+  }
+  document.querySelectorAll("[data-edit-ing]").forEach(btn => btn.addEventListener("click", () => loadIngredientForm(btn.dataset.editIng)));
+}
+
+function renderIngredientCards(rows) {
+  if (!rows?.length) return "<p class='small'>Sin ingredientes con estos filtros.</p>";
+  const limit = 80;
+  const visible = rows.slice(0, limit);
+  const note = rows.length > limit
+    ? `<div class="view-hint-618 strong">Mostrando ${limit} de ${rows.length}. Usa el buscador o cambia a vista auditoría para ver todo.</div>`
+    : `<div class="view-hint-618 strong">Mostrando ${rows.length} ingrediente${rows.length === 1 ? "" : "s"}.</div>`;
+  return `${note}<div class="ingredient-card-grid-618">${
+    visible.map(r => `
+      <article class="ingredient-card-618 ${r.id === selectedIngredientId ? "selected" : ""}">
+        <button type="button" class="ingredient-title-618" data-edit-ing="${esc(r.id)}">${esc(r.name)}</button>
+        <div class="ingredient-meta-618">
+          <span>${esc(r.family || "Sin familia")}</span>
+          <span>${esc(r.base_unit || "—")}</span>
+          <span>${fmtMoney(r.cost_per_base_unit_after_waste)}</span>
+        </div>
+        <div class="ingredient-badges-618">
+          ${badge(r.active ? "Activo" : "Inactivo", r.active ? "ok" : "off")}
+          ${badge(r.use_culinary ? "Cocina" : "No cocina", r.use_culinary ? "ok" : "off")}
+          ${badge(r.use_bakery ? "Panadería" : "No panadería", r.use_bakery ? "ok" : "off")}
+          ${r.bakery_role ? badge(roleLabel(r.bakery_role), "warn") : ""}
+        </div>
+      </article>
+    `).join("")
+  }</div>`;
+}
+
+
+
+
+function renderAudit() {
+  const tableEl = document.querySelector("#auditTable");
+  const kpisEl = document.querySelector("#auditKpis");
+  if (!tableEl || !kpisEl || !repo) return;
+  const rows = repo.technicalAudit();
+  const errors = rows.filter(r => r.severity === "error").length;
+  const warns = rows.filter(r => r.severity === "warn").length;
+  const infos = rows.filter(r => r.severity === "info").length;
+  kpisEl.innerHTML = `
+    <div class="kpi"><span>Errores bloqueantes</span><b>${errors}</b></div>
+    <div class="kpi"><span>Avisos técnicos</span><b>${warns}</b></div>
+    <div class="kpi"><span>Notas informativas</span><b>${infos}</b></div>
+    <div class="kpi"><span>Estado</span><b>${errors ? "Revisar" : "Operativo"}</b></div>`;
+  tableEl.innerHTML = table([
+    { label: "Nivel", render: r => badge(r.severity === "error" ? "Error" : r.severity === "warn" ? "Aviso" : "Info", r.severity === "error" ? "err" : r.severity === "warn" ? "warn" : "off") },
+    { label: "Área", key: "area" },
+    { label: "Elemento", key: "item" },
+    { label: "Mensaje", key: "message" }
+  ], rows);
+}
+
+
+function renderSelection() {
+  if (!repo) return;
+  const summaryEl = document.querySelector("#selectionSummaryV623");
+  const itemsEl = document.querySelector("#selectionItemsV623");
+  const historyEl = document.querySelector("#printHistoryV623");
+  const historyCard = document.querySelector("#printHistoryCardV623");
+  if (!summaryEl || !itemsEl) return;
+  const s = repo.workSelectionSummary();
+  const rows = repo.workSelectionItems();
+  if (!rows.length) {
+    summaryEl.classList.add("empty-practice-summary");
+    summaryEl.innerHTML = `
+      <div class="empty-action-card-628">
+        <b>Práctica sin elaboraciones.</b>
+        <span>Añade elaboraciones desde la biblioteca única y define la cantidad total de cada una.</span>
+        <div class="actions"><button type="button" class="btn primary" data-tab="elaborations">Buscar elaboraciones</button></div>
+      </div>`;
+    itemsEl.innerHTML = `
+      <div class="empty-action-card-628">
+        <b>No has añadido elaboraciones.</b>
+        <span>Las cantidades se decidirán al añadir cada elaboración: cantidad total de esta práctica.</span>
+        <div class="actions"><button type="button" class="btn primary" data-tab="elaborations">Añadir elaboración</button></div>
+      </div>`;
+  } else {
+    summaryEl.classList.remove("empty-practice-summary");
+    summaryEl.innerHTML = `
+      <div class="kpi"><span>Elaboraciones</span><b>${fmtNumber(s.total_items || 0,0)}</b></div>
+      <div class="kpi"><span>Panadería</span><b>${fmtNumber(s.bakery_items || 0,0)}</b></div>
+      <div class="kpi"><span>Cocina/Pastelería</span><b>${fmtNumber(s.culinary_items || 0,0)}</b></div>
+      <div class="kpi"><span>Coste base aprox.</span><b>${fmtMoney(s.estimated_base_cost || 0)}</b></div>`;
+    itemsEl.innerHTML = table([
+      { label: "Tipo", render: r => r.item_type === "bakery" ? "Panadería" : "Cocina/Pastelería" },
+      { label: "Elaboración", key: "item_name" },
+      { label: "Modo", render: r => selectionModeLabel(r) },
+      { label: "Cantidad", render: r => `<span class="quantity-chip-626">${selectionQuantityLabel(r)}</span>` },
+      { label: "Coste base", render: r => fmtMoney(r.estimated_cost) },
+      { label: "", render: r => `<div class="quantity-inline-actions-626"><button type="button" class="btn compact" data-selection-edit="${esc(r.selection_item_id)}">Cambiar</button><button type="button" class="btn danger compact" data-selection-delete="${esc(r.selection_item_id)}">Quitar</button></div>` }
+    ], rows);
+  }
+  if (historyEl) {
+    const jobs = repo.printJobs(20);
+    if (historyCard) historyCard.classList.toggle("is-empty", !jobs.length);
+    historyEl.innerHTML = jobs.length ? table([
+      { label: "Fecha", render: r => formatDate(r.created_at) },
+      { label: "Origen", render: r => printSourceLabel(r.source_type) },
+      { label: "Título", key: "title" },
+      { label: "Perfil", key: "profile" },
+      { label: "Elementos", key: "item_count" },
+      { label: "Coste", render: r => fmtMoney(r.total_cost) }
+    ], jobs) : "";
+  }
+}
+
+async function addWorkSelectionItem(item) {
+  try {
+    if (!repo) throw new Error("La base todavía no está preparada.");
+    const data = {
+      $id: slugWorkSelectionItemId(),
+      $item_type: item.item_type,
+      $culinary_recipe_id: item.culinary_recipe_id || null,
+      $bakery_recipe_id: item.bakery_recipe_id || null,
+      $production_mode: item.production_mode,
+      $main_qty: item.main_qty ?? null,
+      $servings: item.servings ?? null,
+      $pieces: item.pieces ?? null,
+      $piece_weight_g: item.piece_weight_g ?? null,
+      $flour_g: item.flour_g ?? null,
+      $raw_dough_g: item.raw_dough_g ?? null,
+      $baking_loss_pct: item.baking_loss_pct ?? null,
+      $print_a4: item.print_a4 ?? 1,
+      $sort_order: item.sort_order ?? 100,
+      $notes: item.notes || null
+    };
+    repo.addWorkSelectionItem(data);
+    renderSelection();
+    await autosave({ backup: false, reason: "práctica actual" });
+    toast("Añadido a la práctica.");
+  } catch (err) { console.error(err); toast(err.message || "No se pudo añadir a la práctica actual.", "err"); }
+}
+
+async function deleteSelectionItem(id) {
+  try {
+    repo.deleteWorkSelectionItem(id);
+    renderSelection();
+    await autosave({ backup: false, reason: "quitar de práctica actual" });
+    toast("Elaboración quitada de la práctica.", "warn");
+  } catch (err) { console.error(err); toast(err.message, "err"); }
+}
+
+async function clearSelection() {
+  try {
+    if (!confirm("¿Vaciar la práctica actual? No se borran fichas ni sesiones.")) return;
+    repo.clearWorkSelection();
+    renderSelection();
+    await autosave({ backup: false, reason: "vaciar práctica actual" });
+    toast("Práctica actual vaciada.", "warn");
+  } catch (err) { console.error(err); toast(err.message, "err"); }
+}
+
+async function createSessionFromSelection() {
+  try {
+    const meta = practiceMetaV632();
+    const plan = practicePlanV627();
+    const title = meta.title || `Práctica ${meta.practiceDate || todayIsoV632()}`;
+    const id = repo.createSessionFromWorkSelection({
+      title,
+      practiceDate: meta.practiceDate || todayIsoV632(),
+      cycleId: meta.cycleId || null,
+      moduleId: meta.moduleId || null,
+      groupName: meta.groupName || null,
+      responsible: meta.responsible || null,
+      notes: meta.notes || "Sesión creada desde la práctica actual.",
+      totalStudents: plan.totalStudents || null,
+      servingsPerPerson: plan.servingsPerPerson || null,
+      piecesPerStudent: plan.piecesPerPerson || null,
+      safetyMarginPct: plan.safetyMarginPct || null
+    });
+    await autosave({ backup: false, reason: "crear sesión desde práctica actual" });
+    renderAll();
+    toast("Sesión guardada con los datos de práctica.");
+    switchTab("class");
+    window.dispatchEvent(new CustomEvent("swiftremo:databaseChanged", { detail: { message: "Sesión guardada con datos de práctica." } }));
+  } catch (err) { console.error(err); toast(err.message, "err"); }
+}
+
+function practicePrintMetadataV632() {
+  const meta = practiceMetaV632();
+  const plan = practicePlanV627();
+  return {
+    title: meta.title || `Práctica ${meta.practiceDate || todayIsoV632()}`,
+    practiceDate: meta.practiceDate || todayIsoV632(),
+    cycleId: meta.cycleId || null,
+    moduleId: meta.moduleId || null,
+    groupName: meta.groupName || null,
+    responsible: meta.responsible || null,
+    notes: meta.notes || "",
+    includePracticeData: Boolean(meta.includePracticeData),
+    totalStudents: null,
+    servingsPerPerson: null,
+    piecesPerStudent: null,
+    safetyMarginPct: null
+  };
+}
+
+function printOptionsV637(overrides = {}) {
+  return {
+    includeElaborations: overrides.includeElaborations !== undefined ? Boolean(overrides.includeElaborations) : true,
+    includeOrder: overrides.includeOrder !== undefined ? Boolean(overrides.includeOrder) : true,
+    includePracticeData: document.querySelector("#printIncludePracticeDataV637")?.checked === true,
+    subrecipeMode: overrides.subrecipeMode || document.querySelector('input[name="printSubrecipeModeV646"]:checked')?.value || "expanded",
+    processMode: overrides.processMode || document.querySelector('input[name="printProcessModeV649"]:checked')?.value || "show"
+  };
+}
+
+async function printSelectionDirectV638({ includeElaborations = true, includeOrder = true, reason = "historial impresión práctica actual" } = {}) {
+  try {
+    const opts = printOptionsV637({ includeElaborations, includeOrder });
+    if (!opts.includeElaborations && !opts.includeOrder) { toast("Selecciona elaboraciones, pedido o ambos para imprimir.", "warn"); return; }
+    printWorkSelection(swiftDb, "WORK_CURRENT", { ...opts, profile: "docente", metadata: practicePrintMetadataV632(), subrecipeMode: opts.subrecipeMode, processMode: opts.processMode });
+    await autosave({ backup: false, reason });
+    renderSelection();
+  } catch (err) {
+    console.error(err);
+    toast(err.message || "No se pudo imprimir la práctica actual.", "err");
+  }
+}
+
+async function printSelectionBothV638() {
+  return printSelectionDirectV638({ includeElaborations: true, includeOrder: true, reason: "historial impresión elaboraciones y pedido práctica" });
+}
+
+async function printSelection() {
+  return printSelectionBothV638();
+}
+
+async function printSelectionOrder() {
+  return printSelectionDirectV638({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido práctica" });
+}
+
+async function printSelectionTeachingV641() {
+  try {
+    const opts = printOptionsV637({ includeElaborations: true, includeOrder: false });
+    printWorkSelectionTeachingSheets(swiftDb, "WORK_CURRENT", { profile: "ficha_docente_completa", metadata: practicePrintMetadataV632(), includePracticeData: opts.includePracticeData, subrecipeMode: opts.subrecipeMode, processMode: opts.processMode });
+    await autosave({ backup: false, reason: "historial impresión ficha docente completa práctica" });
+    renderSelection();
+  } catch (err) {
+    console.error(err);
+    toast(err.message || "No se pudo imprimir la ficha docente completa.", "err");
+  }
+}
+
+async function printSelectionTechnicalOrderV641() {
+  try {
+    const opts = printOptionsV637({ includeElaborations: false, includeOrder: true });
+    printWorkSelectionTechnicalOrder(swiftDb, "WORK_CURRENT", { profile: "pedido_tecnico", metadata: practicePrintMetadataV632(), includePracticeData: opts.includePracticeData });
+    await autosave({ backup: false, reason: "historial impresión pedido técnico práctica" });
+    renderSelection();
+  } catch (err) {
+    console.error(err);
+    toast(err.message || "No se pudo imprimir el pedido técnico.", "err");
+  }
+}
+
+
+function openPrintCenterV642() {
+  const dialog = document.querySelector("#printCenterDialogV642");
+  if (!dialog) return printSelectionBothV638();
+  const selected = dialog.querySelector('input[name="printProfileV642"]:checked');
+  if (!selected) {
+    const fallback = dialog.querySelector('input[name="printProfileV642"][value="both"]');
+    if (fallback) fallback.checked = true;
+  }
+  const count = repo?.workSelectionItems ? repo.workSelectionItems("WORK_CURRENT").length : 0;
+  const summary = dialog.querySelector("#printCenterSelectionSummaryV642");
+  if (summary) summary.textContent = count ? `${fmtNumber(count,0)} elaboración(es) en la práctica actual.` : "La práctica actual está vacía.";
+  if (typeof dialog.showModal === "function") dialog.showModal();
+  else dialog.setAttribute("open", "open");
+}
+
+function closePrintCenterV642() {
+  const dialog = document.querySelector("#printCenterDialogV642");
+  if (!dialog) return;
+  if (typeof dialog.close === "function" && dialog.open) dialog.close();
+  else dialog.removeAttribute("open");
+}
+
+function selectedPrintProfileV642() {
+  return document.querySelector('input[name="printProfileV642"]:checked')?.value || "both";
+}
+
+async function executePrintCenterV642() {
+  const profile = selectedPrintProfileV642();
+  closePrintCenterV642();
+  if (profile === "elaborations") return printSelectionDirectV638({ includeElaborations: true, includeOrder: false, reason: "historial impresión ficha técnica práctica" });
+  if (profile === "order") return printSelectionDirectV638({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido simple práctica" });
+  if (profile === "both") return printSelectionBothV638();
+  if (profile === "teaching") return printSelectionTeachingV641();
+  if (profile === "technical_order") return printSelectionTechnicalOrderV641();
+  if (profile === "teaching_order") return printSelectionTeachingOrderV642();
+  return printSelectionBothV638();
+}
+
+async function printSelectionTeachingOrderV642() {
+  try {
+    const opts = printOptionsV637({ includeElaborations: true, includeOrder: true });
+    printWorkSelectionTeachingSheetsWithOrder(swiftDb, "WORK_CURRENT", { profile: "ficha_docente_mas_pedido", metadata: practicePrintMetadataV632(), includePracticeData: opts.includePracticeData, subrecipeMode: opts.subrecipeMode, processMode: opts.processMode });
+    await autosave({ backup: false, reason: "historial impresión ficha docente más pedido práctica" });
+    renderSelection();
+  } catch (err) {
+    console.error(err);
+    toast(err.message || "No se pudo imprimir la ficha docente con pedido.", "err");
+  }
+}
+
+function selectionModeLabel(r) { return ({ flour:"Harina", raw_dough:"Masa cruda", pieces:"Piezas", servings:"Raciones", yield:"Rendimiento" })[r.production_mode] || r.production_mode || "—"; }
+function selectionQuantityLabel(r) {
+  if (r.production_mode === "servings") return `${fmtNumber(r.servings,0)} raciones`;
+  if (r.production_mode === "yield") return `${fmtNumber(r.main_qty,3)} ${r.yield_unit || "unidad"}`;
+  if (r.production_mode === "flour") return `${fmtNumber(r.flour_g,0)} g harina`;
+  if (r.production_mode === "raw_dough") return `${fmtNumber(r.raw_dough_g,0)} g masa`;
+  if (r.production_mode === "pieces") return `${fmtNumber(r.pieces,0)} piezas × ${fmtNumber(r.piece_weight_g,0)} g`;
+  return "—";
+}
+function printSourceLabel(v) { return ({ recipe:"Ficha", selection:"Práctica actual", session:"Sesión", order:"Pedido" })[v] || v || "—"; }
+
+function renderOrder() {
+  $("#orderTable").innerHTML = table([
+    { label: "Grupo", key: "order_group" },
+    { label: "Ingrediente", key: "ingredient" },
+    { label: "Cantidad", render: r => fmtNumber(r.purchase_quantity, 3) },
+    { label: "Unidad", key: "purchase_unit" },
+    { label: "Coste", render: r => fmtMoney(r.estimated_cost_total) },
+    { label: "Usado en", key: "used_in" },
+    { label: "Almacén", key: "storage_zone" }
+  ], repo.order());
+}
+
+function renderMargins() {
+  $("#marginsTable").innerHTML = table([
+    { label: "Sesión", key: "session_title" },
+    { label: "Ingredientes", render: r => fmtMoney(r.ingredient_cost_total) },
+    { label: "Mano de obra", render: r => fmtMoney(r.labor_cost_total) },
+    { label: "Indirectos", render: r => fmtMoney(r.overhead_cost_total) },
+    { label: "Total", render: r => `<b>${fmtMoney(r.total_session_cost)}</b>` },
+    { label: "% ingredientes", render: r => `${fmtNumber(r.ingredient_cost_pct, 2)} %` },
+    { label: "% mano obra", render: r => `${fmtNumber(r.labor_cost_pct, 2)} %` }
+  ], repo.margins());
+}
+
+
+
+function populateCatalogs() {
+  fillSelect($("#ing_family_id"), catalogs.families, { empty: "Selecciona familia" });
+  fillSelect($("#ing_subfamily_id"), catalogs.subfamilies, { empty: "Sin subfamilia" });
+  fillSelect($("#ing_base_unit_id"), catalogs.units, { empty: "Selecciona unidad" });
+  fillSelect($("#ing_purchase_unit_id"), catalogs.units, { empty: "Igual que unidad base" });
+  fillSelect($("#ing_order_group_id"), catalogs.orderGroups, { empty: "Sin grupo" });
+  fillSelect($("#ing_supplier_id"), catalogs.suppliers, { empty: "Sin proveedor" });
+  fillSelect($("#ing_storage_zone_id"), catalogs.storageZones, { empty: "Sin zona" });
+  $("#ing_family_id").addEventListener("change", filterSubfamilies);
+  filterSubfamilies();
+  populatePracticeMetaSelectorsV632();
+}
+
+function filterSubfamilies() {
+  const familyId = $("#ing_family_id").value;
+  fillSelect($("#ing_subfamily_id"), catalogs.subfamilies.filter(s => !familyId || s.family_id === familyId), { empty: "Sin subfamilia" });
+}
+
+function newIngredientForm() { clearIngredientForm(); switchTab("ingredients"); $("#ing_name").focus(); }
+
+function clearIngredientForm(shouldRender = true) {
+  selectedIngredientId = null;
+  $("#ingredientForm").reset();
+  $("#ing_id").value = "";
+  $("#ing_purchase_net_quantity").value = "1";
+  $("#ing_waste_pct").value = "0";
+  $("#ing_hydration_factor").value = "0";
+  $("#ing_edible_yield_pct").value = "100";
+  $("#ing_active").checked = true;
+  $("#ing_use_culinary").checked = true;
+  $("#ingredientFormTitle").textContent = "Nuevo ingrediente";
+  if (shouldRender && repo) renderIngredients();
+}
+
+function loadIngredientForm(id) {
+  const ing = repo.ingredientById(id);
+  if (!ing) return toast("No se encontró el ingrediente.", "err");
+  selectedIngredientId = id;
+  $("#ingredientFormTitle").textContent = `Editar ingrediente · ${ing.name}`;
+  setValue("ing_id", ing.id); setValue("ing_name", ing.name);
+  setValue("ing_family_id", ing.family_id); filterSubfamilies();
+  setValue("ing_subfamily_id", ing.subfamily_id); setValue("ing_base_unit_id", ing.base_unit_id);
+  setValue("ing_purchase_unit_id", ing.purchase_unit_id); setValue("ing_purchase_price", ing.purchase_price);
+  setValue("ing_purchase_net_quantity", ing.purchase_net_quantity); setValue("ing_waste_pct", ing.waste_pct);
+  setValue("ing_order_group_id", ing.order_group_id); setValue("ing_supplier_id", ing.supplier_id);
+  setValue("ing_storage_zone_id", ing.storage_zone_id); setValue("ing_bakery_role", ing.bakery_role);
+  setValue("ing_hydration_factor", ing.hydration_factor); setValue("ing_edible_yield_pct", ing.edible_yield_pct);
+  setValue("ing_notes", ing.notes);
+  $("#ing_use_culinary").checked = !!ing.use_culinary;
+  $("#ing_use_bakery").checked = !!ing.use_bakery;
+  $("#ing_active").checked = !!ing.active;
+  renderIngredients();
+}
+
+async function saveIngredientFromForm(ev) {
+  ev.preventDefault();
+  try {
+    const name = $("#ing_name").value.trim();
+    if (!name) throw new Error("El nombre es obligatorio.");
+    const id = $("#ing_id").value || slugIdFromName(name);
+    const data = {
+      $id: id, $name: name,
+      $family_id: nullIfEmpty($("#ing_family_id").value),
+      $subfamily_id: nullIfEmpty($("#ing_subfamily_id").value),
+      $order_group_id: nullIfEmpty($("#ing_order_group_id").value),
+      $supplier_id: nullIfEmpty($("#ing_supplier_id").value),
+      $storage_zone_id: nullIfEmpty($("#ing_storage_zone_id").value),
+      $base_unit_id: $("#ing_base_unit_id").value,
+      $purchase_unit_id: nullIfEmpty($("#ing_purchase_unit_id").value) || $("#ing_base_unit_id").value,
+      $purchase_price: num($("#ing_purchase_price").value, 0),
+      $purchase_net_quantity: num($("#ing_purchase_net_quantity").value, 1),
+      $waste_pct: num($("#ing_waste_pct").value, 0),
+      $use_culinary: $("#ing_use_culinary").checked ? 1 : 0,
+      $use_bakery: $("#ing_use_bakery").checked ? 1 : 0,
+      $bakery_role: nullIfEmpty($("#ing_bakery_role").value),
+      $hydration_factor: num($("#ing_hydration_factor").value, 0),
+      $edible_yield_pct: num($("#ing_edible_yield_pct").value, 100),
+      $notes: nullIfEmpty($("#ing_notes").value),
+      $active: $("#ing_active").checked ? 1 : 0
+    };
+    if (!data.$base_unit_id) throw new Error("La unidad base es obligatoria.");
+    if (data.$purchase_net_quantity <= 0) throw new Error("La cantidad neta de compra debe ser mayor que 0.");
+    if (data.$waste_pct < 0 || data.$waste_pct >= 100) throw new Error("La merma debe estar entre 0 y 99,99 %.");
+    repo.saveIngredient(data);
+    selectedIngredientId = id;
+    renderAll();
+    loadIngredientForm(id);
+    await autosave({ backup: false, reason: "ingrediente" });
+    window.dispatchEvent(new CustomEvent("swiftremo:bakeryChanged", { detail: { source: "app", message: "Ingrediente actualizado." } }));
+    toast("Ingrediente guardado.");
+  } catch (err) { console.error(err); toast(err.message, "err"); }
+}
+
+async function deactivateSelectedIngredient() {
+  if (!selectedIngredientId) return toast("Selecciona un ingrediente primero.", "warn");
+  const ing = repo.ingredientById(selectedIngredientId);
+  if (!ing) return;
+  if (!confirm(`Desactivar "${ing.name}"?
+No se borra: solo active = 0.`)) return;
+  await autosave({ backup: true, reason: "antes de desactivar" });
+  repo.deactivateIngredient(selectedIngredientId);
+  clearIngredientForm();
+  renderAll();
+  await autosave({ backup: false, reason: "desactivar" });
+  toast("Ingrediente desactivado.", "warn");
+}
+
+function exportSqlite() {
+  downloadBytes(`swiftremo_${dateSlug()}.sqlite`, swiftDb.exportBytes());
+  setState("Guardado", "clean");
+  setStatus("Copia .sqlite descargada.", "ok");
+  toast("Copia SQLite descargada.");
+}
+
+function exportJson() { downloadJson(`swiftremo_export_${dateSlug()}.json`, repo.exportJson()); toast("JSON técnico exportado."); }
+
+function runSql() {
+  try { $("#sqlOutput").textContent = JSON.stringify(repo.selectOnly($("#sqlInput").value), null, 2); }
+  catch (err) { $("#sqlOutput").textContent = err.stack || err.message; toast(err.message, "err"); }
+}
+
+function setValue(id, value) { $("#" + id).value = value ?? ""; }
+function badge(text, type = "ok") { return `<span class="badge ${type}">${esc(text)}</span>`; }
+function roleLabel(role) {
+  const labels = { flour: "Harina", liquid: "Líquido", yeast: "Levadura", salt: "Sal", fat: "Grasa", sugar: "Azúcar", egg: "Huevo", dairy: "Lácteo", aroma: "Aroma", seed: "Semilla", inclusion: "Inclusión", other: "Otro" };
+  return labels[role] || role || "";
+}
+function nullIfEmpty(value) { const v = String(value ?? "").trim(); return v ? v : null; }
+function num(value, fallback = 0) { const n = Number(String(value ?? "").replace(",", ".")); return Number.isFinite(n) ? n : fallback; }
+function dateSlug() { const d = new Date(); const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; }
+function formatDate(value) { try { return new Date(value).toLocaleString("es-ES"); } catch { return ""; } }

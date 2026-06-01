@@ -1,0 +1,7 @@
+Fase 6.66A · validación paquete público limpio
+OK archivos obligatorios
+OK scripts/sql/migration no incluidos
+OK sin __pycache__ ni pyc
+OK cache ?v=6661
+OK metadatos SQLite 6.66A
+OK counts: ingredients=743; culinary_recipes=206; bakery_recipes=99
