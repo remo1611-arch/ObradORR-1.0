@@ -35,8 +35,7 @@ const DOMAIN_ROUTES = {
     hostId: 'system-view-host',
     routes: {
       'system-data': 'view-system-data',
-      'system-sql': 'view-system-sql',
-      'system-status': 'view-archive-review'
+      'system-sql': 'view-system-sql'
     }
   }
 };
@@ -162,6 +161,8 @@ export function createDomainShell({ onBeforeNavigate, onAfterNavigate, state } =
     active = resolved;
     setTopDomain(resolved.domain);
     setNestedView(resolved.domain, resolved.route);
+    document.body.dataset.activeDomain = resolved.domain;
+    document.body.dataset.activeRoute = resolved.route;
     state?.patch?.({ activeDomain: resolved.domain, activeRoute: resolved.route });
     if (onAfterNavigate) onAfterNavigate(resolved);
     if (options.scroll !== false) {

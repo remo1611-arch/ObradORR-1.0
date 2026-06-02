@@ -1,10 +1,8 @@
 *.sqlite binary
 *.db binary
 *.wasm binary
-*.webp binary
 *.png binary
 *.jpg binary
 *.jpeg binary
-*.pdf binary
-*.xlsx binary
+*.webp binary
 *.zip binary

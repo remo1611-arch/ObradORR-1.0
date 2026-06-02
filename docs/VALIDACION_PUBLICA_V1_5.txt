@@ -1,8 +1,0 @@
-Validación manual mínima v1.5:
-1. Abrir app sin Error JS.
-2. Taller funcional.
-3. Catálogo funcional.
-4. Elaboraciones e Ingredientes paginan.
-5. Fórmulas panaderas y fichas cocina/pastelería cargan bajo demanda.
-6. Histórico abre.
-7. Sistema/Gestionar datos descarga copia y diagnóstico.

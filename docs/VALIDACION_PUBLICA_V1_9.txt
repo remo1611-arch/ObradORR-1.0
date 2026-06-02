@@ -1,5 +1,0 @@
-SwiftRemo v1.10 · validación local
-- Sintaxis JS: OK con node --check en todos los módulos.
-- Rutas HTTP locales: app/sqlite.html, app/js/app.js, app/js/storage-service.js, app/js/swiftremo-ui.css y db/swiftremo.sqlite devuelven 200.
-- Cache busting: 1120v112.
-- Alcance: no se valida diálogo real de permisos de Android/Chrome en este contenedor.

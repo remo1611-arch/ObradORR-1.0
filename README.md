@@ -1,34 +1,45 @@
-# SwiftRemo SQL v1.15.2
+# SwiftRemo SQL v1.0.0-rc.1
 
-Aplicación docente local para cocina, pastelería y panadería con SQLite/WASM, base pública inicial, trabajo local en navegador, copias `.sqlite`, guardado en carpeta vinculada cuando el navegador lo permite, vista previa/imprimibles A4 y catálogo FP Galicia ampliado.
+Aplicación docente local/offline para aula-taller de Cocina, Pastelería y Panadería.
 
-## Entrada recomendada
+## Uso rápido
 
-- GitHub Pages / servidor local: `app/sqlite.html?v=1152v152`
-- Entrada raíz del repositorio: `index.html` redirige a la app con la misma etiqueta de caché.
-
-## Contenido principal
-
-- `app/`: interfaz HTML/JS/CSS.
-- `app/wasm/`: motor SQLite WASM necesario para ejecutar la app.
-- `db/swiftremo.sqlite`: base pública inicial.
-- `docs/`: informes, guías y trazabilidad de versión.
-- `assets/photos/`: carpeta preparada para fotografías públicas autorizadas.
-
-## Uso local rápido
+1. Descomprime el ZIP.
+2. Entra en la carpeta del proyecto.
+3. Arranca un servidor local:
 
 ```bash
-python -m http.server 8796
+python -m http.server 8797 --bind 127.0.0.1
 ```
 
-Abrir:
+4. Abre:
 
 ```text
-http://127.0.0.1:8796/app/sqlite.html?v=1152v152
+http://127.0.0.1:8797/app/sqlite.html?v=100rcfinal
 ```
 
-## Publicación y licencia
+También puedes abrir `Abrir_SwiftRemo.html` como lanzador local.
 
-Este paquete está preparado para publicarse en GitHub Pages como herramienta docente de uso personal o de aula. La publicación del código y de la base no implica licencia abierta. Consulta `AVISO_LEGAL.md` y `NOTICE.md` antes de redistribuir, modificar, publicar versiones derivadas o integrar material externo.
+## Qué incluye
 
-© Remo José Pereira González. Uso docente personal autorizado. Sin licencia abierta de redistribución ni explotación comercial.
+- App HTML/CSS/JavaScript local.
+- SQLite WASM incluido en `app/wasm/`.
+- Base pública incluida en `db/swiftremo.sqlite`.
+- Taller de práctica activa.
+- Histórico de prácticas cerradas.
+- Archivo técnico de fichas, ingredientes y fórmulas.
+- Sistema de copias, recuperación, diagnóstico y publicación.
+- Exportación documental de fichas y dossiers.
+
+## Privacidad y publicación
+
+Este paquete está preparado como candidato público. La base incluida no contiene fotos, sesiones históricas, trabajos de impresión ni fuentes privadas según la auditoría de cierre.
+
+## Licencia y aviso
+
+Consulta `LICENSE.md`, `NOTICE.md` y `AVISO_LEGAL.md` antes de publicar o redistribuir.
+
+
+## Ajuste final de Histórico
+
+Histórico refactorizado: consulta de prácticas guardadas como entrada principal, tarjetas responsive de sesiones, edición manual plegada y salida documental separada.

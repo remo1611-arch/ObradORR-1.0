@@ -1,1 +1,5 @@
-SwiftRemo SQL v1.15.2 · Sistema clarificado · catálogo FP Galicia · cache 1152v152
+SwiftRemo SQL v1.0.0-rc.1
+Cache busting: 100rcfinal
+Canal: public-rc
+Fecha de cierre: 2026-06-02
+Paquete: SwiftRemo_v1_0_0_RC_FINAL_GITHUB_PUBLIC.zip

@@ -1,7 +1,0 @@
-SwiftRemo v1.14 · correcciones PDF real de impresión
-
-- Cache: 1140v114.
-- node --check correcto en todos los JS.
-- Importaciones internas: 0 rutas rotas.
-- Panel Salida reorganizado: fichas + pedido limpio, fichas docentes, pedido limpio, dossier técnico, pedido técnico y personalización.
-- ZIP validado sin errores.

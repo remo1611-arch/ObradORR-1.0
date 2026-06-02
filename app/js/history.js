@@ -1,6 +1,6 @@
-import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js?v=1152v152";
-import { printClassSession, printClassOrder } from "./print.js?v=1152v152";
-import { slugSessionIdFromTitle, slugSessionItemId } from "./repositories.js?v=1152v152";
+import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js?v=100rcfinal";
+import { printClassSession, printClassOrder } from "./print.js?v=100rcfinal";
+import { slugSessionIdFromTitle, slugSessionItemId } from "./repositories.js?v=100rcfinal";
 
 let selectedSessionId = null;
 let selectedItemId = null;
@@ -248,6 +248,29 @@ function renderSessions() {
     }).join("");
     if (selectedSessionId && rows.some(r => r.id === selectedSessionId)) select.value = selectedSessionId;
   }
+
+  const totalCost = rows.reduce((acc, r) => acc + Number(r.estimated_order_cost || 0), 0);
+  const countBox = $("#historySavedCount");
+  if (countBox) countBox.textContent = fmtNumber(rows.length, 0);
+  const costBox = $("#historySavedCost");
+  if (costBox) costBox.textContent = fmtMoney(totalCost);
+  const empty = $("#historyEmptyState");
+  if (empty) empty.hidden = rows.length > 0;
+
+  const cards = $("#classSessionsCardsV41");
+  if (cards) {
+    cards.innerHTML = rows.length ? rows.map(r => {
+      const active = selectedSessionId === r.id ? " active" : "";
+      const title = r.title || r.id;
+      const meta = [r.practice_date || "sin fecha", r.group_name || "sin grupo"].join(" · ");
+      return `<article class="history-session-card-rc1${active}">
+        <div><h4>${esc(title)}</h4><p>${esc(meta)}</p></div>
+        <dl><div><dt>Elab.</dt><dd>${fmtNumber(r.total_items || 0, 0)}</dd></div><div><dt>Pedido</dt><dd>${fmtMoney(r.estimated_order_cost || 0)}</dd></div></dl>
+        <button type="button" class="btn tiny" data-session41="${esc(r.id)}">Abrir</button>
+      </article>`;
+    }).join("") : `<p class="small">Sin prácticas archivadas.</p>`;
+  }
+
   const tableBox = $("#classSessionsTableV41");
   if (tableBox) {
     tableBox.innerHTML = table([
@@ -257,8 +280,8 @@ function renderSessions() {
       { label: "Elab.", key: "total_items" },
       { label: "Pedido", render: r => fmtMoney(r.estimated_order_cost) }
     ], rows);
-    document.querySelectorAll("[data-session41]").forEach(btn => btn.addEventListener("click", () => loadSession(btn.dataset.session41)));
   }
+  document.querySelectorAll("[data-session41]").forEach(btn => btn.addEventListener("click", () => loadSession(btn.dataset.session41)));
 }
 
 function loadSession(id, renderList = true) {
@@ -671,12 +694,22 @@ function syncQuantityPlanning() {
 
 function renderActiveSummary() {
   const box = $("#classActiveSessionSummaryV65");
-  if (!box) return;
-  if (!selectedSessionId) { box.textContent = "Nueva sesión sin guardar."; return; }
+  const hero = $("#historySelectedSummary");
+  if (!selectedSessionId) {
+    if (box) box.textContent = "Nueva sesión sin guardar.";
+    if (hero) hero.textContent = "Nueva sesión sin guardar";
+    return;
+  }
   const s = repo()?.classSessionById(selectedSessionId);
-  if (!s) { box.textContent = "Sin sesión seleccionada."; return; }
+  if (!s) {
+    if (box) box.textContent = "Sin sesión seleccionada.";
+    if (hero) hero.textContent = "Sin sesión seleccionada";
+    return;
+  }
   const items = repo().classItems(selectedSessionId).length;
-  box.innerHTML = `<b>${esc(s.title || s.id)}</b> · ${esc(s.practice_date || "sin fecha")} · ${esc(s.group_name || "sin grupo")} · ${s.team_count ? esc(String(s.team_count)) + " equipo(s) · " : ""}${s.total_students ? esc(String(s.total_students)) + " alumno(s) · " : ""}${items} elaboración(es)`;
+  const summary = `${s.title || s.id} · ${s.practice_date || "sin fecha"} · ${s.group_name || "sin grupo"} · ${items} elaboración(es)`;
+  if (box) box.innerHTML = `<b>${esc(s.title || s.id)}</b> · ${esc(s.practice_date || "sin fecha")} · ${esc(s.group_name || "sin grupo")} · ${s.team_count ? esc(String(s.team_count)) + " equipo(s) · " : ""}${s.total_students ? esc(String(s.total_students)) + " alumno(s) · " : ""}${items} elaboración(es)`;
+  if (hero) hero.textContent = summary;
 }
 
 window.SwiftRemoSession = {

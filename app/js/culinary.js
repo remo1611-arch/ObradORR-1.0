@@ -1,32 +1,39 @@
-import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js?v=1152v152";
-import { printCulinaryRecipe } from "./print.js?v=1152v152";
-import { slugCulinaryRecipeIdFromName, slugCulinaryLineId } from "./repositories.js?v=1152v152";
+import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js?v=100rcfinal";
+import { printCulinaryRecipe } from "./print.js?v=100rcfinal";
+import { slugCulinaryRecipeIdFromName, slugCulinaryLineId } from "./repositories.js?v=100rcfinal";
+import { recipeMediaPanelHtml, requestRecipePhotoUpload, deleteRecipeMedia, setPrimaryRecipeMedia } from "./media-manager.js?v=100rcfinal";
 
 let selectedRecipeId = null;
 let selectedLineId = null;
 let readyBound = false;
+let recipeSnapshot1170 = "";
+let lineFormDirty1170 = false;
 
 window.addEventListener("DOMContentLoaded", initCulinaryUi);
 window.addEventListener("swiftremo:lazyViewReady", ev => { if (ev?.detail?.route === "archive-culinary") initCulinaryUi(); });
 window.addEventListener("swiftremo:culinaryReady", initCulinaryUi);
 window.addEventListener("swiftremo:coreReady", () => { initCulinaryUi(); renderCulinaryUi(); });
 window.addEventListener("swiftremo:render", () => renderCulinaryUi());
+window.addEventListener("swiftremo:mediaChanged", ev => { if (ev?.detail?.kind === "culinary") renderRecipeMediaPanel(); });
 
 function core() { return window.SwiftRemoCore; }
 function repo() { return core()?.repo; }
 
 function initCulinaryUi() {
   if (!$("#culinaryRecipeSelectV51")) return;
-  bindOnce("#culinaryRecipeSelectV51", "change", () => loadRecipe($("#culinaryRecipeSelectV51").value));
-  bindOnce("#culinaryNewRecipeV51", "click", newRecipe);
+  bindOnce("#culinaryRecipeSelectV51", "change", () => loadRecipe($("#culinaryRecipeSelectV51").value, true, { openPanel: false }));
+  bindOnce("#culinaryNewRecipeV51", "click", () => newRecipe(true));
   bindOnce("#culinarySaveRecipeV51", "click", saveRecipe);
-  bindOnce("#culinaryAddSelectionV623", "click", addCurrentToSelection);
+  bindOnce("#culinaryAddToWorkshop", "click", addCurrentToSelection);
+  bindOnce("#culinaryOpenSelectedEditorV1170", "click", () => openRecipeEditor($("#culinaryRecipeSelectV51")?.value || selectedRecipeId));
   bindOnce("#culinaryPrintRecipeV51", "click", printRecipe);
   bindOnce("#culinaryClearLineV51", "click", clearLineForm);
   bindOnce("#culinaryClearLineFormV51", "click", clearLineForm);
   bindOnce("#culinaryLineFormV51", "submit", saveLine);
   bindOnce("#culinaryDeleteLineV51", "click", deleteLine);
+  bindCulinaryEditorDirtyTracking();
   readyBound = true;
+  exposeCulinaryApi();
   renderCulinaryUi();
 }
 
@@ -41,12 +48,11 @@ function renderCulinaryUi() {
   if (!readyBound || !repo()) return;
   populateCatalogs();
   renderRecipeSelect();
-  if (!selectedRecipeId) {
-    const first = repo().culinaryRecipes()[0];
-    if (first) selectedRecipeId = first.id;
+  if (selectedRecipeId) loadRecipe(selectedRecipeId, false, { openPanel: false });
+  else {
+    $("#culinarySummaryV51").innerHTML = `<p class="small">Selecciona una ficha técnica para ver el resumen o abrir el editor.</p>`;
+    $("#culinaryLinesTableV51").innerHTML = `<p class="small">Sin ficha seleccionada.</p>`;
   }
-  if (selectedRecipeId) loadRecipe(selectedRecipeId, false);
-  else newRecipe(false);
 }
 
 function populateCatalogs() {
@@ -60,14 +66,29 @@ function populateCatalogs() {
 
 function renderRecipeSelect() {
   const rows = repo().culinaryRecipes();
-  fillSelect($("#culinaryRecipeSelectV51"), rows, { value: "id", label: r => `${r.name}${r.active ? "" : " · inactiva"}`, blank: "Selecciona ficha" });
-  if (selectedRecipeId) $("#culinaryRecipeSelectV51").value = selectedRecipeId;
+  const select = $("#culinaryRecipeSelectV51");
+  fillSelect(select, rows, { value: "id", label: r => `${r.name}${r.active ? "" : " · inactiva"}`, blank: "Selecciona ficha" });
+  if (selectedRecipeId && rows.some(r => r.id === selectedRecipeId)) select.value = selectedRecipeId;
+  else if (select) select.value = "";
   $("#culinaryCountV51").textContent = `${rows.filter(r => r.active).length} fichas culinarias activas`;
 }
 
-function loadRecipe(id, refreshSelect = true) {
+function loadRecipe(id, refreshSelect = true, opts = {}) {
+  if (!id) {
+    selectedRecipeId = null;
+    selectedLineId = null;
+    setVal("culinaryRecipeSelectV51", "");
+    $("#culinarySummaryV51").innerHTML = `<p class="small">Selecciona una ficha técnica para ver el resumen o abrir el editor.</p>`;
+    $("#culinaryLinesTableV51").innerHTML = `<p class="small">Sin ficha seleccionada.</p>`;
+    updateEditorModeHint(true);
+    setCulinaryDirty(false);
+    return;
+  }
   const r = repo().culinaryRecipeById(id);
-  if (!r) return;
+  if (!r) {
+    toast("No se encontró la ficha técnica seleccionada.", "warn");
+    return;
+  }
   selectedRecipeId = id;
   selectedLineId = null;
   setVal("culinaryRecipeSelectV51", id);
@@ -88,9 +109,16 @@ function loadRecipe(id, refreshSelect = true) {
   setVal("culinaryNotesV51", r.notes || "");
   $("#culinaryActiveV51").checked = !!r.active;
   renderSummary();
+  renderRecipeMediaPanel();
   renderLines();
   clearLineForm(false);
+  recipeSnapshot1170 = currentRecipeSignature();
+  lineFormDirty1170 = false;
+  renderCulinaryEditorWarnings();
+  setCulinaryDirty(false);
+  updateEditorModeHint();
   if (refreshSelect) renderRecipeSelect();
+  if (opts.openPanel === true) openEditorPanel();
 }
 
 function newRecipe(showToast = true) {
@@ -116,6 +144,13 @@ function newRecipe(showToast = true) {
   $("#culinarySummaryV51").innerHTML = `<p class="small">Guarda la ficha para añadir ingredientes.</p>`;
   $("#culinaryLinesTableV51").innerHTML = `<p class="small">Sin ficha seleccionada.</p>`;
   clearLineForm(false);
+  renderRecipeMediaPanel();
+  recipeSnapshot1170 = currentRecipeSignature();
+  lineFormDirty1170 = false;
+  renderCulinaryEditorWarnings();
+  updateEditorModeHint(true);
+  setCulinaryDirty(false);
+  openEditorPanel();
   if (showToast) toast("Nueva ficha culinaria preparada.");
 }
 
@@ -147,7 +182,9 @@ async function saveRecipe() {
     catch (err) { core().swiftDb.exec("ROLLBACK;"); throw err; }
     selectedRecipeId = id;
     await core().autosave({ backup: false, reason: "ficha culinaria" });
-    renderRecipeSelect(); loadRecipe(id, false); core().renderAll();
+    renderRecipeSelect(); loadRecipe(id, false, { openPanel: true });
+    setCulinaryDirty(false);
+    core().renderAll();
     toast("Ficha culinaria guardada.");
   } catch (err) { console.error(err); toast(err.message, "err"); }
 }
@@ -164,6 +201,16 @@ function renderSummary() {
     ["Estado", statusLabel(row.status)]
   ];
   $("#culinarySummaryV51").innerHTML = cells.map(([k,v]) => `<div class="kpi"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join("");
+}
+
+function renderRecipeMediaPanel() {
+  const box = $("#culinaryRecipeMediaPanelV161");
+  if (!box) return;
+  if (!selectedRecipeId) {
+    box.innerHTML = `<section class="archive-media-panel-v160 media-manager-panel-v161 neutral compact"><b>Fotos de la ficha</b><span>Guarda o selecciona una ficha para añadir fotos.</span></section>`;
+    return;
+  }
+  box.innerHTML = recipeMediaPanelHtml({ kind: "culinary", recipeId: selectedRecipeId, uid: `culinary:${selectedRecipeId}`, entityType: "culinary_recipe" }, { compact: true, showThumbnails: true, editable: true, title: "Fotos de la ficha" });
 }
 
 function renderLines() {
@@ -195,6 +242,8 @@ function loadLine(id) {
   setVal("culinaryLineWasteV51", line.waste_pct ?? 0);
   setVal("culinaryLineSortV51", line.sort_order ?? 100);
   setVal("culinaryLineNoteV51", line.technical_note || "");
+  lineFormDirty1170 = false;
+  refreshCulinaryDirtyState();
 }
 
 function clearLineForm(showToast = true) {
@@ -206,6 +255,8 @@ function clearLineForm(showToast = true) {
   setVal("culinaryLineWasteV51", 0);
   setVal("culinaryLineSortV51", 100);
   setVal("culinaryLineNoteV51", "");
+  lineFormDirty1170 = false;
+  refreshCulinaryDirtyState();
   if (showToast) toast("Línea culinaria preparada.");
 }
 
@@ -230,7 +281,7 @@ async function saveLine(event) {
     catch (err) { core().swiftDb.exec("ROLLBACK;"); throw err; }
     selectedLineId = data.$id;
     await core().autosave({ backup: false, reason: "línea culinaria" });
-    renderLines(); renderSummary(); core().renderAll();
+    renderLines(); renderSummary(); lineFormDirty1170 = false; renderCulinaryEditorWarnings(); refreshCulinaryDirtyState(); core().renderAll();
     toast("Ingrediente de ficha guardado.");
   } catch (err) { console.error(err); toast(err.message, "err"); }
 }
@@ -242,7 +293,7 @@ async function deleteLine() {
     repo().deleteCulinaryLine(selectedLineId);
     selectedLineId = null;
     await core().autosave({ backup: false, reason: "eliminar línea culinaria" });
-    clearLineForm(false); renderLines(); renderSummary(); core().renderAll();
+    clearLineForm(false); renderLines(); renderSummary(); lineFormDirty1170 = false; renderCulinaryEditorWarnings(); refreshCulinaryDirtyState(); core().renderAll();
     toast("Línea eliminada.", "warn");
   } catch (err) { console.error(err); toast(err.message, "err"); }
 }
@@ -261,6 +312,11 @@ async function printRecipe() {
 async function addCurrentToSelection() {
   try {
     if (!selectedRecipeId) return toast("Selecciona una ficha culinaria.", "warn");
+    if (isCulinaryEditorDirty1170()) return toast("Guarda o descarta los cambios antes de añadir esta ficha a la práctica.", "warn");
+    if (core().openQuantityDialogForUid) {
+      core().openQuantityDialogForUid(`culinary:${selectedRecipeId}`);
+      return;
+    }
     const r = repo().culinaryRecipeById(selectedRecipeId);
     if (!r) throw new Error("No se encontró la ficha seleccionada.");
     const defaultMode = r.default_production_mode || (r.production_kind === "technical_yield" ? "yield" : "servings");
@@ -273,6 +329,105 @@ async function addCurrentToSelection() {
       notes: "Añadido desde Fichas técnicas"
     });
   } catch (err) { console.error(err); toast(err.message || "No se pudo añadir a la práctica actual.", "err"); }
+}
+
+
+function openEditorPanel() {
+  core()?.openAppPanel?.("culinaryEditor");
+  renderCulinaryEditorWarnings();
+  updateEditorModeHint();
+}
+
+function closeEditorPanel(opts = {}) {
+  return core()?.closeAppPanel?.("culinaryEditor", opts);
+}
+
+function openRecipeEditor(id) {
+  if (id) loadRecipe(id, true, { openPanel: true });
+  else newRecipe(true);
+  return true;
+}
+
+function setCulinaryDirty(dirty) {
+  core()?.setCulinaryEditorDirty?.(Boolean(dirty));
+}
+
+function bindCulinaryEditorDirtyTracking() {
+  const recipeForm = $("#culinaryRecipeFormV51");
+  if (recipeForm && recipeForm.dataset.culinaryDirtyBound1170 !== "1") {
+    recipeForm.addEventListener("input", () => { refreshCulinaryDirtyState(); renderCulinaryEditorWarnings(); });
+    recipeForm.addEventListener("change", () => { refreshCulinaryDirtyState(); renderCulinaryEditorWarnings(); });
+    recipeForm.dataset.culinaryDirtyBound1170 = "1";
+  }
+  const lineForm = $("#culinaryLineFormV51");
+  if (lineForm && lineForm.dataset.culinaryDirtyBound1170 !== "1") {
+    lineForm.addEventListener("input", () => { lineFormDirty1170 = true; refreshCulinaryDirtyState(); });
+    lineForm.addEventListener("change", () => { lineFormDirty1170 = true; refreshCulinaryDirtyState(); });
+    lineForm.dataset.culinaryDirtyBound1170 = "1";
+  }
+}
+
+function currentRecipeSignature() {
+  const ids = [
+    "culinaryRecipeIdV51", "culinaryNameV51", "culinaryFamilyV51", "culinarySubfamilyV51",
+    "culinaryServingsV51", "culinaryServingWeightV51", "culinaryStatusV51", "culinaryLaborMinutesV51",
+    "culinaryLaborCostV51", "culinaryOverheadPctV51", "culinaryMarginPctV51", "culinaryProcessV51",
+    "culinaryServiceNotesV51", "culinaryAppccNotesV51", "culinaryNotesV51"
+  ];
+  const values = ids.map(id => String($("#" + id)?.value ?? ""));
+  values.push($("#culinaryActiveV51")?.checked ? "1" : "0");
+  return JSON.stringify(values);
+}
+
+function isCulinaryEditorDirty1170() {
+  return currentRecipeSignature() !== recipeSnapshot1170 || lineFormDirty1170;
+}
+
+function refreshCulinaryDirtyState() {
+  setCulinaryDirty(isCulinaryEditorDirty1170());
+}
+
+function renderCulinaryEditorWarnings() {
+  const box = $("#culinaryEditorWarnings");
+  if (!box) return;
+  const warnings = [];
+  const name = String($("#culinaryNameV51")?.value || "").trim();
+  const family = $("#culinaryFamilyV51")?.value || "";
+  const subfamily = $("#culinarySubfamilyV51")?.value || "";
+  const status = $("#culinaryStatusV51")?.value || "";
+  const servings = num($("#culinaryServingsV51")?.value, 0);
+  const process = String($("#culinaryProcessV51")?.value || "").trim();
+  const appcc = String($("#culinaryAppccNotesV51")?.value || "").trim();
+  const lines = selectedRecipeId ? (repo()?.culinaryRecipeLines(selectedRecipeId) || []) : [];
+  const summary = selectedRecipeId ? repo()?.culinaryRecipes().find(r => r.id === selectedRecipeId) : null;
+  if (!name) warnings.push("Nombre obligatorio pendiente.");
+  if (!family) warnings.push("Ficha sin familia técnica: dificulta filtrado, revisión e impresión docente.");
+  if (!subfamily) warnings.push("Ficha sin subfamilia técnica: recomendable para catálogo y trazabilidad.");
+  if (servings <= 0) warnings.push("Las raciones base deben ser mayores que 0.");
+  if (!process) warnings.push("Proceso técnico vacío: la ficha no es completa para aula-taller.");
+  if (!appcc) warnings.push("APPCC/puntos críticos vacío: falta revisión higiénico-sanitaria de la elaboración.");
+  if (selectedRecipeId && !lines.length) warnings.push("Ficha sin ingredientes/líneas técnicas.");
+  if (summary && Number(summary.ingredient_cost_total || 0) <= 0 && lines.length) warnings.push("Coste de ingredientes 0: revisa cantidades, unidades o precios de materias primas.");
+  if (status === "archived") warnings.push("Ficha archivada: no debería usarse en prácticas nuevas salvo revisión expresa.");
+  if (!warnings.length) { box.hidden = true; box.innerHTML = ""; return; }
+  box.hidden = false;
+  box.innerHTML = `<b>Advertencias de ficha</b><ul>${warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul>`;
+}
+
+function updateEditorModeHint(isNew = false) {
+  const hint = $("#culinaryEditorModeHint");
+  if (!hint) return;
+  if (isNew || !selectedRecipeId) hint.textContent = "Nueva ficha local. Guarda la cabecera antes de añadir ingredientes o fotos.";
+  else hint.textContent = "Edición local de ficha. Guardar recalcula catálogo, práctica, pedido e impresión.";
+}
+
+function exposeCulinaryApi() {
+  window.SwiftRemoCulinary = {
+    openRecipeEditor,
+    closeEditorPanel,
+    renderRecipeMediaPanel,
+    setEditorDirty: setCulinaryDirty
+  };
 }
 
 function setVal(id, value) { const el = $("#" + id); if (el) el.value = value ?? ""; }

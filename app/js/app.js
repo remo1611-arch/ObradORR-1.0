@@ -1,20 +1,22 @@
-import { SwiftDB } from "./db-service.js?v=1152v152";
-import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=1152v152";
-import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print.js?v=1152v152";
-import { loadRecovery, saveRecovery, clearRecovery, hasCurrentRecovery, linkExternalFolder, unlinkExternalFolder, getExternalFolderStatus, saveExternalCopies, externalFolderFeatureAvailable, externalFolderPlatformInfo, externalFolderFriendlyError } from "./storage-service.js?v=1152v152";
-import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson, safeJsonStringify } from "./ui.js?v=1152v152";
-import { createAppState } from "./ui/state.js?v=1152v152";
-import { createDomainShell } from "./ui/app-shell.js?v=1152v152";
-import { createWorkshopDomain } from "./domain/workshop.js?v=1152v152";
-import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=1152v152";
-import { createHistoryDomain } from "./domain/history.js?v=1152v152";
-import { createSystemBackupService } from "./domain/system-backup.js?v=1152v152";
-import { createPrintDomain } from "./domain/print.js?v=1152v152";
-import { createWorkshopView } from "./ui/workshop-view.js?v=1152v152";
-import { bootMark, bootStart, bootEnd, renderBootMetricsPanel, opfsWorkerEvaluation, renderOpfsWorkerEvaluation } from "./diagnostics.js?v=1152v152";
-import { createFeatureModuleManager } from "./feature-modules.js?v=1152v152";
-import { readPageSizeValue, pageWindow, pagerHtml, dateSlug, formatDate, setInputValue, badgeHtml, roleLabel, nullIfEmpty, num } from "./app-utils.js?v=1152v152";
-import { kpiGridHtml, archiveSummaryKpisHtml, elaborationsSummaryKpisHtml, elaborationCardHtml, ingredientCardsHtml, rangeHintHtml } from "./app-renderers.js?v=1152v152";
+import { SwiftDB } from "./db-service.js?v=100rcfinal";
+import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=100rcfinal";
+import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print.js?v=100rcfinal";
+import { loadRecovery, saveRecovery, clearRecovery, hasCurrentRecovery, linkExternalFolder, unlinkExternalFolder, getExternalFolderStatus, saveExternalCopies, externalFolderFeatureAvailable, externalFolderPlatformInfo, externalFolderFriendlyError } from "./storage-service.js?v=100rcfinal";
+import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson, safeJsonStringify } from "./ui.js?v=100rcfinal";
+import { createAppState } from "./ui/state.js?v=100rcfinal";
+import { createDomainShell } from "./ui/app-shell.js?v=100rcfinal";
+import { createWorkshopDomain } from "./domain/workshop.js?v=100rcfinal";
+import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=100rcfinal";
+import { createHistoryDomain } from "./domain/history.js?v=100rcfinal";
+import { createSystemBackupService } from "./domain/system-backup.js?v=100rcfinal";
+import { createPrintDomain } from "./domain/print.js?v=100rcfinal";
+import { createWorkshopView } from "./ui/workshop-view.js?v=100rcfinal";
+import { applyWorkshopButtonState as _applyWorkshopButtonStateFromModule } from "./ui/workshop-actions.js?v=100rcfinal";
+import { bootMark, bootStart, bootEnd, renderBootMetricsPanel, opfsWorkerEvaluation, renderOpfsWorkerEvaluation } from "./diagnostics.js?v=100rcfinal";
+import { createFeatureModuleManager } from "./feature-modules.js?v=100rcfinal";
+import { readPageSizeValue, pageWindow, pagerHtml, dateSlug, formatDate, setInputValue, badgeHtml, roleLabel, nullIfEmpty, num } from "./app-utils.js?v=100rcfinal";
+import { kpiGridHtml, archiveSummaryKpisHtml, elaborationsSummaryKpisHtml, elaborationCardHtml, ingredientCardsHtml, rangeHintHtml } from "./app-renderers.js?v=100rcfinal";
+import { recipeMediaPanelHtml, recipeMediaRows, requestRecipePhotoUpload, deleteRecipeMedia, setPrimaryRecipeMedia, importPhotoFilesForRecipe } from "./media-manager.js?v=100rcfinal";
 
 const swiftDb = new SwiftDB();
 let repo = null;
@@ -37,6 +39,7 @@ let selectedIngredientId = null;
 let hasSaveError = false;
 let hasPendingSave = false;
 let practiceContextSaveTimer = null;
+let archivePhotoTargetV160 = null;
 let firstRenderAllMeasuredRc7 = false;
 let firstActiveRouteRenderMeasured = false;
 
@@ -49,7 +52,13 @@ bootMarkRc7("app:module-evaluated");
 const state = {
   filters: { search: "", active: "active", use: "all", view: "work", page: 1, pageSize: 50 },
   elaborations: { search: "", type: "all", active: "active", page: 1, pageSize: 50 },
-  library: { kind: "elaborations", search: "", active: "active", quality: "all", page: 1, pageSize: 50, selectedKey: "" },
+  library: { kind: "elaborations", search: "", active: "active", quality: "all", page: 1, pageSize: 50, selectedKey: "", quickViewOpen: false },
+  panels: { active: "", dirty: {}, scroll: {}, returnContext: {} },
+  ingredientEditor: { open: false, dirty: false },
+  culinaryEditor: { open: false, dirty: false },
+  bakeryEditor: { open: false, dirty: false },
+  systemDiagnostic: { open: false },
+  archiveExport: { open: false, busy: false },
   workshopSearch: { search: "", type: "all", page: 1, pageSize: 10 },
   quantityDialog: { mode: "add", elaboration: null, workshopItem: null }
 };
@@ -59,6 +68,7 @@ window.SwiftRemoCore = {
   get repo() { return repo; },
   autosave,
   renderAll,
+  refreshAfterMediaChange: refreshMediaUiAfterChangeRc6,
   get appState() { return appState?.get?.(); },
   get domainShell() { return domainShell; },
   get workshopDomain() { return workshopDomain; },
@@ -67,6 +77,12 @@ window.SwiftRemoCore = {
   fmtNumber,
   esc,
   addWorkSelectionItem,
+  openQuantityDialogForUid,
+  openAppPanel,
+  closeAppPanel,
+  setIngredientEditorDirty,
+  setCulinaryEditorDirty,
+  setBakeryEditorDirty,
   renderAll
 };
 
@@ -210,9 +226,25 @@ function bindSystemControlsV104() {
 function bindEvents() {
   bindSystemControlsV104();
   installFeatureModulePrefetchV12();
+  if (document.body && document.body.dataset.archiveQuickViewKeyBound !== "1") {
+    document.addEventListener("keydown", ev => {
+      if (ev.key === "Escape") closeTopAppPanel();
+    });
+    document.body.dataset.archiveQuickViewKeyBound = "1";
+  }
+  if (document.body && document.body.dataset.mediaChangedBoundRc6 !== "1") {
+    window.addEventListener("swiftremo:mediaChanged", ev => refreshMediaUiAfterChangeRc6(ev?.detail || {}));
+    document.body.dataset.mediaChangedBoundRc6 = "1";
+  }
   $$(`[data-tab]`).forEach(btn => {
     if (btn.dataset.tabBound === "1") return;
-    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+    btn.addEventListener("click", ev => {
+      if (btn.disabled || btn.getAttribute("aria-disabled") === "true") {
+        ev.preventDefault();
+        return;
+      }
+      switchTab(btn.dataset.tab);
+    });
     btn.dataset.tabBound = "1";
   });
   bindIfExists("#loadInitialDb", "click", loadInitialDbWithConfirm);
@@ -248,10 +280,16 @@ function bindEvents() {
   bindIfExists("#workshopSearchClear", "click", () => { state.workshopSearch = { search: "", type: "all", page: 1, pageSize: 10 }; const q = document.querySelector("#workshopSearchInput"); if (q) q.value = ""; const typ = document.querySelector("#workshopSearchType"); if (typ) typ.value = "all"; const l = document.querySelector("#workshopSearchLimit"); if (l) l.value = "10"; renderWorkshopSearch(); });
   bindIfExists("#archiveClearFilters", "click", clearArchiveFilters);
   bindIfExists("#archiveCopyReview", "click", copyArchiveReviewReport);
+  bindIfExists("#archiveExportSheets", "click", openArchiveExportPanel);
+  bindIfExists("#archiveExportClose", "click", () => closeAppPanel("archiveExport"));
+  bindIfExists("#archiveExportPreview", "click", () => runArchiveExport("preview"));
+  bindIfExists("#archiveExportDownloadHtml", "click", () => runArchiveExport("html"));
+  bindIfExists("#archiveExportDownloadZip", "click", () => runArchiveExport("zip"));
   bindIfExists("#newIngredient", "click", newIngredientForm);
   bindIfExists("#clearIngredientForm", "click", clearIngredientForm);
   bindIfExists("#deactivateIngredient", "click", deactivateSelectedIngredient);
   bindIfExists("#ingredientForm", "submit", saveIngredientFromForm);
+  bindIngredientEditorDirtyTracking();
   bindIfExists("#runSql", "click", runSql);
   bindIfExists("#refreshAudit", "click", () => { renderBaseStatusV663(); renderAudit(); });
   bindIfExists("#copyBaseDiagnosisV663", "click", copyBaseDiagnosisV663);
@@ -280,6 +318,7 @@ function bindEvents() {
   });
   bindIfExists("#qtyConfirmV626", "click", saveQuantityDialog);
   bindIfExists("#qtyCancelV626", "click", closeQuantityDialog);
+  bindIfExists("#quantityDialogV626", "click", ev => { if (ev.target?.id === "quantityDialogV626") closeQuantityDialog(); });
   bindIfExists("#qtyCloseV626", "click", closeQuantityDialog);
   ["practiceTeamCountV627", "practicePeoplePerTeamV627", "practiceStudentCountV627", "practiceServingsPerPersonV627", "practicePiecesPerPersonV627", "practiceSafetyMarginV627"].forEach(id => {
     bindIfExists("#" + id, "input", () => { savePracticePlanV627(); renderPracticePlanV627(); });
@@ -289,14 +328,56 @@ function bindEvents() {
     bindIfExists("#" + id, "input", () => { saveWorkshopMeta(); });
     bindIfExists("#" + id, "change", () => { if (id === "workshopCycle") refreshWorkshopModules(true); if (id === "workshopModule") applyWorkshopModuleDefaultGroup(); saveWorkshopMeta(); });
   });
-  document.addEventListener("click", ev => {
-    const libDetailPre = ev.target.closest?.("[data-library-detail]");
-    if (libDetailPre) {
+  if (document.documentElement.dataset.appCoreDelegatedEvents1170 !== "1") {
+    document.documentElement.dataset.appCoreDelegatedEvents1170 = "1";
+    document.addEventListener("click", ev => {
+    const libDetailEarly = ev.target.closest?.("[data-library-detail]");
+    if (libDetailEarly) {
       ev.preventDefault();
-      state.library.kind = "elaborations";
-      state.library.selectedKey = libDetailPre.dataset.libraryDetail || "";
-      switchTab("archive-catalog");
-      renderArchiveCatalog();
+      const key = libDetailEarly.dataset.libraryDetail || "";
+      const tab = libDetailEarly.dataset.tab || "";
+      const activeRoute = domainShell?.getActive?.()?.route || "";
+
+      state.library.selectedKey = key;
+      state.library.quickViewOpen = Boolean(key);
+
+      // Si la Vista rápida se abre desde otra zona de la app, preparamos el catálogo
+      // sin forzar siempre elaboraciones: los ingredientes conservan su dominio.
+      if (tab === "archive-catalog") {
+        state.library.kind = key.startsWith("ingredient:") ? "ingredients" : "elaborations";
+      }
+
+      if (tab && tab !== activeRoute) {
+        switchTab(tab);
+        return;
+      }
+
+      // En Archivo técnico, Detalle es una selección local: no re-renderiza el catálogo.
+      selectArchiveDetail(key);
+      return;
+    }
+    const appPanelOpen = ev.target.closest?.("[data-app-panel-open]");
+    if (appPanelOpen) {
+      ev.preventDefault();
+      openAppPanel(appPanelOpen.dataset.appPanelOpen || "");
+      return;
+    }
+    const appPanelClose = ev.target.closest?.("[data-app-panel-close]");
+    if (appPanelClose) {
+      ev.preventDefault();
+      closeAppPanel(appPanelClose.dataset.appPanelClose || "");
+      return;
+    }
+    const printCenterOpen = ev.target.closest?.("[data-open-print-center]");
+    if (printCenterOpen) {
+      ev.preventDefault();
+      openWorkshopPrintDialog();
+      return;
+    }
+    const appPanelBackdrop = ev.target?.classList?.contains("app-panel-backdrop-1170");
+    if (appPanelBackdrop) {
+      ev.preventDefault();
+      closeAppPanel(ev.target.dataset.appPanelClose || "");
       return;
     }
     const focusPracticeSearch = ev.target.closest?.("[data-focus-practice-search]");
@@ -308,13 +389,27 @@ function bindEvents() {
     const shellAction = ev.target.closest?.("[data-shell-action]");
     if (shellAction) {
       ev.preventDefault();
+      if (shellAction.disabled || shellAction.getAttribute("aria-disabled") === "true") return;
       const action = shellAction.dataset.shellAction || "";
       if (action === "archive-workshop") { archiveWorkshopAsHistory(); return; }
       if (action === "clear-workshop") { clearWorkshop(); return; }
     }
+    const mediaAdd = ev.target.closest?.("[data-media-add-photo]");
+    if (mediaAdd) { ev.preventDefault(); requestRecipePhotoUpload(mediaAdd.dataset.mediaAddPhoto, { reason: "foto local desde ficha" }); return; }
+    const mediaDelete = ev.target.closest?.("[data-media-delete]");
+    if (mediaDelete) {
+      ev.preventDefault();
+      if (confirm("Eliminar esta foto local de la ficha? Si no está vinculada a otras fichas también se quitará de la copia local.")) {
+        deleteRecipeMedia(mediaDelete.dataset.mediaDelete, mediaDelete.dataset.mediaId).then(() => toast("Foto local eliminada."), err => { console.error(err); toast(err.message || "No se pudo eliminar la foto.", "err"); });
+      }
+      return;
+    }
+    const mediaPrimary = ev.target.closest?.("[data-media-primary]");
+    if (mediaPrimary) { ev.preventDefault(); setPrimaryRecipeMedia(mediaPrimary.dataset.mediaPrimary, mediaPrimary.dataset.mediaId).then(() => toast("Foto principal actualizada."), err => { console.error(err); toast(err.message || "No se pudo marcar la foto principal.", "err"); }); return; }
     const tabButton = ev.target.closest?.("[data-tab]");
     if (tabButton && !tabButton.dataset.tabBound) {
       ev.preventDefault();
+      if (tabButton.disabled || tabButton.getAttribute("aria-disabled") === "true") return;
       switchTab(tabButton.dataset.tab);
       return;
     }
@@ -334,12 +429,14 @@ function bindEvents() {
     if (elaborationPage) { ev.preventDefault(); state.elaborations.page = Number(elaborationPage.dataset.elaborationPage) || 1; renderElaborations(); return; }
     const ingredientPage = ev.target.closest?.("[data-ingredient-page]");
     if (ingredientPage) { ev.preventDefault(); state.filters.page = Number(ingredientPage.dataset.ingredientPage) || 1; renderIngredients(); return; }
-    const libDetail = ev.target.closest?.("[data-library-detail]");
-    if (libDetail) { ev.preventDefault(); state.library.selectedKey = libDetail.dataset.libraryDetail || ""; renderArchiveCatalog(); return; }
+    const openSelectedIngredientEditor = ev.target.closest?.("[data-open-selected-ingredient-editor]");
+    if (openSelectedIngredientEditor) { ev.preventDefault(); selectedIngredientId ? loadIngredientForm(selectedIngredientId, { openPanel: true }) : newIngredientForm(); return; }
     const libOpen = ev.target.closest?.("[data-library-open]");
     if (libOpen) { ev.preventDefault(); openUnifiedElaboration(libOpen.dataset.libraryOpen); return; }
+    const archivePhoto = ev.target.closest?.("[data-archive-add-photo]");
+    if (archivePhoto) { ev.preventDefault(); requestRecipePhotoUpload(archivePhoto.dataset.archiveAddPhoto, { reason: "foto local desde Archivo técnico" }); return; }
     const libEditIng = ev.target.closest?.("[data-library-edit-ingredient]");
-    if (libEditIng) { ev.preventDefault(); loadIngredientForm(libEditIng.dataset.libraryEditIngredient); switchTab("archive-ingredients"); return; }
+    if (libEditIng) { ev.preventDefault(); loadIngredientForm(libEditIng.dataset.libraryEditIngredient, { openPanel: true }); return; }
     });
     window.addEventListener("swiftremo:databaseChanged", async ev => {
     try {
@@ -353,13 +450,16 @@ function bindEvents() {
 
     window.addEventListener("beforeunload", ev => {
     const shouldWarnPortableCopy = externalCopyDirtyV19 && (mobileLikeV19() || externalFolderStateV16?.linked);
-    if (hasSaveError || hasPendingSave || shouldWarnPortableCopy) {
+    const hasDirtyEditor = Boolean(state.ingredientEditor?.dirty || state.culinaryEditor?.dirty || state.bakeryEditor?.dirty);
+    if (hasSaveError || hasPendingSave || shouldWarnPortableCopy || hasDirtyEditor) {
       ev.preventDefault();
-      ev.returnValue = hasSaveError
-        ? "Hay cambios que no se han podido guardar automáticamente. Descarga una copia antes de cerrar."
-        : hasPendingSave
-          ? "Hay cambios de práctica pendientes de guardado automático. Espera unos segundos o guarda antes de cerrar."
-          : "Los cambios están guardados en el navegador, pero falta una copia externa reciente. Descarga una copia o guarda en carpeta antes de cerrar.";
+      ev.returnValue = hasDirtyEditor
+        ? "Hay cambios de edición sin guardar. Guarda o descarta los cambios antes de cerrar."
+        : hasSaveError
+          ? "Hay cambios que no se han podido guardar automáticamente. Descarga una copia antes de cerrar."
+          : hasPendingSave
+            ? "Hay cambios de práctica pendientes de guardado automático. Espera unos segundos o guarda antes de cerrar."
+            : "Los cambios están guardados en el navegador, pero falta una copia externa reciente. Descarga una copia o guarda en carpeta antes de cerrar.";
     }
     });
 
@@ -389,8 +489,16 @@ function bindEvents() {
         }
       }
     });
+  }
   bindScrollTargets();
   bindClassWorkflowAccordion();
+}
+
+function routeFromTabSectionId1170(id) {
+  if (!id) return "";
+  if (id.startsWith("view-")) return id.slice(5);
+  if (id.startsWith("tab-")) return id.slice(4);
+  return id;
 }
 
 function bindScrollTargets() {
@@ -400,11 +508,15 @@ function bindScrollTargets() {
       const selector = btn.dataset.scrollTarget;
       const target = selector ? document.querySelector(selector) : null;
       if (!target) return;
-      const tab = target.closest(".tab-section")?.id?.replace("tab-", "");
-      if (tab) switchTab(tab);
+      const route = routeFromTabSectionId1170(target.closest(".tab-section")?.id || "");
+      const active = currentResolvedRoute?.();
+      if (route && route !== active?.route) switchTab(route);
       const details = target.closest("details");
       if (details) details.open = true;
-      setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+      setTimeout(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (typeof target.focus === "function") target.focus({ preventScroll: true });
+      }, 80);
     });
     btn.dataset.scrollBound = "1";
   });
@@ -703,7 +815,8 @@ function renderProtectionBannerV111() {
     actions = `<button class="btn ghost" data-system-action="export-work-copy" type="button">Descargar copia</button>${folderSupported ? `<button class="btn primary" data-system-action="link-backup-folder" type="button">Activar carpeta</button>` : ""}`;
   }
   el.className = `system-protection-banner-v111 ${tone}`;
-  el.innerHTML = `<div><b>${esc(title)}</b><span>${esc(text)}</span></div><div class="system-protection-actions-v111">${actions}</div>`;
+  // En Sistema simplificado, el banner solo informa; las acciones viven en tarjetas claras.
+  el.innerHTML = `<div><b>${esc(title)}</b><span>${esc(text)}</span></div>`;
   renderPublicationSafetyV152();
 }
 
@@ -757,17 +870,17 @@ function renderPublicationSafetyV152() {
   const text = report.publicable
     ? (report.warnings.length ? `Sin material privado, pero conviene revisar: ${report.warnings.join('; ')}.` : "No se detectan fuentes privadas, fotos BLOB, histórico ni práctica activa. Apta para publicación pública.")
     : `Antes de publicar, limpia o separa: ${report.blocking.join('; ')}.`;
-  const actions = `<button class="btn ghost" data-system-action="export-publication-report" type="button">Descargar informe</button>${report.publicable ? "" : `<button class="btn success" data-system-action="export-work-copy" type="button">Descargar copia privada</button>`}`;
   el.className = `system-publication-status-v152 ${tone}`;
-  el.innerHTML = `<div><b>${esc(title)}</b><span>${esc(text)}</span></div><div class="system-protection-actions-v111">${actions}</div>`;
+  // Estado informativo: informes y copias quedan en “Más descargas e informes”.
+  el.innerHTML = `<div><b>${esc(title)}</b><span>${esc(text)}</span></div>`;
 }
 
 function exportPublicationSafetyReportV152() {
   const report = publicationSafetyReportV152();
   downloadJson({
     type: "swiftremo_publication_safety_report",
-    version: "v1.15.2",
-    cache: "1152v152",
+    version: "v1.0.0-rc.1",
+    cache: "100rcfinal",
     generatedAt: new Date().toISOString(),
     report
   }, `swiftremo_informe_publicacion_${dateSlug(new Date())}.json`);
@@ -1058,7 +1171,7 @@ function renderBootMetricsPanelRc7() {
 
 
 const featureModulesV13 = createFeatureModuleManager({
-  version: "1152v152",
+  version: "100rcfinal",
   toast,
   esc,
   moduleLoaded: name => window.SwiftRemoBootMetrics?.moduleLoaded?.(name),
@@ -1129,6 +1242,7 @@ function initDomainLayer() {
 
 function switchTab(tab) {
   if (!tab) return;
+  if (tab !== "archive-catalog") closeArchiveQuickView();
   if (domainShell?.navigate(tab)) return;
   console.warn(`[SwiftRemo] Ruta no encontrada: ${tab}`);
 }
@@ -1180,7 +1294,7 @@ function safeRenderRouteStep(fn) {
     const quality = document.querySelector("#panelQualitySummary");
     if (quality && fn.name === "renderPanelQualitySummary") {
       quality.className = "quality-strip warn";
-      quality.innerHTML = "<b>Calidad no disponible en este momento.</b><span>Abre Revisar calidad o recarga la app.</span>";
+      quality.innerHTML = "<b>Calidad no disponible en este momento.</b><span>Abre Estado de la base o recarga la app.</span>";
     }
   }
 }
@@ -1227,8 +1341,7 @@ function renderActiveRoute(explicit = null, { reason = "active" } = {}) {
     "archive-review": [renderBaseStatusV663, renderPanelQualitySummary, renderAudit],
     system: [renderBootMetricsPanelRc7, renderPersistencePanelRc12, renderExternalFolderPanelV16, renderOpfsWorkerEvaluationRc13],
     "system-data": [renderBootMetricsPanelRc7, renderPersistencePanelRc12, renderExternalFolderPanelV16, renderPublicationSafetyV152, renderOpfsWorkerEvaluationRc13, renderPrivateDataManager],
-    "system-sql": [],
-    "system-status": [renderBaseStatusV663, renderPanelQualitySummary, renderAudit]
+    "system-sql": []
   };
 
   renderRouteSet(routeMap[route] || routeMap[active.domain] || commonWorkshop);
@@ -1379,7 +1492,7 @@ function renderPanelQualitySummary() {
   } catch (err) {
     console.error("[SwiftRemo] No se pudo cargar la calidad", err);
     el.className = "quality-strip warn";
-    el.innerHTML = `<b>Calidad no disponible.</b><span>Entra en Revisar calidad o recarga la app.</span>`;
+    el.innerHTML = `<b>Calidad no disponible.</b><span>Entra en Estado de la base o recarga la app.</span>`;
   }
 }
 
@@ -1392,7 +1505,7 @@ function renderSessionSummary() {
       <div class="empty-state empty-state-6271 workflow-empty-panel-6704">
         <b>No hay práctica activa.</b>
         <span>El siguiente paso real es abrir Práctica, buscar una elaboración y definir la cantidad de producción.</span>
-        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Crear práctica</button><button type="button" class="btn ghost" data-tab="archive-catalog">Consultar Archivo técnico</button></div>
+        <div class="actions"><button type="button" class="btn primary" data-tab="workshop-practice">Abrir práctica activa</button><button type="button" class="btn ghost" data-tab="archive-catalog">Consultar Archivo técnico</button></div>
       </div>`;
     return;
   }
@@ -1940,11 +2053,14 @@ function ensureWorkshopSearchState() {
 function focusWorkshopSearch() {
   switchTab("workshop-practice");
   window.setTimeout(() => {
-    const q = document.querySelector("#workshopSearchInput");
-    if (!q) return;
-    q.focus();
-    q.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, 80);
+    openAppPanel("workshopAdd");
+    window.setTimeout(() => {
+      const q = document.querySelector("#workshopSearchInput");
+      if (!q) return;
+      q.focus();
+      q.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  }, 30);
 }
 
 function hasWorkshopItems() {
@@ -2029,7 +2145,7 @@ function workshopSummaryHtml(wf, context = "panel") {
           <span>La app mantiene bloqueados Pedido y Salida hasta que añadas una elaboración. El siguiente paso real es buscar y añadir.</span>
         </div>
         ${workshopStepsHtml(wf)}
-        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="archive-catalog">Abrir Archivo técnico</button></div>
+        <div class="workshop-action-status-rc2"><span>Usa el botón <b>Buscar y añadir elaboración</b> de Acción principal.</span><button type="button" class="btn ghost" data-tab="archive-catalog">Archivo técnico</button></div>
       </div>`;
   }
   return `
@@ -2047,15 +2163,15 @@ function workshopSummaryHtml(wf, context = "panel") {
 function domainActionButtonHtml(wf, area = "practice") {
   if (!wf?.hasItems) {
     if (area === "order") {
-      return `<button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="workshop-practice">Volver al Taller</button>`;
+      return `<button type="button" class="btn ghost" data-tab="workshop-practice">Volver al Taller</button>`;
     }
-    return `<button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="archive-catalog">Archivo técnico</button>`;
+    return `<span class="workshop-action-status-rc2">Acción principal: Buscar y añadir elaboración</span><button type="button" class="btn ghost" data-tab="archive-catalog">Archivo técnico</button>`;
   }
   if (area === "order") {
     return `<button type="button" class="btn primary" data-tab="workshop-output">Imprimir / exportar</button><button type="button" class="btn ghost" data-tab="workshop-practice">Volver al Taller</button>`;
   }
   if (area === "practice-next") {
-    return `<button type="button" class="btn primary" data-tab="workshop-order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="workshop-output">Imprimir / exportar</button><button type="button" class="btn ghost" data-tab="archive-review">Revisar calidad</button>`;
+    return `<button type="button" class="btn primary" data-tab="workshop-order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="workshop-output">Imprimir / exportar</button>`;
   }
   return `<button type="button" class="btn primary" data-tab="workshop-order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="workshop-output">Imprimir / exportar</button><button type="button" class="btn ghost" data-shell-action="archive-workshop">Archivar como sesión</button><button type="button" class="btn danger" data-shell-action="clear-workshop">Vaciar</button>`;
 }
@@ -2075,41 +2191,7 @@ function renderDomainActions(wf) {
 }
 
 function applyWorkshopButtonState(wf) {
-  const disabledSelectors = [
-    "button[data-tab='workshop-order']",
-    "button[data-tab='workshop-output']",
-    "button[data-requires-work-items='1']",
-    "#workshopOrderPrintTechnical",
-    "#workshopOrderPrintSimple",
-    "#workshopPrintDossier",
-    "#workshopPrintSheets",
-    "#workshopPrintOrder",
-    "#workshopOpenPrintCenter",
-    "#workshopPrintTechnicalOrder",
-    "#workshopPrintTeachingDossier"
-  ];
-  document.querySelectorAll(disabledSelectors.join(",")).forEach(btn => {
-    btn.disabled = !wf.hasItems;
-    btn.setAttribute("aria-disabled", wf.hasItems ? "false" : "true");
-    btn.classList.toggle("is-disabled-by-empty-workshop", !wf.hasItems);
-    btn.classList.toggle("workflow-disabled", !wf.hasItems);
-    if (!wf.hasItems) btn.title = "Primero añade al menos una elaboración a la práctica.";
-    else btn.removeAttribute("title");
-  });
-
-  const hideWhenEmpty = [
-    "#workshopArchive",
-    "#workshopClear"
-  ];
-  document.querySelectorAll(hideWhenEmpty.join(",")).forEach(btn => {
-    btn.classList.toggle("hidden-by-workflow", !wf.hasItems);
-  });
-
-  document.querySelectorAll("#workshopPrintDossier, #workshopPrintSheets, #workshopPrintOrder, #workshopPrintTeachingDossier, #workshopPrintTechnicalOrder, #workshopOpenPrintCenter").forEach(btn => {
-    const card = btn.closest(".print-profile-card-618");
-    if (card) card.classList.toggle("workflow-card-disabled", !wf.hasItems);
-  });
-  document.body.dataset.workflowState = wf.stage;
+  _applyWorkshopButtonStateFromModule(document, wf);
 }
 
 function renderWorkshopState() {
@@ -2124,13 +2206,13 @@ function renderWorkshopState() {
   if (order) {
     order.innerHTML = wf.hasItems
       ? `<div class="workshop-state-card ready"><b>Pedido disponible</b><span>Revisa cantidades, unidades, proveedor, zona y coste. La impresión se hace desde Salida.</span></div>`
-      : `<div class="workshop-state-card empty"><b>Pedido bloqueado</b><span>El pedido se genera automáticamente cuando la práctica tiene elaboraciones.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
+      : `<div class="workshop-state-card empty"><b>Pedido bloqueado</b><span>El pedido se genera automáticamente cuando la práctica tiene elaboraciones. Vuelve a Taller y usa el botón principal de búsqueda.</span><div class="actions"><button type="button" class="btn ghost" data-tab="workshop-practice">Volver al Taller</button></div></div>`;
   }
   const output = document.querySelector("#workshopOutputState");
   if (output) {
     output.innerHTML = wf.hasItems
       ? `<div class="workshop-state-card ready"><b>Salida preparada</b><span>Centro único para generar dossier, fichas, pedido u opciones avanzadas.</span></div>`
-      : `<div class="workshop-state-card empty"><b>Salida no disponible todavía</b><span>Añade al menos una elaboración para activar la impresión y la exportación documental.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
+      : `<div class="workshop-state-card empty"><b>Salida no disponible todavía</b><span>Añade una elaboración desde la acción principal del Taller para activar impresión y exportación.</span><div class="actions"><button type="button" class="btn ghost" data-tab="workshop-practice">Volver al Taller</button></div></div>`;
   }
   renderDomainActions(wf);
   applyWorkshopButtonState(wf);
@@ -2184,12 +2266,237 @@ function renderWorkshopSearch() {
             <span>${esc(r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería")} · ${esc(r.family || "Sin familia")} · ${esc(r.base_label || "Sin base definida")}</span>
           </div>
           <div class="practice-search-card-actions-6702">
-            <button type="button" class="btn ghost compact" data-library-detail="${esc(r.uid)}" data-tab="archive-catalog">Detalle</button>
+            <button type="button" class="btn ghost compact" data-library-detail="${esc(r.uid)}" data-tab="archive-catalog">Vista rápida</button>
             <button type="button" class="btn primary compact" data-add-elaboration-work="${esc(r.uid)}">Añadir</button>
           </div>
         </article>`).join("")}
     </div>`;
 }
+
+
+
+function openArchiveExportPanel() {
+  if (!repo) { toast("La base todavía no está preparada.", "err"); return; }
+  state.archiveExport.open = true;
+  openAppPanel("archiveExport");
+  updateArchiveExportStatus("Selecciona origen y formato. Para PDF, usa la vista previa y “Guardar como PDF” del navegador.");
+}
+
+function closeArchiveExportPanel(_opts = {}) {
+  state.archiveExport.open = false;
+  syncAppPanel("archiveExport");
+  restorePanelOrigin1170("archiveExport");
+}
+
+function updateArchiveExportStatus(message, tone = "") {
+  const el = document.querySelector("#archiveExportStatus");
+  if (!el) return;
+  el.classList.toggle("warn", tone === "warn");
+  el.classList.toggle("ok", tone === "ok");
+  el.textContent = message;
+}
+
+function readArchiveExportOptions() {
+  const scope = document.querySelector("input[name='archiveExportScope']:checked")?.value || "filtered";
+  return {
+    scope,
+    includeIngredients: Boolean(document.querySelector("#archiveExportIncludeIngredients")?.checked),
+    includeProcess: Boolean(document.querySelector("#archiveExportIncludeProcess")?.checked),
+    includeCost: Boolean(document.querySelector("#archiveExportIncludeCost")?.checked),
+    includePhotos: Boolean(document.querySelector("#archiveExportIncludePhotos")?.checked),
+    includeIndex: Boolean(document.querySelector("#archiveExportIncludeIndex")?.checked)
+  };
+}
+
+function archiveExportRows(options = readArchiveExportOptions()) {
+  if (!repo) return [];
+  const active = options.scope === "filtered" ? (state.library.active || "active") : "active";
+  const search = options.scope === "filtered" ? (state.library.search || "") : "";
+  const kindToType = {
+    all: "all",
+    culinary: "culinary",
+    bakery: "bakery"
+  };
+  let type = kindToType[options.scope] || "all";
+  if (options.scope === "filtered") {
+    const kind = state.library.kind || "elaborations";
+    if (kind === "ingredients") type = "all";
+    else if (kind === "culinary" || kind === "bakery") type = kind;
+  }
+  let rows = repo.unifiedElaborations({ search, type, active });
+  if (options.scope === "filtered" && state.library.quality && state.library.quality !== "all") {
+    const allowed = new Set(archiveRows().filter(r => r.uid || r.key).map(r => r.uid || r.key));
+    rows = rows.filter(r => allowed.has(r.uid));
+  }
+  return rows
+    .filter(r => r?.uid && r.source_type !== "ingredient")
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"));
+}
+
+async function runArchiveExport(mode) {
+  if (state.archiveExport.busy) return;
+  try {
+    state.archiveExport.busy = true;
+    const options = readArchiveExportOptions();
+    const rows = archiveExportRows(options);
+    if (!rows.length) { updateArchiveExportStatus("No hay elaboraciones para exportar con esos criterios.", "warn"); return; }
+    updateArchiveExportStatus(`Preparando ${fmtNumber(rows.length, 0)} ficha${rows.length === 1 ? "" : "s"}…`);
+    await waitFrame100rcfinal();
+    if (mode === "zip") {
+      const entries = [];
+      for (let i = 0; i < rows.length; i += 1) {
+        const uid = rows[i].uid;
+        const detail = await buildArchiveExportRecipeHtml(uid, options, { standalone: true });
+        entries.push({ name: `${safeFileName100rcfinal(rows[i].name || uid)}.html`, text: detail });
+        if ((i + 1) % 20 === 0) { updateArchiveExportStatus(`Generadas ${fmtNumber(i + 1, 0)} / ${fmtNumber(rows.length, 0)} fichas…`); await waitFrame100rcfinal(); }
+      }
+      const zip = zipStored100rcfinal(entries);
+      downloadBytes(`swiftremo_fichas_individuales_${dateSlug(new Date())}.zip`, zip, "application/zip");
+      updateArchiveExportStatus(`ZIP generado con ${fmtNumber(rows.length, 0)} ficha${rows.length === 1 ? "" : "s"}.`, "ok");
+      return;
+    }
+    const html = await buildArchiveExportDossierHtml(rows, options);
+    if (mode === "html") {
+      downloadBytes(`swiftremo_dossier_fichas_${dateSlug(new Date())}.html`, new TextEncoder().encode(html), "text/html;charset=utf-8");
+      updateArchiveExportStatus(`HTML único generado con ${fmtNumber(rows.length, 0)} ficha${rows.length === 1 ? "" : "s"}.`, "ok");
+      return;
+    }
+    openArchiveExportPreview(html);
+    updateArchiveExportStatus(`Vista previa preparada con ${fmtNumber(rows.length, 0)} ficha${rows.length === 1 ? "" : "s"}.`, "ok");
+  } catch (err) {
+    console.error(err);
+    updateArchiveExportStatus(err.message || "No se pudo generar la exportación.", "warn");
+    toast(err.message || "No se pudo generar la exportación.", "err");
+  } finally {
+    state.archiveExport.busy = false;
+  }
+}
+
+function waitFrame100rcfinal() {
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+async function buildArchiveExportDossierHtml(rows, options) {
+  const sheets = [];
+  for (let i = 0; i < rows.length; i += 1) {
+    sheets.push(await buildArchiveExportRecipeHtml(rows[i].uid, options, { standalone: false, ordinal: i + 1 }));
+    if ((i + 1) % 25 === 0) { updateArchiveExportStatus(`Maquetadas ${fmtNumber(i + 1, 0)} / ${fmtNumber(rows.length, 0)} fichas…`); await waitFrame100rcfinal(); }
+  }
+  const title = "Dossier de fichas técnicas · SwiftRemo";
+  const index = options.includeIndex ? `<section class="cover"><h1>Dossier de fichas técnicas</h1><p>SwiftRemo SQL · ${fmtNumber(rows.length, 0)} elaboraciones · ${new Date().toLocaleDateString("es-ES")}</p><ol class="index-list">${rows.map((r, i) => `<li><a href="#ficha-${i + 1}">${esc(r.name || "Ficha")}</a> <span>${esc(r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería")}</span></li>`).join("")}</ol></section>` : "";
+  return archiveExportDocHtml(title, `${index}${sheets.join("\n")}`);
+}
+
+async function buildArchiveExportRecipeHtml(uid, options, { standalone = false, ordinal = 1 } = {}) {
+  const r = repo.unifiedElaborationByUid(uid);
+  if (!r) return "";
+  const lines = options.includeIngredients ? repo.unifiedElaborationLines(uid) : [];
+  const steps = options.includeProcess ? repo.unifiedElaborationSteps(uid) : [];
+  const typeLabel = r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería";
+  const photo = options.includePhotos ? archiveExportPhotoHtml(uid) : "";
+  const ingredientHtml = options.includeIngredients ? `<h2>Ingredientes / líneas técnicas</h2>${archiveExportTable(["Línea", "Cantidad", "Rol/fase", options.includeCost ? "Coste" : "Nota"], lines.map(x => [x.line_name || "—", x.baker_pct !== null && x.baker_pct !== undefined ? `${fmtNumber(x.baker_pct, 3)} %` : [fmtNumber(x.quantity, 3), x.unit].filter(Boolean).join(" ") || "—", [x.baker_role ? roleLabel(x.baker_role) : "", x.phase || ""].filter(Boolean).join(" · "), options.includeCost ? fmtMoney(x.estimated_cost || 0) : (x.technical_note || "")]))}` : "";
+  const processHtml = options.includeProcess ? `<h2>Proceso / APPCC</h2>${steps.length ? `<ol class="process-list">${steps.map(st => `<li><b>${esc(st.phase || "Proceso")} ${fmtNumber(st.step_order,0)}</b><p>${esc(st.instruction || "")}</p>${st.notes ? `<small>${esc(st.notes)}</small>` : ""}</li>`).join("")}</ol>` : `<p class="muted">Sin proceso estructurado disponible.</p>`}` : "";
+  const sheet = `<section class="export-sheet" id="ficha-${ordinal}">
+    <header class="export-head"><div><div class="brand">SwiftRemo SQL</div><h1>${esc(r.name || "Ficha técnica")}</h1><p>${esc(typeLabel)} · ${esc([r.family, r.subfamily].filter(Boolean).join(" · ") || "Sin familia")}</p></div><div class="right"><b>Ficha ${fmtNumber(ordinal,0)}</b><br><span>${new Date().toLocaleDateString("es-ES")}</span></div></header>
+    ${photo}
+    <div class="export-grid">
+      ${archiveExportBox("Tipo", typeLabel)}
+      ${archiveExportBox("Base", r.base_label || "—")}
+      ${archiveExportBox("Estado", statusLabel(r.status))}
+      ${options.includeCost ? archiveExportBox("Coste base", fmtMoney(r.total_cost || 0)) : ""}
+    </div>
+    ${ingredientHtml}
+    ${processHtml}
+  </section>`;
+  return standalone ? archiveExportDocHtml(`${r.name || "Ficha técnica"} · SwiftRemo`, sheet) : sheet;
+}
+
+function archiveExportPhotoHtml(uid) {
+  try {
+    const [kind, id] = String(uid || "").split(":");
+    const rows = recipeMediaRows(kind, Number(id), { includeData: true });
+    const primary = rows.find(r => r.role === "primary") || rows[0];
+    if (!primary?.data) return "";
+    const src = dataUrlFromBytes100rcfinal(primary.data, primary.mime_type || "image/jpeg");
+    return `<figure class="export-photo"><img src="${src}" alt="${esc(primary.alt_text || primary.caption || primary.file_name || "Foto de la ficha")}"><figcaption>${esc(primary.caption || primary.file_name || "Foto principal")}</figcaption></figure>`;
+  } catch (err) {
+    console.warn("[SwiftRemo] No se pudo incluir foto en exportación", err);
+    return "";
+  }
+}
+
+function dataUrlFromBytes100rcfinal(bytes, mime = "application/octet-stream") {
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < arr.length; i += chunk) binary += String.fromCharCode(...arr.subarray(i, i + chunk));
+  return `data:${mime};base64,${btoa(binary)}`;
+}
+
+function archiveExportDocHtml(title, body) {
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${archiveExportPrintCss100rcfinal()}</style></head><body><main class="doc">${body}</main></body></html>`;
+}
+
+function archiveExportPrintCss100rcfinal() {
+  return `@page{size:A4;margin:12mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#202124;margin:0;font-size:10.2px;line-height:1.28}.doc{max-width:186mm;margin:0 auto}.cover{page-break-after:always;break-after:page}.cover h1{font-size:24px;margin:18mm 0 4mm}.index-list{columns:2;column-gap:10mm}.index-list li{break-inside:avoid;margin:0 0 3px}.index-list span{color:#64748b;font-size:9px}.export-sheet{page-break-after:always;break-after:page}.export-sheet:last-child{page-break-after:auto;break-after:auto}.export-head{display:grid;grid-template-columns:1fr auto;gap:10px;border-bottom:2px solid #1f2937;padding-bottom:8px;margin-bottom:10px;break-inside:avoid}.brand{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.04em}h1{font-size:18px;line-height:1.12;margin:3px 0 4px}h2{font-size:12.5px;border-bottom:1px solid #cfd6dd;padding-bottom:3px;margin:12px 0 6px}.right{text-align:right;color:#475569}.export-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:7px 0}.box{border:1px solid #cfd6dd;border-radius:8px;padding:5px 6px;min-height:34px;break-inside:avoid}.box b{display:block;font-size:8.6px;color:#52606d;text-transform:uppercase;letter-spacing:.03em}.box span{font-size:11.5px;font-weight:700}table{width:100%;border-collapse:collapse;margin:5px 0 8px;table-layout:auto}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}th,td{border:1px solid #cfd6dd;padding:3px 4px;vertical-align:top;overflow-wrap:break-word}th{background:#eef2f6;font-size:9px;text-align:left}.process-list{margin:4px 0 8px 18px;padding:0}.process-list li{margin:4px 0;break-inside:avoid}.process-list p{margin:2px 0}.muted{color:#64748b}.export-photo{float:right;width:48mm;margin:0 0 6px 8px;break-inside:avoid}.export-photo img{width:100%;max-height:42mm;object-fit:contain;border:1px solid #d7dce2;border-radius:6px}.export-photo figcaption{font-size:8.2px;color:#64748b;text-align:center;margin-top:2px}@media print{.export-sheet{page-break-after:always}h1{font-size:17px}h2{font-size:12px}th{font-size:8.5px}}`;
+}
+
+function archiveExportBox(label, value) { return `<div class="box"><b>${esc(label)}</b><span>${esc(value ?? "—")}</span></div>`; }
+
+function archiveExportTable(headers, rows) {
+  if (!rows.length) return `<p class="muted">Sin datos.</p>`;
+  return `<table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(c => `<td>${esc(c ?? "")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+function openArchiveExportPreview(html) {
+  let overlay = document.querySelector("#archiveExportPrintPreview100rcfinal");
+  if (overlay) overlay.remove();
+  overlay = document.createElement("div");
+  overlay.id = "archiveExportPrintPreview100rcfinal";
+  overlay.className = "swiftremo-print-preview-631";
+  overlay.innerHTML = `<style>.swiftremo-print-preview-631{position:fixed;inset:0;z-index:10000;background:#0f172a99;display:grid;grid-template-rows:auto 1fr}.swiftremo-print-toolbar-631{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 12px;background:#fff;border-bottom:1px solid #d7dce2;box-shadow:0 4px 16px #0002}.swiftremo-print-toolbar-631 strong{font-size:14px;color:#111827}.swiftremo-print-toolbar-631 .actions{display:flex;gap:8px;flex-wrap:wrap}.swiftremo-print-toolbar-631 button{border:1px solid #1f6feb;background:#1f6feb;color:#fff;padding:8px 12px;border-radius:10px;font-weight:700}.swiftremo-print-toolbar-631 button.secondary{background:#fff;color:#1f2937;border-color:#cfd6dd}.swiftremo-print-frame-631{width:100%;height:100%;border:0;background:#fff}</style><div class="swiftremo-print-toolbar-631"><div><strong>Dossier de fichas técnicas</strong><span class="print-hint-669"> Usa Imprimir / guardar PDF para crear un único documento.</span></div><div class="actions"><button type="button" data-print-now>Imprimir / guardar PDF</button><button type="button" class="secondary" data-print-close>Volver</button></div></div><iframe class="swiftremo-print-frame-631" title="Vista previa de fichas"></iframe>`;
+  document.body.appendChild(overlay);
+  const frame = overlay.querySelector("iframe");
+  frame.srcdoc = html;
+  overlay.querySelector("[data-print-close]").addEventListener("click", () => overlay.remove());
+  overlay.querySelector("[data-print-now]").addEventListener("click", () => { const win = frame.contentWindow; if (!win) return; win.focus(); win.print(); });
+}
+
+function safeFileName100rcfinal(name) {
+  const slug = slugIdFromName(String(name || "ficha"));
+  return (slug || "ficha").slice(0, 90);
+}
+
+function zipStored100rcfinal(entries) {
+  const encoder = new TextEncoder();
+  const files = entries.map(e => ({ name: e.name, nameBytes: encoder.encode(e.name), data: encoder.encode(e.text), crc: 0, offset: 0 }));
+  files.forEach(f => { f.crc = crc32_100rcfinal(f.data); });
+  const chunks = [];
+  let offset = 0;
+  const push = arr => { chunks.push(arr); offset += arr.length; };
+  files.forEach(f => {
+    f.offset = offset;
+    push(zipLocalHeader100rcfinal(f)); push(f.nameBytes); push(f.data);
+  });
+  const centralStart = offset;
+  files.forEach(f => { push(zipCentralHeader100rcfinal(f)); push(f.nameBytes); });
+  const centralSize = offset - centralStart;
+  push(zipEndRecord100rcfinal(files.length, centralSize, centralStart));
+  const out = new Uint8Array(offset);
+  let pos = 0;
+  chunks.forEach(c => { out.set(c, pos); pos += c.length; });
+  return out;
+}
+
+function u16_100rcfinal(v){ const b=new Uint8Array(2); const d=new DataView(b.buffer); d.setUint16(0,v,true); return b; }
+function u32_100rcfinal(v){ const b=new Uint8Array(4); const d=new DataView(b.buffer); d.setUint32(0,v>>>0,true); return b; }
+function concat100rcfinal(parts){ const len=parts.reduce((n,p)=>n+p.length,0); const out=new Uint8Array(len); let o=0; parts.forEach(p=>{out.set(p,o);o+=p.length;}); return out; }
+function zipLocalHeader100rcfinal(f){ return concat100rcfinal([u32_100rcfinal(0x04034b50),u16_100rcfinal(20),u16_100rcfinal(0),u16_100rcfinal(0),u16_100rcfinal(0),u16_100rcfinal(0),u32_100rcfinal(f.crc),u32_100rcfinal(f.data.length),u32_100rcfinal(f.data.length),u16_100rcfinal(f.nameBytes.length),u16_100rcfinal(0)]); }
+function zipCentralHeader100rcfinal(f){ return concat100rcfinal([u32_100rcfinal(0x02014b50),u16_100rcfinal(20),u16_100rcfinal(20),u16_100rcfinal(0),u16_100rcfinal(0),u16_100rcfinal(0),u16_100rcfinal(0),u32_100rcfinal(f.crc),u32_100rcfinal(f.data.length),u32_100rcfinal(f.data.length),u16_100rcfinal(f.nameBytes.length),u16_100rcfinal(0),u16_100rcfinal(0),u16_100rcfinal(0),u16_100rcfinal(0),u32_100rcfinal(0),u32_100rcfinal(f.offset)]); }
+function zipEndRecord100rcfinal(count,size,start){ return concat100rcfinal([u32_100rcfinal(0x06054b50),u16_100rcfinal(0),u16_100rcfinal(0),u16_100rcfinal(count),u16_100rcfinal(count),u32_100rcfinal(size),u32_100rcfinal(start),u16_100rcfinal(0)]); }
+function crc32_100rcfinal(bytes){ let c=~0; for(let i=0;i<bytes.length;i++){ c=(c>>>8)^CRC_TABLE_100RCFINAL[(c^bytes[i])&0xff]; } return (~c)>>>0; }
+const CRC_TABLE_100RCFINAL = (() => { const table = new Uint32Array(256); for (let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xedb88320^(c>>>1)):(c>>>1); table[n]=c>>>0; } return table; })();
+
 
 function renderArchiveCatalog() {
   const tableEl = document.querySelector("#archiveTable");
@@ -2222,9 +2529,14 @@ function renderArchiveCatalog() {
     rowAttrs: r => r.key === state.library.selectedKey ? "class='selected-row'" : ""
   });
 
-  const stillVisible = pageRows.some(r => r.key === state.library.selectedKey);
-  if (!stillVisible) state.library.selectedKey = "";
-  renderArchiveDetail(state.library.selectedKey);
+  const selectedKey = state.library.selectedKey || "";
+  const stillVisible = pageRows.some(r => r.key === selectedKey);
+  if (selectedKey && !stillVisible) {
+    const detailEl = document.querySelector("#archiveDetail");
+    if (detailEl) detailEl.dataset.selectionOutsidePage = "1";
+  }
+  renderArchiveDetail(selectedKey);
+  syncArchiveQuickViewChrome();
 }
 
 function renderArchiveSummary(rows, pageData = null) {
@@ -2260,9 +2572,245 @@ function archiveHeaders() {
 }
 
 function archiveActionsHtml(r) {
-  const detail = `<button type="button" class="btn ghost mini-btn-666b" data-library-detail="${esc(r.key)}">Detalle</button>`;
+  const detail = `<button type="button" class="btn ghost mini-btn-666b" data-library-detail="${esc(r.key)}">Vista rápida</button>`;
   if (r.sourceKind === "ingredient") return detail;
   return `${detail} <button type="button" class="btn ghost mini-btn-666b" data-library-open="${esc(r.uid)}">Editar</button> <button type="button" class="btn primary mini-btn-666b" data-add-elaboration-work="${esc(r.uid)}">Añadir</button>`;
+}
+
+
+function panelConfig1170(panel) {
+  const map = {
+    archiveQuickView: { panel: "#archiveQuickViewCard", backdrop: "#archiveQuickViewBackdrop", bodyClass: "archive-quickview-active-1170", openClass: "quickview-open" },
+    ingredientEditor: { panel: "#ingredientEditorPanel", backdrop: "#ingredientEditorBackdrop", bodyClass: "ingredient-editor-active-1170", openClass: "panel-open" },
+    culinaryEditor: { panel: "#culinaryEditorPanel", backdrop: "#culinaryEditorBackdrop", bodyClass: "culinary-editor-active-1170", openClass: "panel-open" },
+    bakeryEditor: { panel: "#bakeryEditorPanel", backdrop: "#bakeryEditorBackdrop", bodyClass: "bakery-editor-active-1170", openClass: "panel-open" },
+    systemDiagnostic: { panel: "#systemDiagnosticPanel", backdrop: "#systemDiagnosticBackdrop", bodyClass: "system-diagnostic-active-1170", openClass: "panel-open" },
+    archiveExport: { panel: "#archiveExportPanel", backdrop: "#archiveExportBackdrop", bodyClass: "archive-export-active-100rcfinal", openClass: "panel-open" },
+    workshopAdd: { panel: "#workshopAddPanel", backdrop: "#workshopAddBackdrop", bodyClass: "workshop-add-active-rc2", openClass: "panel-open" }
+  };
+  return map[panel] || null;
+}
+
+function openAppPanel(panel) {
+  const cfg = panelConfig1170(panel);
+  if (!cfg) return;
+  state.panels.scroll = state.panels.scroll || {};
+  if (state.panels.scroll[panel] === undefined) state.panels.scroll[panel] = window.scrollY || window.pageYOffset || 0;
+  if (panel !== "archiveQuickView" && state.library.quickViewOpen) closeArchiveQuickView({ force: true });
+  if (panel !== "ingredientEditor" && state.ingredientEditor.open) closeIngredientEditorPanel({ force: true });
+  if (panel !== "culinaryEditor" && state.culinaryEditor.open) closeCulinaryEditorPanel({ force: true });
+  if (panel !== "bakeryEditor" && state.bakeryEditor.open) closeBakeryEditorPanel({ force: true });
+  if (panel !== "systemDiagnostic" && state.systemDiagnostic.open) closeSystemDiagnosticPanel({ force: true });
+  if (panel !== "archiveExport" && state.archiveExport.open) closeArchiveExportPanel({ force: true });
+  if (panel !== "workshopAdd" && state.workshopAdd?.open) closeWorkshopAddPanel({ force: true });
+  if (panel === "archiveQuickView") state.library.quickViewOpen = Boolean(state.library.selectedKey);
+  if (panel === "ingredientEditor") state.ingredientEditor.open = true;
+  if (panel === "culinaryEditor") state.culinaryEditor.open = true;
+  if (panel === "bakeryEditor") state.bakeryEditor.open = true;
+  if (panel === "systemDiagnostic") state.systemDiagnostic.open = true;
+  if (panel === "archiveExport") state.archiveExport.open = true;
+  if (panel === "workshopAdd") state.workshopAdd = { open: true };
+  state.panels.active = panel;
+  syncAppPanel(panel);
+}
+
+function closeTopAppPanel(opts = {}) {
+  if (state.panels.active) return closeAppPanel(state.panels.active, opts);
+  if (state.archiveExport.open) return closeAppPanel("archiveExport", opts);
+  if (state.systemDiagnostic.open) return closeAppPanel("systemDiagnostic", opts);
+  if (state.bakeryEditor.open) return closeAppPanel("bakeryEditor", opts);
+  if (state.culinaryEditor.open) return closeAppPanel("culinaryEditor", opts);
+  if (state.ingredientEditor.open) return closeAppPanel("ingredientEditor", opts);
+  if (state.library.quickViewOpen) return closeAppPanel("archiveQuickView", opts);
+}
+
+function closeAppPanel(panel = "", opts = {}) {
+  if (!panel) panel = state.panels.active;
+  if (panel === "ingredientEditor") return closeIngredientEditorPanel(opts);
+  if (panel === "culinaryEditor") return closeCulinaryEditorPanel(opts);
+  if (panel === "bakeryEditor") return closeBakeryEditorPanel(opts);
+  if (panel === "systemDiagnostic") return closeSystemDiagnosticPanel(opts);
+  if (panel === "archiveExport") return closeArchiveExportPanel(opts);
+  if (panel === "workshopAdd") return closeWorkshopAddPanel(opts);
+  if (panel === "archiveQuickView") return closeArchiveQuickView(opts);
+}
+
+function syncAppPanel(panel) {
+  const cfg = panelConfig1170(panel);
+  if (!cfg) return;
+  const node = document.querySelector(cfg.panel);
+  const backdrop = document.querySelector(cfg.backdrop);
+  const isOpen = panel === "archiveQuickView" ? Boolean(state.library.quickViewOpen && state.library.selectedKey) : panel === "culinaryEditor" ? Boolean(state.culinaryEditor.open) : panel === "bakeryEditor" ? Boolean(state.bakeryEditor.open) : panel === "systemDiagnostic" ? Boolean(state.systemDiagnostic.open) : panel === "archiveExport" ? Boolean(state.archiveExport.open) : panel === "workshopAdd" ? Boolean(state.workshopAdd?.open) : Boolean(state.ingredientEditor.open);
+  if (node) {
+    node.classList.toggle(cfg.openClass, isOpen);
+    node.classList.toggle("app-panel-open-1170", isOpen);
+    node.setAttribute("aria-hidden", isOpen ? "false" : "true");
+  }
+  if (backdrop) backdrop.hidden = !isOpen;
+  document.body.classList.toggle(cfg.bodyClass, isOpen);
+  document.body.classList.toggle("app-panel-active-1170", Boolean(state.library.quickViewOpen || state.ingredientEditor.open || state.culinaryEditor.open || state.bakeryEditor.open || state.systemDiagnostic.open || state.archiveExport.open || state.workshopAdd?.open));
+  if (!isOpen && state.panels.active === panel) {
+    state.panels.active = state.systemDiagnostic.open ? "systemDiagnostic" : state.bakeryEditor.open ? "bakeryEditor" : state.culinaryEditor.open ? "culinaryEditor" : state.ingredientEditor.open ? "ingredientEditor" : state.archiveExport.open ? "archiveExport" : state.workshopAdd?.open ? "workshopAdd" : state.library.quickViewOpen ? "archiveQuickView" : "";
+  }
+}
+
+function setIngredientEditorDirty(dirty) {
+  state.ingredientEditor.dirty = Boolean(dirty);
+  state.panels.dirty.ingredientEditor = Boolean(dirty);
+  const panel = document.querySelector("#ingredientEditorPanel");
+  if (panel) panel.classList.toggle("dirty", Boolean(dirty));
+}
+function setCulinaryEditorDirty(dirty) {
+  state.culinaryEditor.dirty = Boolean(dirty);
+  state.panels.dirty.culinaryEditor = Boolean(dirty);
+  const panel = document.querySelector("#culinaryEditorPanel");
+  if (panel) panel.classList.toggle("dirty", Boolean(dirty));
+}
+function setBakeryEditorDirty(dirty) {
+  state.bakeryEditor.dirty = Boolean(dirty);
+  state.panels.dirty.bakeryEditor = Boolean(dirty);
+  const panel = document.querySelector("#bakeryEditorPanel");
+  if (panel) panel.classList.toggle("dirty", Boolean(dirty));
+}
+
+function closeWorkshopAddPanel(opts = {}) {
+  state.workshopAdd = state.workshopAdd || {};
+  state.workshopAdd.open = false;
+  syncAppPanel("workshopAdd");
+  restorePanelOrigin1170("workshopAdd");
+  return true;
+}
+
+function restorePanelOrigin1170(panel) {
+  const contexts = state.panels.returnContext || {};
+  const ctx = contexts[panel];
+  if (ctx) delete contexts[panel];
+  const fallbackScroll = state.panels.scroll?.[panel];
+  if (state.panels.scroll) delete state.panels.scroll[panel];
+  const targetRoute = ctx?.route || "";
+  const targetScroll = Number.isFinite(Number(ctx?.scrollY)) ? Number(ctx.scrollY) : (Number.isFinite(Number(fallbackScroll)) ? Number(fallbackScroll) : null);
+  const activeRoute = currentResolvedRoute()?.route || "";
+  if (targetRoute && targetRoute !== activeRoute) switchTab(targetRoute);
+  if (targetScroll !== null) setTimeout(() => window.scrollTo({ top: Math.max(0, targetScroll), behavior: "auto" }), 60);
+}
+
+function closeCulinaryEditorPanel({ force = false } = {}) {
+  if (!force && state.culinaryEditor.dirty) {
+    if (!confirm("Hay cambios sin guardar en la ficha. ¿Quieres descartarlos?")) return false;
+  }
+  state.culinaryEditor.open = false;
+  setCulinaryEditorDirty(false);
+  syncAppPanel("culinaryEditor");
+  restorePanelOrigin1170("culinaryEditor");
+  return true;
+}
+
+function closeBakeryEditorPanel({ force = false } = {}) {
+  if (!force && state.bakeryEditor.dirty) {
+    if (!confirm("Hay cambios sin guardar en la fórmula panadera. ¿Quieres descartarlos?")) return false;
+  }
+  state.bakeryEditor.open = false;
+  setBakeryEditorDirty(false);
+  syncAppPanel("bakeryEditor");
+  restorePanelOrigin1170("bakeryEditor");
+  return true;
+}
+
+function closeSystemDiagnosticPanel({ force = false } = {}) {
+  state.systemDiagnostic.open = false;
+  syncAppPanel("systemDiagnostic");
+  restorePanelOrigin1170("systemDiagnostic");
+  return true;
+}
+
+function closeIngredientEditorPanel({ force = false } = {}) {
+  if (!force && state.ingredientEditor.dirty) {
+    if (!confirm("Hay cambios sin guardar en el ingrediente. ¿Quieres descartarlos?")) return false;
+  }
+  state.ingredientEditor.open = false;
+  setIngredientEditorDirty(false);
+  syncAppPanel("ingredientEditor");
+  restorePanelOrigin1170("ingredientEditor");
+  return true;
+}
+
+function bindIngredientEditorDirtyTracking() {
+  const form = document.querySelector("#ingredientForm");
+  if (!form || form.dataset.dirtyBound1170 === "1") return;
+  form.addEventListener("input", () => { if (state.ingredientEditor.open) setIngredientEditorDirty(true); });
+  form.addEventListener("change", () => { if (state.ingredientEditor.open) setIngredientEditorDirty(true); });
+  form.dataset.dirtyBound1170 = "1";
+}
+
+function renderIngredientEditorWarnings() {
+  const box = document.querySelector("#ingredientEditorWarnings");
+  if (!box) return;
+  const warnings = [];
+  const price = num(document.querySelector("#ing_purchase_price")?.value, 0);
+  const netQty = num(document.querySelector("#ing_purchase_net_quantity")?.value, 1);
+  const supplier = document.querySelector("#ing_supplier_id")?.value || "";
+  const active = document.querySelector("#ing_active")?.checked === true;
+  const culinary = document.querySelector("#ing_use_culinary")?.checked === true;
+  const bakery = document.querySelector("#ing_use_bakery")?.checked === true;
+  const purchaseUnit = document.querySelector("#ing_purchase_unit_id")?.value || "";
+  const baseUnit = document.querySelector("#ing_base_unit_id")?.value || "";
+  if (active && price <= 0) warnings.push("Ingrediente activo con precio de compra 0: los escandallos y pedidos pueden infravalorarse.");
+  if (netQty <= 0) warnings.push("La cantidad neta de compra debe ser mayor que 0.");
+  if (active && !supplier) warnings.push("Proveedor vacío: el pedido técnico quedará incompleto.");
+  if (active && !culinary && !bakery) warnings.push("Ingrediente activo sin uso asignado: no aparecerá correctamente en flujos didácticos.");
+  if (purchaseUnit && baseUnit && purchaseUnit !== baseUnit) warnings.push("Unidad de compra distinta de unidad base: revisa que la conversión sea intencionada.");
+  if (!warnings.length) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+  box.hidden = false;
+  box.innerHTML = `<b>Advertencias antes de guardar</b><ul>${warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul>`;
+}
+
+function selectArchiveDetail(key) {
+  state.library.selectedKey = key || "";
+  state.library.quickViewOpen = Boolean(state.library.selectedKey);
+  document.querySelectorAll("#archiveTable tr.selected-row").forEach(row => row.classList.remove("selected-row"));
+  if (state.library.selectedKey) {
+    document.querySelectorAll(`#archiveTable [data-library-detail="${CSS.escape(state.library.selectedKey)}"]`).forEach(btn => {
+      const row = btn.closest("tr");
+      if (row) row.classList.add("selected-row");
+    });
+  }
+  renderArchiveDetail(state.library.selectedKey);
+  openAppPanel("archiveQuickView");
+}
+
+function closeArchiveQuickView({ force = false } = {}) {
+  state.library.quickViewOpen = false;
+  syncAppPanel("archiveQuickView");
+  restorePanelOrigin1170("archiveQuickView");
+  return true;
+}
+
+function syncArchiveQuickViewChrome() {
+  syncAppPanel("archiveQuickView");
+}
+
+const mediaRefreshSeenRc6 = new Map();
+function refreshMediaUiAfterChangeRc6(detail = {}) {
+  const uid = detail.uid || (detail.kind && detail.recipeId ? `${detail.kind}:${detail.recipeId}` : "");
+  const signature = `${uid}|${detail.reason || "media"}`;
+  const now = Date.now();
+  const previous = mediaRefreshSeenRc6.get(signature) || 0;
+  if (now - previous < 120) return;
+  mediaRefreshSeenRc6.set(signature, now);
+
+  if (uid && state.library.quickViewOpen && state.library.selectedKey === uid) {
+    renderArchiveDetail(uid);
+  }
+
+  renderPublicationSafetyV152();
+  renderPrivateDataManager();
+  renderPersistencePanelRc12();
+  renderProtectionBannerV111();
+  renderExternalFolderPanelV16();
 }
 
 function renderArchiveDetail(key) {
@@ -2270,7 +2818,8 @@ function renderArchiveDetail(key) {
   if (!el) return;
   if (!key) {
     el.className = "library-detail-666b muted";
-    el.innerHTML = "Selecciona un registro para ver su detalle.";
+    el.innerHTML = "Selecciona una ficha o ingrediente para abrir su Vista rápida.";
+    syncArchiveQuickViewChrome();
     return;
   }
   if (key.startsWith("ingredient:")) {
@@ -2292,6 +2841,7 @@ function renderArchiveIngredientDetail(el, id) {
   el.innerHTML = `
     <div class="library-detail-head-666b">
       <div>
+        <p class="small muted">Vista rápida · consulta segura sin modificar la base</p>
         <h3>${esc(row.name)}</h3>
         <div class="library-detail-badges-666b">
           ${badge(row.active ? "Activo" : "Inactivo", row.active ? "ok" : "off")}
@@ -2357,6 +2907,11 @@ function copyArchiveReviewReport() {
   );
 }
 
+
+function archiveRecipeMediaPanelV160(uid) {
+  return recipeMediaPanelHtml(uid, { compact: false, showThumbnails: true, editable: true, title: "Fotos de la ficha" });
+}
+
 function renderArchiveElaborationDetail(el, uid) {
   const r = repo.unifiedElaborationByUid(uid);
   if (!r) {
@@ -2364,21 +2919,24 @@ function renderArchiveElaborationDetail(el, uid) {
     el.innerHTML = "No se encontró la elaboración.";
     return;
   }
+  const detailStart = performance.now?.() || Date.now();
   const lines = repo.unifiedElaborationLines(uid);
   const steps = repo.unifiedElaborationSteps(uid);
+  const q = qualityReview({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) });
   el.className = "library-detail-666b";
   el.innerHTML = `
     <div class="library-detail-head-666b">
       <div>
+        <p class="small muted">Vista rápida · consulta segura sin modificar la base</p>
         <h3>${esc(r.name)}</h3>
         <div class="library-detail-badges-666b">
           ${badge(r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería", r.source_type === "bakery" ? "warn" : "ok")}
           ${badge(r.production_label || r.production_model || "Modelo", r.source_type === "bakery" ? "warn" : "off")}
           ${badge(statusLabel(r.status), r.status === "validated" ? "ok" : r.status === "archived" ? "off" : "warn")}
-          ${badge(qualityReview({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) }).label, qualityBadgeType(qualityReview({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) }).type))}
+          ${badge(q.label, qualityBadgeType(q.type))}
         </div>
       </div>
-      <div class="actions">
+      <div class="actions library-detail-actions-1170">
         <button type="button" class="btn ghost" data-library-open="${esc(uid)}">Abrir / editar</button>
         <button type="button" class="btn primary" data-add-elaboration-work="${esc(uid)}">Añadir a práctica</button>
       </div>
@@ -2391,7 +2949,8 @@ function renderArchiveElaborationDetail(el, uid) {
       <div><span>Ingredientes</span><b>${fmtNumber(lines.length, 0)}</b></div>
       <div><span>Proceso</span><b>${fmtNumber(steps.length, 0)} bloque${steps.length === 1 ? "" : "s"}</b></div>
     </div>
-    ${qualityDetailHtml(qualityReview({ ...r, uid, key: uid, sourceKind: r.source_type, source_type: r.source_type, id: r.source_id, active: Number(r.active) === 1, cost: Number(r.total_cost || 0), hydration: Number(r.real_hydration_pct || 0) }))}
+    ${archiveRecipeMediaPanelV160(uid)}
+    ${qualityDetailHtml(q)}
     <h4>Ingredientes / líneas técnicas</h4>
     <div class="wide">${table([
       { label: "Línea", render: x => esc(x.line_name || "—") },
@@ -2402,6 +2961,8 @@ function renderArchiveElaborationDetail(el, uid) {
     ], lines)}</div>
     <h4>Proceso / APPCC</h4>
     <div class="library-steps-666b">${steps.length ? steps.map(st => `<article><b>${esc(st.phase || "Paso")} ${fmtNumber(st.step_order,0)}</b><p>${esc(st.instruction || "")}</p>${st.notes ? `<small>${esc(st.notes)}</small>` : ""}</article>`).join("") : "<p class='small'>Sin proceso estructurado disponible.</p>"}</div>`;
+  const elapsed = (performance.now?.() || Date.now()) - detailStart;
+  if (elapsed > 120) console.info(`[SwiftRemo] Vista rápida renderizada en ${Math.round(elapsed)} ms`, uid);
 }
 
 function renderElaborations() {
@@ -2445,6 +3006,14 @@ async function addUnifiedElaborationToWork(uid) {
     if (!r) throw new Error("No se encontró la elaboración seleccionada.");
     openQuantityDialogForElaboration(r);
   } catch (err) { console.error(err); toast(err.message || "No se pudo preparar la cantidad.", "err"); }
+}
+
+function openQuantityDialogForUid(uid, item = null) {
+  if (!repo) throw new Error("La base todavía no está preparada.");
+  const r = repo.unifiedElaborationByUid(uid);
+  if (!r) throw new Error("No se encontró la elaboración seleccionada.");
+  openQuantityDialogForElaboration(r, item);
+  return true;
 }
 
 function allowedQuantityModesFor(elab) {
@@ -2691,6 +3260,7 @@ async function saveQuantityDialog() {
       toast("Añadido a la práctica con cantidad definida.");
     }
     closeQuantityDialog();
+    closeTopAppPanel({ force: true });
     renderSelection();
     await autosave({ backup: false, reason: state.quantityDialog.mode === "edit" ? "editar cantidad práctica actual" : "añadir con cantidad práctica actual" });
     switchTab("workshop-practice");
@@ -2722,17 +3292,25 @@ function fallbackPromptQuantity(elab, item = null) {
 function openUnifiedElaboration(uid) {
   const r = repo?.unifiedElaborationByUid(uid);
   if (!r) return toast("No se encontró la elaboración.", "err");
+  const active = currentResolvedRoute();
+  const origin = { route: active?.route || "", scrollY: window.scrollY || window.pageYOffset || 0 };
   if (r.source_type === "bakery") {
+    if (origin.route && origin.route !== "archive-bakery") state.panels.returnContext.bakeryEditor = origin;
     switchTab("archive-bakery");
     setTimeout(() => {
+      if (window.SwiftRemoBakery?.openRecipeEditor) { window.SwiftRemoBakery.openRecipeEditor(r.source_id); return; }
       const sel = document.querySelector("#bakeryRecipeSelectV37");
       if (sel) { sel.value = r.source_id; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+      window.SwiftRemoCore?.openAppPanel?.("bakeryEditor");
     }, 80);
   } else {
+    if (origin.route && origin.route !== "archive-culinary") state.panels.returnContext.culinaryEditor = origin;
     switchTab("archive-culinary");
     setTimeout(() => {
+      if (window.SwiftRemoCulinary?.openRecipeEditor) { window.SwiftRemoCulinary.openRecipeEditor(r.source_id); return; }
       const sel = document.querySelector("#culinaryRecipeSelectV51");
       if (sel) { sel.value = r.source_id; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+      window.SwiftRemoCore?.openAppPanel?.("culinaryEditor");
     }, 80);
   }
 }
@@ -2782,7 +3360,7 @@ function renderIngredients() {
       { label: "Estado", render: r => badge(r.active ? "Activo" : "Inactivo", r.active ? "ok" : "off") }
     ], rows, { rowAttrs: r => r.id === selectedIngredientId ? "class='selected-row'" : "" });
   }
-  document.querySelectorAll("[data-edit-ing]").forEach(btn => btn.addEventListener("click", () => loadIngredientForm(btn.dataset.editIng)));
+  document.querySelectorAll("[data-edit-ing]").forEach(btn => btn.addEventListener("click", () => loadIngredientForm(btn.dataset.editIng, { openPanel: true })));
 }
 
 function renderIngredientCards(rows, page = null) {
@@ -2821,30 +3399,58 @@ function renderSelection() {
   const historyEl = document.querySelector("#workshopPrintHistory");
   const historyCard = document.querySelector("#workshopPrintHistoryCard");
   if (!summaryEl || !itemsEl) return;
+
+  if (workshopView?.renderSelection) {
+    const s = repo.workSelectionSummary();
+    const rows = repo.workSelectionItems();
+    const jobs = historyEl ? repo.printJobs(20) : null;
+    workshopView.renderSelection(
+      { s, rows, jobs },
+      {
+        summaryEl, itemsEl, historyEl, historyCard,
+        fmtNumber, fmtMoney, esc, table, formatDate,
+        workshopModeLabel, workshopQuantityLabel, printSourceLabel
+      }
+    );
+    updateWorkshopActionState();
+    return;
+  }
+
   const s = repo.workSelectionSummary();
   const rows = repo.workSelectionItems();
   if (!rows.length) {
-    summaryEl.classList.add("empty-practice-summary");
+    summaryEl.classList.add("empty-practice-summary", "workshop-command-zone-rc1");
     summaryEl.innerHTML = `
-      <div class="empty-action-card-628">
-        <b>Práctica sin elaboraciones.</b>
-        <span>Usa el buscador de esta misma pantalla para añadir la primera elaboración y definir su producción.</span>
-        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Buscar elaboración</button></div>
+      <div class="workshop-next-card-rc1 primary">
+        <span class="workshop-step-num-rc1">1</span>
+        <div><b>Empieza por añadir una elaboración</b><small>Busca por nombre, familia o tipo. Al añadirla se pedirá la cantidad total de producción.</small></div>
+        <span class="workshop-next-note-rc2">Acceso único: botón “Buscar y añadir elaboración”.</span>
+      </div>
+      <div class="workshop-next-card-rc1">
+        <span class="workshop-step-num-rc1">2</span>
+        <div><b>Luego revisa el pedido</b><small>El pedido se activa automáticamente cuando haya elaboraciones en la práctica.</small></div>
+        <button type="button" class="btn ghost" data-tab="workshop-order" disabled aria-disabled="true">Pedido bloqueado</button>
       </div>`;
     itemsEl.innerHTML = `
-      <div class="empty-action-card-628">
+      <div class="empty-action-card-628 workshop-empty-panel-rc1">
         <b>No has añadido elaboraciones.</b>
-        <span>Las cantidades se decidirán al añadir cada elaboración: cantidad total de esta práctica.</span>
-        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir desde el buscador</button><button type="button" class="btn ghost" data-tab="archive-catalog">Abrir Biblioteca completa</button></div>
+        <span>Las cantidades se decidirán al añadir cada elaboración. Archivo técnico queda reservado para revisión avanzada.</span>
+        <div class="actions"><button type="button" class="btn ghost" data-tab="archive-catalog">Abrir Archivo técnico</button></div>
       </div>`;
   } else {
     summaryEl.classList.remove("empty-practice-summary");
+    summaryEl.classList.add("workshop-command-zone-rc1");
     summaryEl.innerHTML = `
       <div class="kpi"><span>Elaboraciones</span><b>${fmtNumber(s.total_items || 0,0)}</b></div>
       <div class="kpi"><span>Panadería</span><b>${fmtNumber(s.bakery_items || 0,0)}</b></div>
       <div class="kpi"><span>Cocina/Pastelería</span><b>${fmtNumber(s.culinary_items || 0,0)}</b></div>
-      <div class="kpi"><span>Coste base aprox.</span><b>${fmtMoney(s.estimated_base_cost || 0)}</b></div>`;
-    itemsEl.innerHTML = table([
+      <div class="kpi"><span>Coste base aprox.</span><b>${fmtMoney(s.estimated_base_cost || 0)}</b></div>
+      <div class="workshop-next-card-rc1 full">
+        <span class="workshop-step-num-rc1">✓</span>
+        <div><b>Práctica lista para revisar</b><small>Cambia cantidades aquí, revisa pedido y genera fichas/pedido desde Salida.</small></div>
+        <div class="workshop-inline-actions-rc1"><button type="button" class="btn primary" data-tab="workshop-order">Revisar pedido</button><button type="button" class="btn ghost" data-tab="workshop-output">Imprimir / exportar</button></div>
+      </div>`;
+    const desktopTable = table([
       { label: "Tipo", render: r => r.item_type === "bakery" ? "Panadería" : "Cocina/Pastelería" },
       { label: "Elaboración", key: "item_name" },
       { label: "Modo", render: r => workshopModeLabel(r) },
@@ -2852,6 +3458,19 @@ function renderSelection() {
       { label: "Coste base", render: r => fmtMoney(r.estimated_cost) },
       { label: "", render: r => `<div class="quantity-inline-actions-626"><button type="button" class="btn compact" data-workshop-edit="${esc(r.selection_item_id)}">Cambiar</button><button type="button" class="btn danger compact" data-workshop-delete="${esc(r.selection_item_id)}">Quitar</button></div>` }
     ], rows);
+    const mobileCards = rows.map(r => `
+      <article class="workshop-item-card-rc1">
+        <div class="workshop-card-main-rc1">
+          <b>${esc(r.item_name)}</b>
+          <span>${esc(r.item_type === "bakery" ? "Panadería" : "Cocina/Pastelería")} · ${esc(workshopModeLabel(r))}</span>
+        </div>
+        <dl class="workshop-card-facts-rc1">
+          <div><dt>Cantidad</dt><dd><span class="quantity-chip-626">${workshopQuantityLabel(r)}</span></dd></div>
+          <div><dt>Coste base</dt><dd>${fmtMoney(r.estimated_cost)}</dd></div>
+        </dl>
+        <div class="workshop-card-actions-rc1"><button type="button" class="btn compact" data-workshop-edit="${esc(r.selection_item_id)}">Cambiar cantidad</button><button type="button" class="btn danger compact" data-workshop-delete="${esc(r.selection_item_id)}">Quitar</button></div>
+      </article>`).join("");
+    itemsEl.innerHTML = `<div class="workshop-table-view-rc1">${desktopTable}</div><div class="workshop-card-list-rc1">${mobileCards}</div>`;
   }
   if (historyEl) {
     const jobs = repo.printJobs(20);
@@ -3117,13 +3736,13 @@ function renderOrder() {
       <div class="empty-action-card-628">
         <b>Pedido vacío.</b>
         <span>Añade elaboraciones desde Práctica y define cantidades para calcular el pedido.</span>
-        <div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button><button type="button" class="btn ghost" data-tab="workshop-practice">Ir al Taller</button></div>
+        <div class="actions"><button type="button" class="btn ghost" data-tab="workshop-practice">Ir al Taller</button></div>
       </div>`;
     updateWorkshopActionState();
     return;
   }
   updateWorkshopActionState();
-  tableEl.innerHTML = table([
+  const orderTable = table([
     { label: "Grupo", key: "order_group" },
     { label: "Ingrediente", key: "ingredient" },
     { label: "Cantidad", render: r => fmtNumber(r.purchase_quantity, 3) },
@@ -3133,6 +3752,20 @@ function renderOrder() {
     { label: "Almacén", render: r => r.storage_zone || "—" },
     { label: "Usado en", key: "used_in" }
   ], rows);
+  const orderCards = rows.map(r => `
+    <article class="workshop-order-card-rc1">
+      <div class="workshop-card-main-rc1">
+        <b>${esc(r.ingredient)}</b>
+        <span>${esc(r.order_group || "Sin grupo")} · ${esc(r.storage_zone || "Sin almacén")}</span>
+      </div>
+      <dl class="workshop-card-facts-rc1">
+        <div><dt>Cantidad</dt><dd>${fmtNumber(r.purchase_quantity, 3)} ${esc(r.purchase_unit || "")}</dd></div>
+        <div><dt>Coste</dt><dd>${fmtMoney(r.estimated_cost_total)}</dd></div>
+        <div><dt>Proveedor</dt><dd>${esc(r.supplier || "—")}</dd></div>
+      </dl>
+      <details class="workshop-card-detail-rc1"><summary>Usado en</summary><p>${esc(r.used_in || "—")}</p></details>
+    </article>`).join("");
+  tableEl.innerHTML = `<div class="workshop-table-view-rc1">${orderTable}</div><div class="workshop-card-list-rc1">${orderCards}</div>`;
 }
 
 function renderMargins() {
@@ -3173,7 +3806,7 @@ function filterSubfamilies() {
   fillSelect($("#ing_subfamily_id"), (catalogs?.subfamilies || []).filter(s => !familyId || s.family_id === familyId), { empty: "Sin subfamilia" });
 }
 
-function newIngredientForm() { switchTab("archive-ingredients"); setTimeout(() => { clearIngredientForm(); $("#ing_name")?.focus(); }, 0); }
+function newIngredientForm() { setTimeout(() => { clearIngredientForm(false); openAppPanel("ingredientEditor"); $("#ing_name")?.focus(); }, 0); }
 
 function clearIngredientForm(shouldRender = true) {
   selectedIngredientId = null;
@@ -3188,14 +3821,18 @@ function clearIngredientForm(shouldRender = true) {
   const active = $("#ing_active"); if (active) active.checked = true;
   const culinary = $("#ing_use_culinary"); if (culinary) culinary.checked = true;
   const title = $("#ingredientFormTitle"); if (title) title.textContent = "Nuevo ingrediente";
+  const hint = $("#ingredientEditorModeHint"); if (hint) hint.textContent = "Nuevo ingrediente local. Los campos con * son obligatorios; el ID se genera automáticamente.";
+  renderIngredientEditorWarnings();
+  setIngredientEditorDirty(false);
   if (shouldRender && repo) renderIngredients();
 }
 
-function loadIngredientForm(id) {
+function loadIngredientForm(id, opts = {}) {
   const ing = repo.ingredientById(id);
   if (!ing) return toast("No se encontró el ingrediente.", "err");
   selectedIngredientId = id;
   const title = $("#ingredientFormTitle"); if (title) title.textContent = `Editar ingrediente · ${ing.name}`;
+  const hint = $("#ingredientEditorModeHint"); if (hint) hint.textContent = "Edición local de ingrediente. Guardar recalcula catálogo, fichas, pedidos e impresión.";
   setValue("ing_id", ing.id); setValue("ing_name", ing.name);
   setValue("ing_family_id", ing.family_id); filterSubfamilies();
   setValue("ing_subfamily_id", ing.subfamily_id); setValue("ing_base_unit_id", ing.base_unit_id);
@@ -3208,6 +3845,9 @@ function loadIngredientForm(id) {
   $("#ing_use_culinary").checked = !!ing.use_culinary;
   $("#ing_use_bakery").checked = !!ing.use_bakery;
   $("#ing_active").checked = !!ing.active;
+  renderIngredientEditorWarnings();
+  setIngredientEditorDirty(false);
+  if (opts.openPanel !== false) openAppPanel("ingredientEditor");
   renderIngredients();
 }
 
@@ -3237,14 +3877,19 @@ async function saveIngredientFromForm(ev) {
       $notes: nullIfEmpty($("#ing_notes").value),
       $active: $("#ing_active").checked ? 1 : 0
     };
+    renderIngredientEditorWarnings();
     if (!data.$base_unit_id) throw new Error("La unidad base es obligatoria.");
     if (data.$purchase_net_quantity <= 0) throw new Error("La cantidad neta de compra debe ser mayor que 0.");
     if (data.$waste_pct < 0 || data.$waste_pct >= 100) throw new Error("La merma debe estar entre 0 y 99,99 %.");
     repo.saveIngredient(data);
     catalogs = repo.catalogs();
     selectedIngredientId = id;
-    renderAll();
-    loadIngredientForm(id);
+    renderIngredients();
+    renderArchiveCatalog();
+    renderSelection();
+    renderOrder();
+    loadIngredientForm(id, { openPanel: true });
+    setIngredientEditorDirty(false);
     await autosave({ backup: false, reason: "ingrediente" });
     window.dispatchEvent(new CustomEvent("swiftremo:bakeryChanged", { detail: { source: "app", message: "Ingrediente actualizado." } }));
     toast("Ingrediente guardado.");
@@ -3260,8 +3905,12 @@ No se borra: solo active = 0.`)) return;
   await autosave({ backup: true, reason: "antes de desactivar" });
   repo.deactivateIngredient(selectedIngredientId);
   catalogs = repo.catalogs();
-  clearIngredientForm();
-  renderAll();
+  clearIngredientForm(false);
+  closeIngredientEditorPanel({ force: true });
+  renderIngredients();
+  renderArchiveCatalog();
+  renderSelection();
+  renderOrder();
   await autosave({ backup: false, reason: "desactivar" });
   toast("Ingrediente desactivado.", "warn");
 }
@@ -3578,38 +4227,26 @@ async function importPrivatePhotoFiles(ev) {
     return;
   }
   try {
-    ensurePrivateMediaSchema();
-    const sourceId = ensureDataSourceRow(swiftDb, { id: privateSourceId(), name: privateSourceName(), owner: privateSourceName(), visibility: "private", notes: "Fotos privadas integradas como BLOB optimizado." });
+    const sourceId = privateSourceId();
+    const sourceName = privateSourceName();
     setState("Integrando fotos…", "saving");
     setStatus("Optimizando e integrando fotos privadas como BLOB…", "warn");
-    let imported = 0;
-    for (const file of files) {
-      if (!/^image\//i.test(file.type || "")) continue;
-      const media = await normalizedImageBlob(file);
-      const hash = await sha256Hex(media.bytes);
-      const mediaId = `${sourceId}_media_${hash.slice(0, 16)}`;
-      swiftDb.exec(`
-        INSERT OR IGNORE INTO media_assets(id, source_id, file_name, mime_type, width, height, size_bytes, sha256, data)
-        VALUES ($id, $source, $file, $mime, $width, $height, $size, $sha, $data);
-      `, { $id: mediaId, $source: sourceId, $file: media.fileName, $mime: media.mimeType, $width: media.width || null, $height: media.height || null, $size: media.bytes.byteLength, $sha: hash, $data: media.bytes });
-      const storedId = swiftDb.selectValue("SELECT id FROM media_assets WHERE source_id=$source AND sha256=$sha ORDER BY created_at LIMIT 1;", { $source: sourceId, $sha: hash }) || mediaId;
-      const existingPrimary = Number(swiftDb.selectValue("SELECT COUNT(*) FROM recipe_media WHERE recipe_kind=$kind AND recipe_id=$recipe AND role='primary';", { $kind: kind, $recipe: recipeId }) || 0);
-      const sortOrder = Number(swiftDb.selectValue("SELECT COALESCE(MAX(sort_order),0)+1 FROM recipe_media WHERE recipe_kind=$kind AND recipe_id=$recipe;", { $kind: kind, $recipe: recipeId }) || 1);
-      const role = existingPrimary ? "gallery" : "primary";
-      swiftDb.exec(`
-        INSERT OR REPLACE INTO recipe_media(recipe_kind, recipe_id, media_id, role, caption, alt_text, sort_order)
-        VALUES ($kind, $recipe, $media, $role, $caption, $alt, $sort);
-      `, { $kind: kind, $recipe: recipeId, $media: storedId, $role: role, $caption: media.caption, $alt: media.caption, $sort: sortOrder });
-      swiftDb.exec(`INSERT OR IGNORE INTO entity_sources(entity_type, entity_id, source_id, visibility, notes)
-                    VALUES ($type, $id, $source, 'private', 'Foto privada vinculada como BLOB.');`,
-        { $type: kind === "bakery" ? "bakery_recipe" : "culinary_recipe", $id: recipeId, $source: sourceId });
-      imported += 1;
-    }
-    if (!imported) throw new Error("No se encontró ninguna imagen válida en la selección.");
-    await autosave({ backup: true, reason: `fotos privadas ${privateSourceName()}` });
-    renderAll();
-    toast(`${imported} foto(s) integrada(s) como BLOB.`);
-    setStatus(`${imported} foto(s) privada(s) integrada(s) como BLOB y vinculada(s) a la ficha.`, "ok");
+    const result = await importPhotoFilesForRecipe(files, {
+      kind,
+      recipeId,
+      uid: `${kind}:${recipeId}`,
+      entityType: kind === "bakery" ? "bakery_recipe" : "culinary_recipe"
+    }, {
+      source: { id: sourceId, name: sourceName, owner: sourceName, visibility: "private", notes: "Fotos privadas integradas como BLOB optimizado." },
+      reason: `fotos privadas ${sourceName}`,
+      afterChange: false
+    });
+    await autosave({ backup: true, reason: `fotos privadas ${sourceName}` });
+    window.dispatchEvent(new CustomEvent("swiftremo:mediaChanged", {
+      detail: { kind, recipeId, uid: `${kind}:${recipeId}`, reason: `fotos privadas ${sourceName}` }
+    }));
+    toast(`${result.imported} foto(s) integrada(s) como BLOB.`);
+    setStatus(`${result.imported} foto(s) privada(s) integrada(s) como BLOB y vinculada(s) a la ficha.`, "ok");
   } catch (err) {
     console.error(err);
     toast(err.message || "No se pudieron integrar las fotos.", "err");

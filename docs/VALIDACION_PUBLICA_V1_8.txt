@@ -1,7 +1,0 @@
-SwiftRemo v1.10
-
-Validación realizada:
-- node --check en módulos JS.
-- Entrada app/sqlite.html actualizada a ?v=1120v112.
-- Sistema compactado y diagnóstico técnico plegado.
-- Android degradado a descarga manual + snapshot interno para evitar falsa alarma de permisos de carpeta.

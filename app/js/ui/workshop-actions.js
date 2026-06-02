@@ -1,3 +1,10 @@
+/**
+ * Aplica el estado visual de los botones del Taller según si hay elaboraciones.
+ *
+ * Exportada con dos nombres para compatibilidad:
+ *   - applyWorkshopActionState  (nombre original, usado en workshop-view.js)
+ *   - applyWorkshopButtonState  (alias, usado en app.js — permite delegación sin renombrar)
+ */
 export function applyWorkshopActionState(documentRef, workshopState) {
   const disabledSelectors = [
     "button[data-tab='workshop-order']",
@@ -30,3 +37,6 @@ export function applyWorkshopActionState(documentRef, workshopState) {
   });
   documentRef.body.dataset.workflowState = workshopState?.stage || workshopState?.status || (hasItems ? "editing" : "empty");
 }
+
+// Alias — permite a app.js delegar sin renombrar la función existente
+export const applyWorkshopButtonState = applyWorkshopActionState;

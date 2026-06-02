@@ -1,4 +1,4 @@
-import { $, table, toast } from "./ui.js?v=1152v152";
+import { $, table, toast } from "./ui.js?v=100rcfinal";
 
 let db = null;
 

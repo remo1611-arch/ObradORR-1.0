@@ -1,18 +1,7 @@
-# Fotos en SwiftRemo
+# Fotos públicas autorizadas
 
-Estructura prevista para futuras fases:
+Carpeta reservada para fotografías públicas autorizadas o generadas específicamente para SwiftRemo.
 
-```text
-assets/photos/recipes/<recipe_id>/thumb.webp
-assets/photos/recipes/<recipe_id>/01.webp
-```
+No incluir fotografías privadas, material de terceros sin autorización, marcas, personas reconocibles ni recursos con licencia incompatible.
 
-Criterio de uso:
-
-- Preferencia: fotos propias de elaboraciones realizadas en aula/taller.
-- No usar fotografías de internet sin licencia clara o permiso verificable.
-- Para fotos de terceros, conservar autoría, fuente, licencia, fecha de consulta y permiso de uso.
-- Evitar imágenes con alumnado identificable salvo autorización expresa del centro/familias cuando proceda.
-- Formato recomendado: `.webp`, miniatura `thumb.webp` y peso optimizado.
-
-Esta fase solo prepara la estructura. No incorpora fotografías a las fichas.
+Las fotos locales privadas de trabajo deben integrarse solo en copias locales y no en la base pública distribuida.

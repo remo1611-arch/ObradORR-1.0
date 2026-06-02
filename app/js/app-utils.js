@@ -1,4 +1,4 @@
-import { esc, fmtNumber } from "./ui.js?v=1152v152";
+import { esc, fmtNumber } from "./ui.js?v=100rcfinal";
 
 export function readPageSizeValue(value, fallback = 50) {
   return String(value) === "all" ? "all" : Math.max(1, Number(value) || fallback);

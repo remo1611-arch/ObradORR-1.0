@@ -1,5 +1,6 @@
-import { $, fmtNumber, table, toast } from "./ui.js?v=1152v152";
-import { printBakeryRecipe } from "./print.js?v=1152v152";
+import { $, fmtNumber, table, toast } from "./ui.js?v=100rcfinal";
+import { printBakeryRecipe } from "./print.js?v=100rcfinal";
+import { recipeMediaPanelHtml } from "./media-manager.js?v=100rcfinal";
 
 let db = null;
 
@@ -41,6 +42,8 @@ let preferment = null;
 let initialized = false;
 let bakeryIngredients = [];
 let editingLineId = null;
+let recipeFormSignature1170 = "";
+let lineFormDirty1170 = false;
 
 window.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector("#view-archive-bakery") || document.querySelector("#tab-bakery.active")) {
@@ -52,6 +55,8 @@ window.addEventListener("swiftremo:lazyViewReady", event => {
   if (event?.detail?.route === "archive-bakery" && !initialized) initBakeryV37();
 });
 window.addEventListener("swiftremo:bakeryReady", () => { if (!initialized) initBakeryV37(); });
+
+window.addEventListener("swiftremo:mediaChanged", event => { if (event?.detail?.kind === "bakery") renderRecipeMediaPanel(); });
 
 window.addEventListener("swiftremo:bakeryChanged", async event => {
   try {
@@ -74,6 +79,7 @@ window.addEventListener("swiftremo:bakeryChanged", async event => {
 async function initBakeryV37() {
   if (initialized) return;
   initialized = true;
+  exposeBakeryApi();
 
   try {
     bind();
@@ -106,13 +112,18 @@ function bind() {
   });
 
   $("#bakeryNewRecipeV40").addEventListener("click", newRecipeForm);
+  $("#bakeryOpenSelectedEditorV1170")?.addEventListener("click", () => openEditorPanel());
+  $("#bakeryOpenSelectedEditorChipV1170")?.addEventListener("click", () => openEditorPanel());
   $("#bakerySaveRecipeV40").addEventListener("click", saveRecipeFromForm);
   $("#bakeryLineFormV40").addEventListener("submit", saveLineFromForm);
   $("#bakeryClearLineV40").addEventListener("click", clearLineForm);
   $("#bakeryDeleteLineV40").addEventListener("click", deleteCurrentLine);
   $("#bakeryAddSelectionV623")?.addEventListener("click", addCurrentToSelection);
+  $("#bakeryAddToWorkshop")?.addEventListener("click", addCurrentToSelection);
   $("#bakeryPrintRecipeV40").addEventListener("click", printCurrentRecipe);
+  bindBakeryEditorDirtyTracking();
 }
+
 
 async function loadDb({ keepSelection = false } = {}) {
   db = await waitForCoreDb();
@@ -155,10 +166,13 @@ function renderRecipe() {
   lines = db.query("SELECT * FROM v_bakery_formula_lines_v35 WHERE recipe_id=$id ORDER BY sort_order, ingredient;", { $id: currentRecipeId });
 
   renderRecipeEditor();
+  renderRecipeMediaPanel();
   renderFormulaEditor();
   renderValidation();
   renderSummary();
   renderProduction();
+  renderBakeryEditorWarnings();
+  updateEditorModeHint();
 }
 
 function renderRecipeEditor() {
@@ -175,6 +189,20 @@ function renderRecipeEditor() {
   setValue("bakeryRecipeNotesV40", recipe.notes);
   $("#bakeryActiveV40").checked = Number(recipe.active ?? 1) === 1;
   clearLineForm(false);
+  recipeFormSignature1170 = currentRecipeSignature();
+  lineFormDirty1170 = false;
+  refreshBakeryDirtyState();
+}
+
+
+function renderRecipeMediaPanel() {
+  const box = $("#bakeryRecipeMediaPanelV161");
+  if (!box) return;
+  if (!currentRecipeId) {
+    box.innerHTML = `<section class="archive-media-panel-v160 media-manager-panel-v161 neutral compact"><b>Fotos de la ficha</b><span>Selecciona o guarda una formulación para añadir fotos.</span></section>`;
+    return;
+  }
+  box.innerHTML = recipeMediaPanelHtml({ kind: "bakery", recipeId: currentRecipeId, uid: `bakery:${currentRecipeId}`, entityType: "bakery_recipe" }, { compact: true, showThumbnails: true, editable: true, title: "Fotos de la ficha" });
 }
 
 function renderFormulaEditor() {
@@ -378,7 +406,7 @@ function newRecipeForm() {
     INSERT OR IGNORE INTO bakery_preferments (recipe_id, preset_id, preferment_type, calculation_mode, hydration_pct, flour_prefermented_pct, preferment_total_pct, yeast_type_id, yeast_pct, yeast_pct_base)
     VALUES ($id, 'PREF_NONE', 'Sin prefermento', 'none', 0, 0, 0, 'YEAST_NONE', 0, 'total_flour');
   `, { $id: id, $name: name.trim() });
-  persistBakeryChange("Nueva formulación creada.");
+  persistBakeryChange("Nueva formulación creada.").then(() => { openEditorPanel(true); updateEditorModeHint(true); });
 }
 
 async function saveRecipeFromForm() {
@@ -435,6 +463,10 @@ async function saveRecipeFromForm() {
       db.exec("COMMIT;");
       currentRecipeId = id;
       await persistBakeryChange("Ficha panadera guardada.");
+      recipeFormSignature1170 = currentRecipeSignature();
+      lineFormDirty1170 = false;
+      renderBakeryEditorWarnings();
+      refreshBakeryDirtyState();
     } catch (err) {
       db.exec("ROLLBACK;");
       throw err;
@@ -455,6 +487,8 @@ function loadLineForm(id) {
   setValue("bakeryLinePctV40", line.baker_pct);
   setValue("bakeryLineSortV40", line.sort_order);
   setValue("bakeryLineNoteV40", line.technical_note);
+  lineFormDirty1170 = false;
+  refreshBakeryDirtyState();
 }
 
 function clearLineForm(render = true) {
@@ -463,6 +497,8 @@ function clearLineForm(render = true) {
   if (form) form.reset();
   setValue("bakeryLineIdV40", "");
   setValue("bakeryLineSortV40", "100");
+  lineFormDirty1170 = false;
+  refreshBakeryDirtyState();
   if (render && currentRecipeId) renderFormulaEditor();
 }
 
@@ -529,6 +565,9 @@ async function saveLineFromForm(ev) {
       db.exec("COMMIT;");
       editingLineId = id;
       await persistBakeryChange("Línea de fórmula guardada.");
+      lineFormDirty1170 = false;
+      renderBakeryEditorWarnings();
+      refreshBakeryDirtyState();
     } catch (err) {
       db.exec("ROLLBACK;");
       throw err;
@@ -553,6 +592,9 @@ async function deleteCurrentLine() {
   db.exec("DELETE FROM bakery_recipe_lines WHERE id=$id;", { $id: id });
   clearLineForm(false);
   await persistBakeryChange("Línea eliminada.");
+  lineFormDirty1170 = false;
+  renderBakeryEditorWarnings();
+  refreshBakeryDirtyState();
 }
 
 async function persistBakeryChange(message) {
@@ -576,6 +618,11 @@ async function printCurrentRecipe() {
 async function addCurrentToSelection() {
   try {
     if (!currentRecipeId) return toast("Selecciona una formulación primero.", "warn");
+    if (isBakeryEditorDirty1170()) return toast("Guarda o descarta los cambios antes de añadir esta fórmula a la práctica.", "warn");
+    if (window.SwiftRemoCore?.openQuantityDialogForUid) {
+      window.SwiftRemoCore.openQuantityDialogForUid(`bakery:${currentRecipeId}`);
+      return;
+    }
     const r = one("SELECT base_flour_g, base_pieces, base_raw_piece_weight_g FROM bakery_recipes WHERE id=$id;", { $id: currentRecipeId });
     await window.SwiftRemoCore.addWorkSelectionItem({
       item_type: "bakery",
@@ -587,6 +634,107 @@ async function addCurrentToSelection() {
       notes: "Añadido desde Panadería"
     });
   } catch (err) { console.error(err); toast(err.message || "No se pudo añadir a la práctica actual.", "err"); }
+}
+
+
+function openEditorPanel(focusName = false) {
+  window.SwiftRemoCore?.openAppPanel?.("bakeryEditor");
+  renderBakeryEditorWarnings();
+  updateEditorModeHint(!currentRecipeId);
+  if (focusName) setTimeout(() => $("#bakeryRecipeNameV40")?.focus(), 0);
+}
+
+function closeEditorPanel(opts = {}) {
+  return window.SwiftRemoCore?.closeAppPanel?.("bakeryEditor", opts);
+}
+
+function openRecipeEditor(id) {
+  if (id) {
+    currentRecipeId = id;
+    const sel = $("#bakeryRecipeSelectV37");
+    if (sel) sel.value = id;
+    if (initialized && db) renderRecipe();
+  }
+  openEditorPanel();
+  return true;
+}
+
+function setBakeryDirty(dirty) {
+  window.SwiftRemoCore?.setBakeryEditorDirty?.(Boolean(dirty));
+}
+
+function bindBakeryEditorDirtyTracking() {
+  const recipeForm = $("#bakeryRecipeFormV40");
+  if (recipeForm && recipeForm.dataset.bakeryDirtyBound1170 !== "1") {
+    recipeForm.addEventListener("input", () => { refreshBakeryDirtyState(); renderBakeryEditorWarnings(); });
+    recipeForm.addEventListener("change", () => { refreshBakeryDirtyState(); renderBakeryEditorWarnings(); });
+    recipeForm.dataset.bakeryDirtyBound1170 = "1";
+  }
+  const lineForm = $("#bakeryLineFormV40");
+  if (lineForm && lineForm.dataset.bakeryDirtyBound1170 !== "1") {
+    lineForm.addEventListener("input", () => { lineFormDirty1170 = true; refreshBakeryDirtyState(); renderBakeryEditorWarnings(); });
+    lineForm.addEventListener("change", () => { lineFormDirty1170 = true; refreshBakeryDirtyState(); renderBakeryEditorWarnings(); });
+    lineForm.dataset.bakeryDirtyBound1170 = "1";
+  }
+}
+
+function currentRecipeSignature() {
+  const ids = [
+    "bakeryRecipeIdV40", "bakeryRecipeNameV40", "bakeryBaseFlourV40", "bakeryBasePiecesV40",
+    "bakeryPieceRawWeightV40", "bakeryBakingLossV40", "bakeryTargetTempV40", "bakeryStatusV40", "bakeryRecipeNotesV40"
+  ];
+  const values = ids.map(id => String($("#" + id)?.value ?? ""));
+  values.push($("#bakeryActiveV40")?.checked ? "1" : "0");
+  return JSON.stringify(values);
+}
+
+function isBakeryEditorDirty1170() {
+  const recipeDirty = recipeFormSignature1170 && currentRecipeSignature() !== recipeFormSignature1170;
+  return Boolean(recipeDirty || lineFormDirty1170);
+}
+
+function refreshBakeryDirtyState() {
+  setBakeryDirty(isBakeryEditorDirty1170());
+}
+
+function renderBakeryEditorWarnings() {
+  const box = $("#bakeryEditorWarnings");
+  if (!box) return;
+  const warnings = [];
+  const name = String($("#bakeryRecipeNameV40")?.value || "").trim();
+  const baseFlour = num($("#bakeryBaseFlourV40")?.value, 0);
+  const pieces = num($("#bakeryBasePiecesV40")?.value, 0);
+  const pieceWeight = num($("#bakeryPieceRawWeightV40")?.value, 0);
+  const bakingLoss = num($("#bakeryBakingLossV40")?.value, 0);
+  const status = $("#bakeryStatusV40")?.value || "";
+  if (!name) warnings.push("Nombre obligatorio pendiente.");
+  if (baseFlour <= 0) warnings.push("La harina base debe ser mayor que 0 para que el % panadero sea escalable.");
+  if (bakingLoss < 0 || bakingLoss >= 100) warnings.push("La merma de cocción debe estar entre 0 y 99,99 %. ");
+  if (pieces > 0 && pieceWeight <= 0) warnings.push("Hay piezas base pero falta peso crudo por pieza: el cálculo por piezas será incompleto.");
+  if (validation?.no_flour_error) warnings.push("La fórmula no tiene líneas de harina: no es técnicamente panadera.");
+  if (validation?.flour_pct_error) warnings.push(`Las harinas no suman 100 %: suma actual ${fmtNumber(validation.flour_pct_total || 0,2)} %.`);
+  if (Number(validation?.split_error_count || 0) > 0) warnings.push("Hay líneas donde prefermento + masa final no coincide con el total.");
+  if (!lines.some(l => l.line_group === "dough")) warnings.push("Fórmula sin ingredientes de masa.");
+  if (status === "archived") warnings.push("Fórmula archivada: no debería usarse en prácticas nuevas salvo revisión expresa.");
+  if (!warnings.length) { box.hidden = true; box.innerHTML = ""; return; }
+  box.hidden = false;
+  box.innerHTML = `<b>Advertencias de fórmula</b><ul>${warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul>`;
+}
+
+function updateEditorModeHint(isNew = false) {
+  const hint = $("#bakeryEditorModeHint");
+  if (!hint) return;
+  if (isNew || !currentRecipeId) hint.textContent = "Nueva fórmula local. Guarda la cabecera antes de añadir líneas, prefermentos, fotos o acabados.";
+  else hint.textContent = "Edición local de fórmula panadera. Guardar recalcula catálogo, práctica, pedido e impresión.";
+}
+
+function exposeBakeryApi() {
+  window.SwiftRemoBakery = {
+    openRecipeEditor,
+    closeEditorPanel,
+    renderRecipeMediaPanel,
+    setEditorDirty: setBakeryDirty
+  };
 }
 
 function htmlTable(headers, rows) {
