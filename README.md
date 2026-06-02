@@ -1,10 +1,10 @@
-# SwiftRemo SQL v1.15.1
+# SwiftRemo SQL v1.15.2
 
 Aplicación docente local para cocina, pastelería y panadería con SQLite/WASM, base pública inicial, trabajo local en navegador, copias `.sqlite`, guardado en carpeta vinculada cuando el navegador lo permite, vista previa/imprimibles A4 y catálogo FP Galicia ampliado.
 
 ## Entrada recomendada
 
-- GitHub Pages / servidor local: `app/sqlite.html?v=1150v115`
+- GitHub Pages / servidor local: `app/sqlite.html?v=1152v152`
 - Entrada raíz del repositorio: `index.html` redirige a la app con la misma etiqueta de caché.
 
 ## Contenido principal
@@ -18,13 +18,13 @@ Aplicación docente local para cocina, pastelería y panadería con SQLite/WASM,
 ## Uso local rápido
 
 ```bash
-python -m http.server 8795
+python -m http.server 8796
 ```
 
 Abrir:
 
 ```text
-http://127.0.0.1:8795/app/sqlite.html?v=1150v115
+http://127.0.0.1:8796/app/sqlite.html?v=1152v152
 ```
 
 ## Publicación y licencia

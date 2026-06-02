@@ -1,20 +1,20 @@
-import { SwiftDB } from "./db-service.js?v=1150v115";
-import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=1150v115";
-import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print.js?v=1150v115";
-import { loadRecovery, saveRecovery, clearRecovery, hasCurrentRecovery, linkExternalFolder, unlinkExternalFolder, getExternalFolderStatus, saveExternalCopies, externalFolderFeatureAvailable, externalFolderPlatformInfo, externalFolderFriendlyError } from "./storage-service.js?v=1150v115";
-import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson, safeJsonStringify } from "./ui.js?v=1150v115";
-import { createAppState } from "./ui/state.js?v=1150v115";
-import { createDomainShell } from "./ui/app-shell.js?v=1150v115";
-import { createWorkshopDomain } from "./domain/workshop.js?v=1150v115";
-import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=1150v115";
-import { createHistoryDomain } from "./domain/history.js?v=1150v115";
-import { createSystemBackupService } from "./domain/system-backup.js?v=1150v115";
-import { createPrintDomain } from "./domain/print.js?v=1150v115";
-import { createWorkshopView } from "./ui/workshop-view.js?v=1150v115";
-import { bootMark, bootStart, bootEnd, renderBootMetricsPanel, opfsWorkerEvaluation, renderOpfsWorkerEvaluation } from "./diagnostics.js?v=1150v115";
-import { createFeatureModuleManager } from "./feature-modules.js?v=1150v115";
-import { readPageSizeValue, pageWindow, pagerHtml, dateSlug, formatDate, setInputValue, badgeHtml, roleLabel, nullIfEmpty, num } from "./app-utils.js?v=1150v115";
-import { kpiGridHtml, archiveSummaryKpisHtml, elaborationsSummaryKpisHtml, elaborationCardHtml, ingredientCardsHtml, rangeHintHtml } from "./app-renderers.js?v=1150v115";
+import { SwiftDB } from "./db-service.js?v=1152v152";
+import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=1152v152";
+import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print.js?v=1152v152";
+import { loadRecovery, saveRecovery, clearRecovery, hasCurrentRecovery, linkExternalFolder, unlinkExternalFolder, getExternalFolderStatus, saveExternalCopies, externalFolderFeatureAvailable, externalFolderPlatformInfo, externalFolderFriendlyError } from "./storage-service.js?v=1152v152";
+import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson, safeJsonStringify } from "./ui.js?v=1152v152";
+import { createAppState } from "./ui/state.js?v=1152v152";
+import { createDomainShell } from "./ui/app-shell.js?v=1152v152";
+import { createWorkshopDomain } from "./domain/workshop.js?v=1152v152";
+import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=1152v152";
+import { createHistoryDomain } from "./domain/history.js?v=1152v152";
+import { createSystemBackupService } from "./domain/system-backup.js?v=1152v152";
+import { createPrintDomain } from "./domain/print.js?v=1152v152";
+import { createWorkshopView } from "./ui/workshop-view.js?v=1152v152";
+import { bootMark, bootStart, bootEnd, renderBootMetricsPanel, opfsWorkerEvaluation, renderOpfsWorkerEvaluation } from "./diagnostics.js?v=1152v152";
+import { createFeatureModuleManager } from "./feature-modules.js?v=1152v152";
+import { readPageSizeValue, pageWindow, pagerHtml, dateSlug, formatDate, setInputValue, badgeHtml, roleLabel, nullIfEmpty, num } from "./app-utils.js?v=1152v152";
+import { kpiGridHtml, archiveSummaryKpisHtml, elaborationsSummaryKpisHtml, elaborationCardHtml, ingredientCardsHtml, rangeHintHtml } from "./app-renderers.js?v=1152v152";
 
 const swiftDb = new SwiftDB();
 let repo = null;
@@ -195,6 +195,7 @@ function bindSystemControlsV104() {
     if (action === "export-private-copy") { exportPrivateSqlite(); return; }
     if (action === "export-technical-json") { exportJson(); return; }
     if (action === "export-full-audit-json") { exportFullAuditJsonRc12(); return; }
+    if (action === "export-publication-report") { exportPublicationSafetyReportV152(); return; }
     if (action === "link-backup-folder") { linkBackupFolderV16(); return; }
     if (action === "unlink-backup-folder") { unlinkBackupFolderV16(); return; }
     if (action === "save-external-work-copy") { saveExternalWorkCopyNowV16({ backup: false }); return; }
@@ -703,6 +704,74 @@ function renderProtectionBannerV111() {
   }
   el.className = `system-protection-banner-v111 ${tone}`;
   el.innerHTML = `<div><b>${esc(title)}</b><span>${esc(text)}</span></div><div class="system-protection-actions-v111">${actions}</div>`;
+  renderPublicationSafetyV152();
+}
+
+function publicationSafetyReportV152() {
+  const empty = {
+    checkedAt: new Date().toISOString(),
+    loaded: false,
+    publicable: false,
+    blocking: ["Base no cargada"],
+    warnings: [],
+    counts: {}
+  };
+  if (!swiftDb?.isLoaded?.()) return empty;
+  const hasTable = name => Number(swiftDb.selectValue("SELECT COUNT(*) FROM sqlite_schema WHERE type IN ('table','view') AND name=$name;", { $name: name }) || 0) > 0;
+  const count = (sql, params = {}) => Number(swiftDb.selectValue(sql, params) || 0);
+  const counts = {
+    privateSources: hasTable("data_sources") ? count("SELECT COUNT(*) FROM data_sources WHERE visibility='private';") : 0,
+    privateEntities: hasTable("entity_sources") ? count("SELECT COUNT(*) FROM entity_sources WHERE visibility='private';") : 0,
+    mediaAssets: hasTable("media_assets") ? count("SELECT COUNT(*) FROM media_assets;") : 0,
+    linkedMedia: hasTable("recipe_media") ? count("SELECT COUNT(*) FROM recipe_media;") : 0,
+    legacyPhotos: hasTable("recipe_photos") ? count("SELECT COUNT(*) FROM recipe_photos;") : 0,
+    classSessions: hasTable("class_sessions") ? count("SELECT COUNT(*) FROM class_sessions WHERE id NOT LIKE 'TMP_SELECTION_%';") : 0,
+    temporarySessions: hasTable("class_sessions") ? count("SELECT COUNT(*) FROM class_sessions WHERE id LIKE 'TMP_SELECTION_%';") : 0,
+    printJobs: hasTable("print_jobs") ? count("SELECT COUNT(*) FROM print_jobs;") : 0,
+    workItems: hasTable("work_selection_items") ? count("SELECT COUNT(*) FROM work_selection_items;") : 0
+  };
+  const blocking = [];
+  if (counts.privateSources) blocking.push(`${counts.privateSources} fuente(s) privada(s)`);
+  if (counts.privateEntities) blocking.push(`${counts.privateEntities} entidad(es) privadas trazadas`);
+  if (counts.mediaAssets || counts.linkedMedia || counts.legacyPhotos) blocking.push(`${counts.mediaAssets + counts.linkedMedia + counts.legacyPhotos} registro(s) de fotos o medios`);
+  if (counts.classSessions) blocking.push(`${counts.classSessions} sesión(es) archivadas`);
+  if (counts.printJobs) blocking.push(`${counts.printJobs} impresión(es) en histórico`);
+  if (counts.workItems) blocking.push(`${counts.workItems} elemento(s) en la práctica actual`);
+  const warnings = [];
+  if (counts.temporarySessions) warnings.push(`${counts.temporarySessions} sesión(es) temporal(es) de impresión pendiente(s) de limpieza`);
+  const publicable = blocking.length === 0;
+  return { checkedAt: new Date().toISOString(), loaded: true, publicable, blocking, warnings, counts };
+}
+
+function renderPublicationSafetyV152() {
+  const el = document.querySelector("#publicationSafetyV152");
+  if (!el) return;
+  const report = publicationSafetyReportV152();
+  if (!report.loaded) {
+    el.className = "system-publication-status-v152 neutral";
+    el.innerHTML = `<div><b>Estado de publicación</b><span>Se comprobará cuando la base esté cargada.</span></div>`;
+    return;
+  }
+  const tone = report.publicable ? (report.warnings.length ? "warn" : "ok") : "err";
+  const title = report.publicable ? "Base pública apta para GitHub" : "Base no publicable como pública";
+  const text = report.publicable
+    ? (report.warnings.length ? `Sin material privado, pero conviene revisar: ${report.warnings.join('; ')}.` : "No se detectan fuentes privadas, fotos BLOB, histórico ni práctica activa. Apta para publicación pública.")
+    : `Antes de publicar, limpia o separa: ${report.blocking.join('; ')}.`;
+  const actions = `<button class="btn ghost" data-system-action="export-publication-report" type="button">Descargar informe</button>${report.publicable ? "" : `<button class="btn success" data-system-action="export-work-copy" type="button">Descargar copia privada</button>`}`;
+  el.className = `system-publication-status-v152 ${tone}`;
+  el.innerHTML = `<div><b>${esc(title)}</b><span>${esc(text)}</span></div><div class="system-protection-actions-v111">${actions}</div>`;
+}
+
+function exportPublicationSafetyReportV152() {
+  const report = publicationSafetyReportV152();
+  downloadJson({
+    type: "swiftremo_publication_safety_report",
+    version: "v1.15.2",
+    cache: "1152v152",
+    generatedAt: new Date().toISOString(),
+    report
+  }, `swiftremo_informe_publicacion_${dateSlug(new Date())}.json`);
+  toast("Informe de publicación descargado.");
 }
 
 function renderExternalFolderPanelV16() {
@@ -989,7 +1058,7 @@ function renderBootMetricsPanelRc7() {
 
 
 const featureModulesV13 = createFeatureModuleManager({
-  version: "1150v115",
+  version: "1152v152",
   toast,
   esc,
   moduleLoaded: name => window.SwiftRemoBootMetrics?.moduleLoaded?.(name),
@@ -1157,7 +1226,7 @@ function renderActiveRoute(explicit = null, { reason = "active" } = {}) {
     "archive-culinary": [],
     "archive-review": [renderBaseStatusV663, renderPanelQualitySummary, renderAudit],
     system: [renderBootMetricsPanelRc7, renderPersistencePanelRc12, renderExternalFolderPanelV16, renderOpfsWorkerEvaluationRc13],
-    "system-data": [renderBootMetricsPanelRc7, renderPersistencePanelRc12, renderExternalFolderPanelV16, renderOpfsWorkerEvaluationRc13, renderPrivateDataManager],
+    "system-data": [renderBootMetricsPanelRc7, renderPersistencePanelRc12, renderExternalFolderPanelV16, renderPublicationSafetyV152, renderOpfsWorkerEvaluationRc13, renderPrivateDataManager],
     "system-sql": [],
     "system-status": [renderBaseStatusV663, renderPanelQualitySummary, renderAudit]
   };
@@ -3477,21 +3546,24 @@ function renderPrivateDataManager() {
   `);
   box.innerHTML = `
     <div class="system-private-kpi-rc2">
-      <div class="kpi"><span>Fuentes privadas</span><b>${fmtNumber(stats.sources,0)}</b></div>
+      <div class="kpi"><span>Fuentes locales privadas</span><b>${fmtNumber(stats.sources,0)}</b></div>
       <div class="kpi"><span>Fichas trazadas</span><b>${fmtNumber(stats.recipes,0)}</b></div>
-      <div class="kpi"><span>Fotos BLOB</span><b>${fmtNumber(stats.media,0)}</b></div>
+      <div class="kpi"><span>Fotos integradas</span><b>${fmtNumber(stats.media,0)}</b></div>
       <div class="kpi"><span>Fotos vinculadas</span><b>${fmtNumber(stats.linked,0)}</b></div>
       <div class="kpi"><span>Vínculos pendientes</span><b>${fmtNumber(stats.pending,0)}</b></div>
     </div>
     ${stats.pending ? `<div class="notice warn"><b>Fotos privadas pendientes</b><p>Hay ${fmtNumber(stats.pending,0)} vínculo(s) de foto cuyo ID de ficha todavía no existe en la base actual. No es un error si has importado primero las fotos: se activarán cuando se importe una base de fichas con esos mismos IDs.</p></div>` : ""}
+    <h3>Fuentes y trazabilidad</h3>
+    <p class="microcopy-rc6">Auditoría de procedencia. Sirve para distinguir base pública, paquetes autorizados y fotos locales antes de publicar.</p>
     ${sources.length ? table([
-      { label: "Origen", key: "name" },
-      { label: "ID", key: "id" },
-      { label: "Visibilidad", key: "visibility" },
-      { label: "Entidades", key: "entities", render: r => fmtNumber(r.entities,0) },
+      { label: "Fuente", key: "name" },
+      { label: "ID técnico", key: "id" },
+      { label: "Tipo", render: r => r.visibility === "private" ? "Local privada" : "Pública" },
+      { label: "Elementos", key: "entities", render: r => fmtNumber(r.entities,0) },
       { label: "Fotos", key: "media_count", render: r => fmtNumber(r.media_count,0) }
     ], sources) : `<p class="small">Aún no hay fuentes privadas registradas.</p>`}
   `;
+  renderPublicationSafetyV152();
 }
 async function importPrivatePhotoFiles(ev) {
   const input = ev.target;

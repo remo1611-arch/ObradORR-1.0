@@ -1,17 +1,17 @@
-# SwiftRemo SQL v1.15.1 · publicación GitHub-ready
+# SwiftRemo SQL v1.15.2 · publicación Sistema clarificado
 
 Versión revisada para publicación en GitHub Pages. Incluye las correcciones de impresión de v1.14, el catálogo FP Galicia ampliado de v1.15 y una revisión fina de metadatos/documentación para evitar enlaces de caché antiguos.
 
 ## Arranque local
 
 ```bash
-python -m http.server 8795
+python -m http.server 8796
 ```
 
 Abrir:
 
 ```text
-http://127.0.0.1:8795/app/sqlite.html?v=1150v115
+http://127.0.0.1:8796/app/sqlite.html?v=1152v152
 ```
 
 ## Comprobaciones realizadas para publicación
@@ -19,7 +19,7 @@ http://127.0.0.1:8795/app/sqlite.html?v=1150v115
 - Integridad SQLite correcta.
 - `node --check` correcto en todos los módulos JS.
 - Imports JS locales resueltos.
-- `index.html` y `Abrir_SwiftRemo.html` apuntan a `?v=1150v115`.
+- `index.html` y `Abrir_SwiftRemo.html` apuntan a `?v=1152v152`.
 - Base pública sin sesiones, impresiones, fotos BLOB ni fuentes privadas integradas.
 - Archivos principales bajo límites prácticos de GitHub/GitHub Pages.
 

@@ -1,1 +1,1 @@
-SwiftRemo SQL v1.15.1 · GitHub-ready · catálogo FP Galicia · cache 1150v115
+SwiftRemo SQL v1.15.2 · Sistema clarificado · catálogo FP Galicia · cache 1152v152

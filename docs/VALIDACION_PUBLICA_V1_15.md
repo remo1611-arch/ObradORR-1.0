@@ -1,4 +1,4 @@
-# Validación pública v1.15.1
+# Validación pública v1.15.2
 
 ## Resultado
 
@@ -6,7 +6,7 @@ Apta para subida a GitHub Pages con las cautelas legales indicadas en `AVISO_LEG
 
 ## Validaciones
 
-- Cache HTML/JS: `1150v115`.
+- Cache HTML/JS: `1152v152`.
 - Integridad de `db/swiftremo.sqlite`: `ok`.
 - Catálogo FP: 6 ciclos/curso y 77 módulos.
 - Fuentes privadas en base pública: 0.

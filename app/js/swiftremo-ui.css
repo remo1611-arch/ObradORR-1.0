@@ -1375,3 +1375,29 @@ body[data-workflow-state="empty"] #tab-order .order-guidance-619{display:none;}
   #workshopOutputActionsGrid .btn{width:100%;}
   .print-profile-card-618{min-height:auto;}
 }
+
+/* v1.15.2 · Sistema: semáforo de publicación y material privado más discreto */
+.system-publication-status-v152{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  margin-top:12px;padding:14px 16px;border-radius:16px;border:1px solid var(--line);
+  background:#f8fafc;color:#334155;
+}
+.system-publication-status-v152 b{display:block;color:#172033;margin-bottom:3px;}
+.system-publication-status-v152 span{display:block;color:#475569;line-height:1.4;}
+.system-publication-status-v152.ok{border-color:#bbf7d0;background:#f0fdf4;}
+.system-publication-status-v152.ok b{color:#166534;}
+.system-publication-status-v152.warn{border-color:#fde68a;background:#fffbeb;}
+.system-publication-status-v152.warn b{color:#92400e;}
+.system-publication-status-v152.err{border-color:#fecaca;background:#fef2f2;}
+.system-publication-status-v152.err b{color:#991b1b;}
+.system-private-details-v17.secondary{opacity:.96;}
+.system-private-details-v17.secondary .system-private-box-rc6.wide{
+  border-style:dashed;background:#fffdfa;
+}
+.system-private-details-v17.secondary h3{font-size:1rem;}
+.system-private-details-v17.secondary .wide h3::before{content:"⚠ ";font-weight:700;color:#92400e;}
+@media(max-width:760px){
+  .system-publication-status-v152{display:block;}
+  .system-publication-status-v152 .system-protection-actions-v111{margin-top:10px;}
+  .system-publication-status-v152 .btn{width:100%;}
+}

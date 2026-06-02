@@ -1,5 +1,5 @@
-import { esc, fmtMoney, fmtNumber } from "./ui.js?v=1140v114";
-import { roleLabel } from "./app-utils.js?v=1140v114";
+import { esc, fmtMoney, fmtNumber } from "./ui.js?v=1152v152";
+import { roleLabel } from "./app-utils.js?v=1152v152";
 
 export function kpiGridHtml(items = []) {
   return items.map(item => `<div class="kpi"><span>${esc(item.label || "")}</span><b>${item.value ?? ""}</b></div>`).join("");

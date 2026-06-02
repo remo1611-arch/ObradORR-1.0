@@ -1,5 +1,5 @@
-import { workshopSummaryHtml, workshopActionButtonsHtml, workshopOrderStateHtml, workshopOutputStateHtml } from "./workshop-components.js?v=1140v114";
-import { applyWorkshopActionState } from "./workshop-actions.js?v=1140v114";
+import { workshopSummaryHtml, workshopActionButtonsHtml, workshopOrderStateHtml, workshopOutputStateHtml } from "./workshop-components.js?v=1152v152";
+import { applyWorkshopActionState } from "./workshop-actions.js?v=1152v152";
 
 export function createWorkshopView({ document: documentRef = document, formatters = {} } = {}) {
   function renderActions(workshopState) {

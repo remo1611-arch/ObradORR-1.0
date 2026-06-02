@@ -9,7 +9,7 @@
 <meta content="no-cache" http-equiv="Pragma"/>
 <meta content="0" http-equiv="Expires"/>
 <title>SwiftRemo SQL · Aula taller</title>
-<link href="./js/swiftremo-ui.css?v=1150v115" rel="stylesheet"/>
+<link href="./js/swiftremo-ui.css?v=1152v152" rel="stylesheet"/>
 </head>
 <body>
 <header class="app-header">
@@ -1229,7 +1229,7 @@
 <div>
 <p class="eyebrow-rc6">Sistema</p>
 <h2>Datos y seguridad</h2>
-<p class="small">Centro de guardado, recuperación, carpeta vinculada y material privado. Lo técnico queda plegado para no contaminar el uso diario.</p>
+<p class="small">Centro de protección del trabajo, copias, recuperación y auditoría. La edición de fichas vive en Archivo técnico; lo privado y técnico queda plegado.</p>
 </div>
 <div class="actions system-title-actions-rc6">
 <button class="btn success" data-system-action="export-work-copy" id="exportSqlite" type="button">Descargar copia de trabajo</button>
@@ -1247,6 +1247,10 @@
 <div aria-live="polite" class="system-protection-banner-v111 neutral" id="portableProtectionBannerV111">
 <div><b>Protección local activa</b><span>El trabajo se conserva en el navegador. Descarga una copia para trasladarlo o protegerlo fuera del navegador.</span></div>
 <div class="system-protection-actions-v111"><button class="btn ghost" data-system-action="export-work-copy" type="button">Descargar copia</button></div>
+</div>
+<div aria-live="polite" class="system-publication-status-v152 neutral" id="publicationSafetyV152">
+<div><b>Estado de publicación</b><span>Se comprobará si la base activa contiene trabajo local, fuentes privadas o fotos integradas antes de publicar.</span></div>
+<div class="system-protection-actions-v111"><button class="btn ghost" data-system-action="export-publication-report" type="button">Descargar informe</button></div>
 </div>
 </div>
 
@@ -1325,12 +1329,12 @@
 
 <details class="card system-private-details-v17 secondary">
 <summary>
-<span><b>Material privado local</b><small>Solo para docentes con material externo autorizado: fichas o fotos que no se publican en la base pública.</small></span>
+<span><b>Material local privado y trazabilidad</b><small>Importación autorizada, fotos locales y auditoría de fuentes. No es un paso obligatorio del trabajo diario.</small></span>
 </summary>
 <div class="system-panel-body-rc6">
 <div class="system-warning-strip-rc6">
-<b>No subir a GitHub.</b>
-<span>Si una copia contiene fichas privadas, trazabilidad de terceros o imágenes integradas, mantenla fuera del repositorio público.</span>
+<b>No subir copias privadas a GitHub.</b>
+<span>Si esta base contiene fuentes privadas, fotos BLOB o fichas de terceros, descarga una copia para uso local y reinicia con base pública antes de publicar.</span>
 </div>
 <div class="system-private-layout-rc6">
 <section class="system-private-box-rc6">
@@ -1345,7 +1349,7 @@
 <input autocomplete="off" class="mono-input" data-autofilled="1" id="privateSourceSlug" value="paquete_privado_local"/>
 </div>
 </div>
-<p class="microcopy-rc6">El origen queda registrado para auditar de dónde procede cada ficha o imagen.</p>
+<p class="microcopy-rc6">El origen queda registrado para auditar de dónde procede cada ficha o imagen. Usa un nombre claro y no reutilices el mismo ID para fuentes distintas.</p>
 </section>
 <section class="system-private-box-rc6">
 <h3>Importar paquete privado</h3>
@@ -1354,7 +1358,7 @@
 <p class="microcopy-rc6">Integra material compatible sin publicarlo en la base pública.</p>
 </section>
 <section class="system-private-box-rc6 wide">
-<h3>Añadir fotos integradas</h3>
+<h3>Herramienta avanzada: añadir fotos integradas</h3>
 <div class="system-form-grid-rc6">
 <div>
 <label for="privatePhotoKind">Tipo de elaboración</label>
@@ -1372,8 +1376,9 @@
 <div class="system-button-row-rc6">
 <button class="btn ghost system-file-button-rc6" data-system-file="#privatePhotoFiles" type="button">Seleccionar fotos</button>
 <input accept="image/*" class="system-hidden-file-rc6" id="privatePhotoFiles" multiple="" type="file"/>
-<span class="small">Se redimensionan antes de guardarse en la copia local.</span>
+<span class="small">Se redimensionan antes de guardarse en la copia local privada. En próximas versiones, la gestión normal de fotos debería hacerse desde la ficha concreta en Archivo técnico.</span>
 </div>
+<p class="microcopy-rc6"><b>Criterio recomendado:</b> Sistema audita y protege material privado; Archivo técnico debe ser el lugar natural para añadir, sustituir o eliminar fotos de una elaboración concreta.</p>
 </section>
 </div>
 <div class="private-status-rc system-private-status-rc6" id="privateDataStatus">
@@ -1574,11 +1579,11 @@
   </script>
 <div hidden="" id="swiftremoPrintPreview631"></div>
 <script>window.SwiftRemoBootMetrics&&window.SwiftRemoBootMetrics.mark('bootstrap:start');</script>
-<script onload="window.SwiftRemoBootMetrics&amp;&amp;window.SwiftRemoBootMetrics.moduleLoaded('app')" src="./js/app.js?v=1150v115" type="module"></script>
-<script onload="window.SwiftRemoBootMetrics&amp;&amp;window.SwiftRemoBootMetrics.moduleLoaded('combobox')" src="./js/combobox.js?v=1150v115" type="module"></script>
+<script onload="window.SwiftRemoBootMetrics&amp;&amp;window.SwiftRemoBootMetrics.moduleLoaded('app')" src="./js/app.js?v=1152v152" type="module"></script>
+<script onload="window.SwiftRemoBootMetrics&amp;&amp;window.SwiftRemoBootMetrics.moduleLoaded('combobox')" src="./js/combobox.js?v=1152v152" type="module"></script>
 <script type="module">
-    import { printClassOrder } from "./js/print.js?v=1150v115";
-    import { toast } from "./js/ui.js?v=1150v115";
+    import { printClassOrder } from "./js/print.js?v=1152v152";
+    import { toast } from "./js/ui.js?v=1152v152";
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.querySelector("#globalPrintOrderV61");
       if (btn) btn.addEventListener("click", () => {

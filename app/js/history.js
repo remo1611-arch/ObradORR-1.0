@@ -1,6 +1,6 @@
-import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js?v=1140v114";
-import { printClassSession, printClassOrder } from "./print.js?v=1140v114";
-import { slugSessionIdFromTitle, slugSessionItemId } from "./repositories.js?v=1140v114";
+import { $, esc, fmtMoney, fmtNumber, table, fillSelect, toast } from "./ui.js?v=1152v152";
+import { printClassSession, printClassOrder } from "./print.js?v=1152v152";
+import { slugSessionIdFromTitle, slugSessionItemId } from "./repositories.js?v=1152v152";
 
 let selectedSessionId = null;
 let selectedItemId = null;
