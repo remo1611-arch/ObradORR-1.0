@@ -11,7 +11,7 @@ Extraer renderizadores HTML pequeños y puros desde `app.js` sin tocar datos, SQ
 - Nuevo módulo `app/js/app-renderers.js`.
 - Extraídos renderizadores de KPIs, resúmenes, tarjetas de elaboraciones, tarjetas de ingredientes e indicaciones de rango.
 - `app.js` conserva coordinación, estado y flujos funcionales.
-- Query string actualizado a `150v15`.
+- Query string actualizado a `1120v112`.
 
 ## No incluido
 

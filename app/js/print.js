@@ -1,12 +1,12 @@
-import { esc, fmtMoney, fmtNumber } from "./ui.js?v=150v15";
+import { esc, fmtMoney, fmtNumber } from "./ui.js?v=1140v114";
 
 const PRINT_STYLE = `
-  @page { size: A4; margin: 10mm; }
+  @page { size: A4; margin: 12mm; }
   * { box-sizing: border-box; }
   body { font-family: Arial, Helvetica, sans-serif; color: #202124; margin: 0; font-size: 10.2px; line-height: 1.28; }
   .toolbar { position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; padding: 10px 0; background: #fff; border-bottom: 1px solid #d7dce2; margin-bottom: 12px; }
   button { border: 1px solid #1f6feb; background: #1f6feb; color: #fff; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; }
-  .doc { max-width: 190mm; margin: 0 auto; }
+  .doc { max-width: 186mm; margin: 0 auto; }
   .sheet { page-break-after: always; break-after: page; }
   .sheet:last-child { page-break-after: auto; break-after: auto; }
   .head { display: grid; grid-template-columns: 1fr auto; gap: 10px; border-bottom: 2px solid #1f2937; padding-bottom: 8px; margin-bottom: 10px; break-inside: avoid; page-break-inside: avoid; }
@@ -44,14 +44,14 @@ const PRINT_STYLE = `
   .order-sheet .clean-order-table th:nth-child(2), .order-sheet .clean-order-table td:nth-child(2) { width: 14%; }
   .order-sheet .clean-order-table th:nth-child(3), .order-sheet .clean-order-table td:nth-child(3) { width: 10%; }
   .order-sheet .clean-order-table th:nth-child(4), .order-sheet .clean-order-table td:nth-child(4) { width: 22%; }
-  .technical-order-table th:nth-child(1), .technical-order-table td:nth-child(1) { width: 15%; }
-  .technical-order-table th:nth-child(2), .technical-order-table td:nth-child(2) { width: 21%; }
+  .technical-order-table th:nth-child(1), .technical-order-table td:nth-child(1) { width: 12%; }
+  .technical-order-table th:nth-child(2), .technical-order-table td:nth-child(2) { width: 25%; }
   .technical-order-table th:nth-child(3), .technical-order-table td:nth-child(3) { width: 8%; }
   .technical-order-table th:nth-child(4), .technical-order-table td:nth-child(4) { width: 7%; }
   .technical-order-table th:nth-child(5), .technical-order-table td:nth-child(5) { width: 13%; }
   .technical-order-table th:nth-child(6), .technical-order-table td:nth-child(6) { width: 9%; }
   .technical-order-table th:nth-child(7), .technical-order-table td:nth-child(7) { width: 8%; }
-  .technical-order-table th:nth-child(8), .technical-order-table td:nth-child(8) { width: 19%; }
+  .technical-order-table th:nth-child(8), .technical-order-table td:nth-child(8) { width: 16%; }
   .elaboration-block { margin: 7px 0 10px; break-inside: avoid-page; page-break-inside: avoid; }
   .elaboration-block table { font-size: 9.2px; }
   .elaboration-block th:nth-child(1), .elaboration-block td:nth-child(1) { width: 72%; }
@@ -91,7 +91,7 @@ const PRINT_STYLE = `
   .block-note { margin: 4px 0 8px; color: #6b7280; font-size: 9px; border: 1px dashed #cfd6dd; border-radius: 7px; padding: 5px 7px; background:#fbfcfd; }
   @media print {
     .toolbar { display: none; }
-    body { font-size: 9.4px; }
+    body { font-size: 10px; }
     h1 { font-size: 17px; }
     h2, .section-title { font-size: 12.4px; }
     th { font-size: 8.5px; }
@@ -118,6 +118,11 @@ function formatPrintDate(value = new Date()) {
   if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
   const d = new Date(raw);
   return Number.isNaN(d.getTime()) ? raw : PRINT_DATE_FORMATTER.format(d);
+}
+
+function practiceSubtitle(dateLabel, ...parts) {
+  const date = String(dateLabel || "").trim() || "Sin fecha";
+  return [`Práctica: ${date}`, ...parts.map(v => String(v || "").trim()).filter(Boolean)].join(" · ");
 }
 
 function sentenceCaseEs(value) {
@@ -287,7 +292,8 @@ export function printClassSession(db, sessionId, { includeOrder = true, includeI
   const generatedTitle = /^Práctica \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(String(session.title || ""));
   const printTitle = includeSessionData && session.title && !generatedTitle ? session.title : "Práctica de aula-taller";
   const practiceDateLabel = session.practice_date ? formatPrintDate(session.practice_date) : "Sin fecha";
-  const subtitleParts = includeSessionData ? [practiceDateLabel, [session.module_code, session.module_name].filter(Boolean).join(" · ")].filter(Boolean) : [practiceDateLabel];
+  const moduleLabel = [session.module_code, session.module_name].filter(Boolean).join(" · ");
+  const subtitleParts = includeSessionData ? [practiceSubtitle(practiceDateLabel), moduleLabel].filter(Boolean) : [practiceSubtitle(practiceDateLabel)];
   let body = `
     <section class="sheet">
       ${header("Orden de producción", printTitle, subtitleParts.join(" · "))}
@@ -423,7 +429,7 @@ export function printWorkSelectionTeachingSheets(db, selectionId = "WORK_CURRENT
     totalCost = Number(summary.estimated_order_cost || 0);
     const practiceDateLabel = session.practice_date ? formatPrintDate(session.practice_date) : formatPrintDate();
     const moduleLabel = [session.module_code, session.module_name].filter(Boolean).join(" · ");
-    const subtitle = includePracticeData ? [practiceDateLabel, session.group_name, moduleLabel].filter(Boolean).join(" · ") : practiceDateLabel;
+    const subtitle = includePracticeData ? practiceSubtitle(practiceDateLabel, session.group_name, moduleLabel) : practiceSubtitle(practiceDateLabel);
     body += `
       <section class="sheet teaching-sheet">
         ${header("Ficha docente completa", includePracticeData ? title : "Práctica de aula-taller", subtitle)}
@@ -495,7 +501,7 @@ export function printWorkSelectionTeachingSheetsWithOrder(db, selectionId = "WOR
     totalCost = Number(summary.estimated_order_cost || 0);
     const practiceDateLabel = session.practice_date ? formatPrintDate(session.practice_date) : formatPrintDate();
     const moduleLabel = [session.module_code, session.module_name].filter(Boolean).join(" · ");
-    const subtitle = includePracticeData ? [practiceDateLabel, session.group_name, moduleLabel].filter(Boolean).join(" · ") : practiceDateLabel;
+    const subtitle = includePracticeData ? practiceSubtitle(practiceDateLabel, session.group_name, moduleLabel) : practiceSubtitle(practiceDateLabel);
     body += `
       <section class="sheet teaching-sheet">
         ${header("Ficha técnica completa + pedido completo", includePracticeData ? title : "Práctica de aula-taller", subtitle)}
@@ -508,7 +514,6 @@ export function printWorkSelectionTeachingSheetsWithOrder(db, selectionId = "WOR
           ${box("Cocina/Pastelería", fmtNumber(items.filter(i => i.item_type === "culinary").length,0))}
           ${box("Coste estimado", fmtMoney(totalCost))}
         </div>
-        <p class="teaching-note">Dossier completo: incluye fichas técnicas con coste, unidades visibles, alérgenos y proceso; al final incorpora el pedido completo con proveedor, zona, coste y origen/usado en.</p>
         <h2>Elaboraciones incluidas</h2>
         ${productionItemsTable(items)}
       </section>`;
@@ -576,6 +581,39 @@ function bytesToBase64(bytes) {
   return btoa(binary);
 }
 
+
+function numericFromPrintedValue(value) {
+  const raw = String(value ?? "").replace(/€/g, "").replace(/\s+/g, "").replace(/\./g, "").replace(",", ".");
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+function detailDataWarnings(rows, { includeCost = false } = {}) {
+  const validRows = (rows || []).filter(r => String(r?.ingredient || "").trim());
+  if (!validRows.length) return "";
+  const quantityOf = (r) => {
+    const direct = numericFromPrintedValue(r.quantityValue);
+    if (direct !== null) return direct;
+    return numericFromPrintedValue(quantityNumberFromLabel(r.quantity));
+  };
+  const zeroQuantity = validRows.filter(r => quantityOf(r) === 0);
+  const positiveQuantity = validRows.filter(r => {
+    const q = quantityOf(r);
+    return q !== null && q > 0;
+  });
+  const zeroCost = includeCost ? positiveQuantity.filter(r => numericFromPrintedValue(r.cost) === 0) : [];
+  const parts = [];
+  if (zeroQuantity.length) {
+    parts.push(`${fmtNumber(zeroQuantity.length,0)} línea(s) con cantidad 0`);
+  }
+  const zeroCostThreshold = Math.max(3, Math.ceil(positiveQuantity.length * 0.4));
+  if (zeroCost.length >= zeroCostThreshold && positiveQuantity.length >= 3) {
+    parts.push(`${fmtNumber(zeroCost.length,0)} línea(s) con coste 0,00 €`);
+  }
+  if (!parts.length) return "";
+  return `<div class="warn"><b>Revisar datos de la ficha.</b> ${esc(parts.join(" y "))}. Puede indicar cantidades incompletas, precios pendientes o importación aún no validada.</div>`;
+}
+
 function culinaryTeachingSheet(db, item, lines, { subrecipeMode = "expanded", processMode = "show" } = {}) {
   const recipe = one(db, `
     SELECT cr.*, tf.name AS family, tsf.name AS subfamily, yu.symbol AS yield_unit
@@ -600,6 +638,7 @@ function culinaryTeachingSheet(db, item, lines, { subrecipeMode = "expanded", pr
         ${box("Alérgenos", allergens ? fmtNumber(splitSemi(allergens).length,0) : "Sin alérgenos declarables")}
       </div>
       <h2>Escandallo / formulación</h2>
+      ${detailDataWarnings(detailRows, { includeCost: true })}
       ${culinaryDetailTable(detailRows, { includeCost: true, includeAllergens: true })}
       ${processMode === "hide" ? "" : processBlockFromText("Proceso", recipe.process)}
       ${processMode === "hide" ? "" : processBlockFromText("Servicio / conservación", recipe.service_notes)}
@@ -1033,23 +1072,9 @@ function technicalOrderTable(order, showSupplier, { repeatTitle = "" } = {}) {
     const tail = [r.storage_zone || "", fmtMoney(r.estimated_cost_total), formatUsedIn(r.used_in || "")];
     return showSupplier ? [...base, r.supplier || "Sin proveedor asignado", ...tail] : [...base, ...tail];
   });
-  if (!repeatTitle || rows.length <= 28) {
-    return tableHtml(headers, rows, showSupplier ? [2,6] : [2,5], "technical-order-table");
-  }
-  const chunks = [];
-  let start = 0;
-  chunks.push(rows.slice(start, start + 28));
-  start += 28;
-  while (start < rows.length) {
-    chunks.push(rows.slice(start, start + 34));
-    start += 34;
-  }
-  return chunks.map((chunk, idx) => {
-    const title = idx === 0 ? repeatTitle : `${repeatTitle} · continuación de tabla`;
-    const klass = idx === 0 ? "technical-order-table" : "technical-order-table continuation";
-    const html = tableHtml(headers, chunk, showSupplier ? [2,6] : [2,5], klass);
-    return html.replace("<thead><tr>", `<thead><tr class="order-table-title"><th colspan="${headers.length}">${esc(title)}</th></tr><tr>`);
-  }).join("");
+  const html = tableHtml(headers, rows, showSupplier ? [2,6] : [2,5], "technical-order-table");
+  if (!repeatTitle || !rows.length) return html;
+  return html.replace("<thead><tr>", `<thead><tr class="order-table-title"><th colspan="${headers.length}">${esc(repeatTitle)}</th></tr><tr>`);
 }
 
 function cleanOrderFamilyBlocks(order) {
@@ -1246,7 +1271,7 @@ function docHtml(title, body) {
 }
 function header(kind, title, subtitle = "") {
   const label = String(kind || "Documento").toLocaleUpperCase("es");
-  return `<div class="head"><div><div class="brand">SwiftRemo</div><h1>${esc(title)}</h1><div class="muted">${esc(subtitle || "")}</div></div><div class="right"><span class="doc-kind-pill">${esc(label)}</span><br><b>${formatPrintDate()}</b><br><span class="muted">FP Cocina, Pastelería y Panadería</span><br><span class="muted">© Remo José Pereira González · Uso docente personal</span></div></div>`;
+  return `<div class="head"><div><div class="brand">SwiftRemo</div><h1>${esc(title)}</h1><div class="muted">${esc(subtitle || "")}</div></div><div class="right"><span class="doc-kind-pill">${esc(label)}</span><br><b>Impreso: ${formatPrintDate()}</b><br><span class="muted">FP Cocina, Pastelería y Panadería</span><br><span class="muted">© Remo José Pereira González · Uso docente personal</span></div></div>`;
 }
 function box(label, value) { return `<div class="box"><b>${esc(label)}</b><span class="value">${esc(value ?? "—")}</span></div>`; }
 function tableHtml(headers, rows, numericCols = [], className = "") {

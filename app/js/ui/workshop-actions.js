@@ -9,10 +9,6 @@ export function applyWorkshopActionState(documentRef, workshopState) {
     "#workshopPrintSheets",
     "#workshopPrintOrder",
     "#workshopOpenPrintCenter",
-    "#workshopPrintSimpleSheets",
-    "#workshopPrintSimpleOrder",
-    "#workshopPrintSimpleDossier",
-    "#workshopPrintTeachingSheets",
     "#workshopPrintTechnicalOrder",
     "#workshopPrintTeachingDossier"
   ];
@@ -28,7 +24,7 @@ export function applyWorkshopActionState(documentRef, workshopState) {
   documentRef.querySelectorAll("#workshopArchive, #workshopClear").forEach(btn => {
     btn.classList.toggle("hidden-by-workflow", !hasItems);
   });
-  documentRef.querySelectorAll("#workshopPrintDossier, #workshopPrintSheets, #workshopPrintOrder, #workshopOpenPrintCenter").forEach(btn => {
+  documentRef.querySelectorAll("#workshopPrintDossier, #workshopPrintSheets, #workshopPrintOrder, #workshopPrintTeachingDossier, #workshopPrintTechnicalOrder, #workshopOpenPrintCenter").forEach(btn => {
     const card = btn.closest(".print-profile-card-618");
     if (card) card.classList.toggle("workflow-card-disabled", !hasItems);
   });

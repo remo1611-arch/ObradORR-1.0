@@ -1,20 +1,20 @@
-import { SwiftDB } from "./db-service.js?v=150v15";
-import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=150v15";
-import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print.js?v=150v15";
-import { loadRecovery, saveRecovery, clearRecovery, hasCurrentRecovery } from "./storage-service.js?v=150v15";
-import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson, safeJsonStringify } from "./ui.js?v=150v15";
-import { createAppState } from "./ui/state.js?v=150v15";
-import { createDomainShell } from "./ui/app-shell.js?v=150v15";
-import { createWorkshopDomain } from "./domain/workshop.js?v=150v15";
-import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=150v15";
-import { createHistoryDomain } from "./domain/history.js?v=150v15";
-import { createSystemBackupService } from "./domain/system-backup.js?v=150v15";
-import { createPrintDomain } from "./domain/print.js?v=150v15";
-import { createWorkshopView } from "./ui/workshop-view.js?v=150v15";
-import { bootMark, bootStart, bootEnd, renderBootMetricsPanel, opfsWorkerEvaluation, renderOpfsWorkerEvaluation } from "./diagnostics.js?v=150v15";
-import { createFeatureModuleManager } from "./feature-modules.js?v=150v15";
-import { readPageSizeValue, pageWindow, pagerHtml, dateSlug, formatDate, setInputValue, badgeHtml, roleLabel, nullIfEmpty, num } from "./app-utils.js?v=150v15";
-import { kpiGridHtml, archiveSummaryKpisHtml, elaborationsSummaryKpisHtml, elaborationCardHtml, ingredientCardsHtml, rangeHintHtml } from "./app-renderers.js?v=150v15";
+import { SwiftDB } from "./db-service.js?v=1150v115";
+import { Repository, slugIdFromName, slugWorkSelectionItemId } from "./repositories.js?v=1150v115";
+import { printWorkSelection, printWorkSelectionOrder, printWorkSelectionTeachingSheets, printWorkSelectionTechnicalOrder, printWorkSelectionTeachingSheetsWithOrder } from "./print.js?v=1150v115";
+import { loadRecovery, saveRecovery, clearRecovery, hasCurrentRecovery, linkExternalFolder, unlinkExternalFolder, getExternalFolderStatus, saveExternalCopies, externalFolderFeatureAvailable, externalFolderPlatformInfo, externalFolderFriendlyError } from "./storage-service.js?v=1150v115";
+import { $, $$, esc, fmtMoney, fmtNumber, table, fillSelect, toast, setState, setStatus, setSaveIndicator, downloadBytes, downloadJson, safeJsonStringify } from "./ui.js?v=1150v115";
+import { createAppState } from "./ui/state.js?v=1150v115";
+import { createDomainShell } from "./ui/app-shell.js?v=1150v115";
+import { createWorkshopDomain } from "./domain/workshop.js?v=1150v115";
+import { createTechnicalArchiveDomain } from "./domain/technical-archive.js?v=1150v115";
+import { createHistoryDomain } from "./domain/history.js?v=1150v115";
+import { createSystemBackupService } from "./domain/system-backup.js?v=1150v115";
+import { createPrintDomain } from "./domain/print.js?v=1150v115";
+import { createWorkshopView } from "./ui/workshop-view.js?v=1150v115";
+import { bootMark, bootStart, bootEnd, renderBootMetricsPanel, opfsWorkerEvaluation, renderOpfsWorkerEvaluation } from "./diagnostics.js?v=1150v115";
+import { createFeatureModuleManager } from "./feature-modules.js?v=1150v115";
+import { readPageSizeValue, pageWindow, pagerHtml, dateSlug, formatDate, setInputValue, badgeHtml, roleLabel, nullIfEmpty, num } from "./app-utils.js?v=1150v115";
+import { kpiGridHtml, archiveSummaryKpisHtml, elaborationsSummaryKpisHtml, elaborationCardHtml, ingredientCardsHtml, rangeHintHtml } from "./app-renderers.js?v=1150v115";
 
 const swiftDb = new SwiftDB();
 let repo = null;
@@ -26,6 +26,11 @@ let technicalArchiveDomain = null;
 let historyDomain = null;
 let systemBackupService = null;
 let persistenceStateRc12 = { source: "pending", savedAt: null, snapshotSize: 0, lastDownloadAt: null, lastDownloadKind: "", privateMaterial: false, note: "Arranque pendiente." };
+let externalFolderStateV16 = { supported: null, linked: false, permission: "unknown", writable: false, reason: "Pendiente de comprobar." };
+let externalFolderRefreshPromiseV16 = null;
+let externalCopyDirtyV19 = false;
+let lastProtectionStateV19 = "unknown";
+let mobileVisibilityWarningQueuedV111 = false;
 let printDomain = null;
 let workshopView = null;
 let selectedIngredientId = null;
@@ -118,6 +123,7 @@ async function init() {
     initDomainLayer();
     bootEndRc7("domain-layer");
     await loadBestAvailableDb();
+    cleanupTemporaryPrintSessionsV113();
     bootEndRc7("init");
     bootMarkRc7("app:usable");
     renderBootMetricsPanelRc7();
@@ -128,6 +134,16 @@ async function init() {
     setStatus(message, "err");
     setSaveIndicator("No se pudo iniciar", "err", "Descarga o importa una copia si tienes cambios.");
     toast(`Error de arranque: ${message}`, "err");
+  }
+}
+
+function cleanupTemporaryPrintSessionsV113() {
+  try {
+    if (!swiftDb?.isLoaded?.()) return;
+    swiftDb.exec("DELETE FROM class_session_items WHERE session_id LIKE 'TMP_SELECTION_%';");
+    swiftDb.exec("DELETE FROM class_sessions WHERE id LIKE 'TMP_SELECTION_%';");
+  } catch (err) {
+    console.warn("[SwiftRemo] No se pudieron limpiar sesiones temporales de impresión.", err);
   }
 }
 
@@ -179,6 +195,11 @@ function bindSystemControlsV104() {
     if (action === "export-private-copy") { exportPrivateSqlite(); return; }
     if (action === "export-technical-json") { exportJson(); return; }
     if (action === "export-full-audit-json") { exportFullAuditJsonRc12(); return; }
+    if (action === "link-backup-folder") { linkBackupFolderV16(); return; }
+    if (action === "unlink-backup-folder") { unlinkBackupFolderV16(); return; }
+    if (action === "save-external-work-copy") { saveExternalWorkCopyNowV16({ backup: false }); return; }
+    if (action === "save-external-backup") { saveExternalWorkCopyNowV16({ backup: true }); return; }
+    if (action === "refresh-external-folder") { refreshExternalFolderStatusV16({ requestPermission: true }); return; }
     if (action === "reset-public-base") { loadInitialDbWithConfirm(); return; }
     toast("Acción de Sistema no reconocida.", "err");
   }, true);
@@ -204,6 +225,7 @@ function bindEvents() {
   bindIfExists("#privateSourceName", "input", syncPrivateSourceSlug);
   bindIfExists("#privateSourceSlug", "input", ev => { ev.target.dataset.autofilled = "0"; renderPrivateDataManager(); });
   bindIfExists("#privatePhotoKind", "change", renderPrivateDataManager);
+  bindIfExists(".system-private-details-v17", "toggle", ev => { if (ev.target.open) renderPrivateDataManager(); });
 
   bindIfExists("#ingredientSearch", "input", ev => { state.filters.search = ev.target.value; state.filters.page = 1; renderIngredients(); });
   bindIfExists("#ingredientActiveFilter", "change", ev => { state.filters.active = ev.target.value; state.filters.page = 1; renderIngredients(); });
@@ -237,14 +259,10 @@ function bindEvents() {
   bindIfExists("#printQuickWorkshop", "click", () => printWorkshopSimpleDossier());
   bindIfExists("#workshopOrderPrintTechnical", "click", () => printWorkshopTechnicalOrder());
   bindIfExists("#workshopOrderPrintSimple", "click", () => printWorkshopDirect({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido simple desde pestaña pedido" }));
-  bindIfExists("#workshopPrintDossier", "click", () => printWorkshopTeachingDossier());
+  bindIfExists("#workshopPrintDossier", "click", () => printWorkshopSimpleDossier());
   bindIfExists("#workshopPrintSheets", "click", () => printWorkshopTeachingSheets());
-  bindIfExists("#workshopPrintOrder", "click", () => printWorkshopTechnicalOrder());
+  bindIfExists("#workshopPrintOrder", "click", () => printWorkshopDirect({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido limpio práctica" }));
   bindIfExists("#workshopExportSqlite", "click", () => exportSqlite());
-  bindIfExists("#workshopPrintSimpleSheets", "click", () => printWorkshopDirect({ includeElaborations: true, includeOrder: false, reason: "historial impresión elaboraciones práctica" }));
-  bindIfExists("#workshopPrintSimpleOrder", "click", () => printWorkshopDirect({ includeElaborations: false, includeOrder: true, reason: "historial impresión pedido práctica" }));
-  bindIfExists("#workshopPrintSimpleDossier", "click", () => printWorkshopSimpleDossier());
-  bindIfExists("#workshopPrintTeachingSheets", "click", () => printWorkshopTeachingSheets());
   bindIfExists("#workshopPrintTechnicalOrder", "click", () => printWorkshopTechnicalOrder());
   bindIfExists("#workshopPrintTeachingDossier", "click", () => printWorkshopTeachingDossier());
   bindIfExists("#workshopOpenPrintCenter", "click", () => openWorkshopPrintDialog());
@@ -333,12 +351,42 @@ function bindEvents() {
     });
 
     window.addEventListener("beforeunload", ev => {
-    if (hasSaveError || hasPendingSave) {
+    const shouldWarnPortableCopy = externalCopyDirtyV19 && (mobileLikeV19() || externalFolderStateV16?.linked);
+    if (hasSaveError || hasPendingSave || shouldWarnPortableCopy) {
       ev.preventDefault();
-      ev.returnValue = hasPendingSave
-        ? "Hay cambios de práctica pendientes de guardado automático. Espera unos segundos o guarda antes de cerrar."
-        : "Hay cambios que no se han podido guardar automáticamente. Descarga una copia antes de cerrar.";
+      ev.returnValue = hasSaveError
+        ? "Hay cambios que no se han podido guardar automáticamente. Descarga una copia antes de cerrar."
+        : hasPendingSave
+          ? "Hay cambios de práctica pendientes de guardado automático. Espera unos segundos o guarda antes de cerrar."
+          : "Los cambios están guardados en el navegador, pero falta una copia externa reciente. Descarga una copia o guarda en carpeta antes de cerrar.";
     }
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        if (hasPendingSave || hasSaveError) {
+          autosave({ reason: "visibilitychange-hidden" }).catch(err => {
+            console.warn("[SwiftRemo] No se pudo reforzar el guardado al pasar a segundo plano", err);
+          });
+        }
+        if (externalCopyDirtyV19 && externalFolderStateV16?.linked && swiftDb) {
+          // Intento oportunista sin diálogo: si el navegador mantiene permiso, protege la copia externa;
+          // si Android/Chrome exige interacción, se mantiene el aviso al volver.
+          persistExternalCopiesV16(swiftDb.exportBytes(), { reason: "visibilitychange-external", dbChanged: true })
+            .catch(err => console.warn("[SwiftRemo] No se pudo guardar copia externa al pasar a segundo plano", err));
+        }
+        if (externalCopyDirtyV19 && mobileLikeV19()) {
+          mobileVisibilityWarningQueuedV111 = true;
+          console.warn("[SwiftRemo] Cambios guardados en navegador, pendientes de copia externa móvil.");
+        }
+      } else if (document.visibilityState === "visible" && mobileVisibilityWarningQueuedV111) {
+        mobileVisibilityWarningQueuedV111 = false;
+        if (externalCopyDirtyV19 && mobileLikeV19()) {
+          setStatus("Has vuelto a SwiftRemo con cambios protegidos solo en el navegador. Descarga una copia o guarda en carpeta antes de cerrar.", "warn");
+          toast("Cambios sin copia externa reciente. Guarda antes de cerrar.", "warn");
+          renderProtectionBannerV111();
+        }
+      }
     });
   bindScrollTargets();
   bindClassWorkflowAccordion();
@@ -460,7 +508,7 @@ async function loadBestAvailableDb() {
 }
 
 async function loadInitialDbWithConfirm() {
-  if (!confirm("Vas a reiniciar el trabajo local con la base pública inicial. Si no has descargado una copia de trabajo, podrías perder cambios, paquetes privados o fotos integradas. ¿Continuar?")) return;
+  if (!confirm("Vas a reiniciar con la base pública inicial. Esto sustituirá el trabajo actual del navegador y no puede deshacerse desde la app. ¿Has descargado una copia antes de continuar?")) return;
   await clearRecovery();
   await loadInitialDb(false);
 }
@@ -484,7 +532,7 @@ async function loadSqliteFile(ev) {
   const file = input.files?.[0];
   if (!file) return;
   const sizeMb = file.size ? (file.size / (1024 * 1024)).toLocaleString("es-ES", { maximumFractionDigits: 1 }) : "desconocido";
-  if (!confirm(`Importar "${file.name}" (${sizeMb} MB) sustituirá la base local activa del navegador. Descarga antes una copia de trabajo si quieres conservar el estado actual. ¿Continuar?`)) {
+  if (!confirm(`Esto sustituirá el trabajo actual por "${file.name}" (${sizeMb} MB). ¿Has descargado una copia antes de continuar?`)) {
     input.value = "";
     return;
   }
@@ -531,6 +579,8 @@ function afterDbLoaded(message, saveLabel = "Guardado", savedAt = null) {
   window.dispatchEvent(new CustomEvent("swiftremo:coreReady", { detail: { message } }));
   renderBootMetricsPanelRc7();
   renderPersistencePanelRc12();
+  renderExternalFolderPanelV16();
+  refreshExternalFolderStatusV16().catch(err => console.warn("[SwiftRemo] No se pudo comprobar la carpeta vinculada", err));
   renderOpfsWorkerEvaluationRc13();
   renderFeatureModulePanelV12();
 }
@@ -539,6 +589,7 @@ function afterDbLoaded(message, saveLabel = "Guardado", savedAt = null) {
 function setPersistenceStateRc12(partial = {}) {
   persistenceStateRc12 = { ...persistenceStateRc12, ...partial };
   renderPersistencePanelRc12();
+  renderProtectionBannerV111();
 }
 function persistenceLabelRc12(source = persistenceStateRc12.source) {
   return ({
@@ -564,6 +615,328 @@ function renderPersistencePanelRc12() {
     <p><b>Material privado</b><span>${st.privateMaterial ? "Detectado en la base activa" : "No detectado o no comprobado"}</span></p>
     <p><b>Nota</b><span>${esc(st.note || "")}</span></p>`;
 }
+
+function mobileLikeV19() {
+  try { return !!externalFolderPlatformInfo().mobile; }
+  catch { return /Android|Mobi|iPhone|iPad|iPod/i.test(String(window.navigator?.userAgent || "")); }
+}
+
+function markPortableCopyProtectionV19({ external = null, manualDownload = false, dbChanged = false } = {}) {
+  if (manualDownload || external?.written) {
+    externalCopyDirtyV19 = false;
+    lastProtectionStateV19 = manualDownload ? "manual-download" : "external-folder";
+  } else if (dbChanged) {
+    externalCopyDirtyV19 = true;
+    lastProtectionStateV19 = external?.linked ? "external-pending" : "browser-only";
+  }
+  renderExternalFolderPanelV16();
+  renderProtectionBannerV111();
+}
+
+function protectionTextV19(st = externalFolderStateV16 || {}) {
+  if (!externalCopyDirtyV19) {
+    if (lastProtectionStateV19 === "external-folder") return "Copia externa actualizada.";
+    if (lastProtectionStateV19 === "manual-download") return "Últimos cambios descargados manualmente.";
+    return "Sin cambios pendientes de copia externa.";
+  }
+  if (st?.linked) return "Cambios guardados en el navegador, pero pendientes de copia externa. Usa guardar en carpeta o descarga una copia antes de cerrar.";
+  if (mobileLikeV19()) return "Cambios guardados en el navegador. En móvil descarga una copia si vas a cerrar o cambiar de dispositivo.";
+  return "Cambios guardados en el navegador. Descarga una copia si necesitas trasladarlos o protegerlos fuera del navegador.";
+}
+
+function renderProtectionBannerV111() {
+  const el = document.querySelector("#portableProtectionBannerV111");
+  if (!el) return;
+  const st = externalFolderStateV16 || {};
+  let tone = "ok";
+  let title = "Datos protegidos";
+  let text = "Sin cambios pendientes de copia externa.";
+  const platform = externalFolderPlatformInfo();
+  const folderSupported = st?.supported === true || (st?.supported == null && platform.supported === true);
+  let actions = `<button class="btn ghost" data-system-action="export-work-copy" type="button">Descargar copia</button>`;
+  if (hasSaveError) {
+    tone = "err";
+    title = "Guardado automático con incidencia";
+    text = "El último guardado automático no se completó. Descarga una copia de trabajo para proteger los cambios.";
+    actions = `<button class="btn success" data-system-action="export-work-copy" type="button">Descargar copia ahora</button>`;
+  } else if (hasPendingSave) {
+    tone = "warn";
+    title = "Guardado local pendiente";
+    text = "Hay cambios recientes pendientes de consolidar. Evita cerrar la pestaña durante unos segundos.";
+    actions = `<button class="btn ghost" data-system-action="export-work-copy" type="button">Descargar copia</button>`;
+  } else if (externalCopyDirtyV19) {
+    tone = "warn";
+    title = mobileLikeV19() ? "Cambios protegidos solo en el navegador" : "Copia externa pendiente";
+    text = protectionTextV19(st);
+    actions = `<button class="btn success" data-system-action="export-work-copy" type="button">Descargar copia</button>${st?.linked ? `<button class="btn primary" data-system-action="save-external-work-copy" type="button">Guardar en carpeta</button>` : (folderSupported ? `<button class="btn primary" data-system-action="link-backup-folder" type="button">Activar carpeta</button>` : "")}`;
+  } else if (lastProtectionStateV19 === "external-folder") {
+    tone = "ok";
+    title = mobileLikeV19() ? "Copia externa actualizada ahora" : "Guardado automático activo";
+    text = mobileLikeV19()
+      ? "La carpeta ha escrito correctamente en este intento. En Android puede pedir permiso de nuevo antes de cerrar."
+      : "Copia externa actualizada en la carpeta vinculada.";
+    actions = `<button class="btn ghost" data-system-action="export-work-copy" type="button">Descargar respaldo extra</button>`;
+  } else if (lastProtectionStateV19 === "manual-download") {
+    tone = "ok";
+    title = "Copia descargada";
+    text = "La última versión se descargó manualmente. Conserva ese archivo en un lugar seguro.";
+    actions = `<button class="btn ghost" data-system-action="export-work-copy" type="button">Descargar otra copia</button>`;
+  } else if (st?.linked && st?.writable) {
+    tone = mobileLikeV19() ? "warn" : "ok";
+    title = mobileLikeV19() ? "Carpeta disponible ahora" : "Carpeta vinculada disponible";
+    text = mobileLikeV19()
+      ? "Modo móvil: la carpeta está disponible ahora, pero el permiso puede pedirse de nuevo."
+      : "La carpeta vinculada tiene permiso de escritura.";
+    actions = `<button class="btn primary" data-system-action="save-external-work-copy" type="button">Guardar ahora en carpeta</button>`;
+  } else if (st?.linked) {
+    tone = "warn";
+    title = "Carpeta recordada";
+    text = "La carpeta está vinculada, pero el navegador puede pedir permiso antes de escribir.";
+    actions = `<button class="btn primary" data-system-action="refresh-external-folder" type="button">Conceder permiso</button><button class="btn ghost" data-system-action="export-work-copy" type="button">Descargar copia</button>`;
+  } else {
+    tone = "neutral";
+    title = "Copia local activa";
+    text = folderSupported
+      ? "El trabajo se conserva en el navegador. Para protección automática, activa una carpeta; para trasladarlo, descarga una copia."
+      : "El trabajo se conserva en el navegador. Descarga una copia para trasladarlo o protegerlo fuera del navegador.";
+    actions = `<button class="btn ghost" data-system-action="export-work-copy" type="button">Descargar copia</button>${folderSupported ? `<button class="btn primary" data-system-action="link-backup-folder" type="button">Activar carpeta</button>` : ""}`;
+  }
+  el.className = `system-protection-banner-v111 ${tone}`;
+  el.innerHTML = `<div><b>${esc(title)}</b><span>${esc(text)}</span></div><div class="system-protection-actions-v111">${actions}</div>`;
+}
+
+function renderExternalFolderPanelV16() {
+  const box = document.querySelector("#externalFolderSummaryV16");
+  const actions = document.querySelector("#externalFolderActionsV16");
+  if (!box && !actions) return;
+  const st = externalFolderStateV16 || {};
+  const platform = externalFolderPlatformInfo();
+  const supported = st.supported === true || (st.supported === null && platform.supported);
+  const partial = st.partial === true || platform.partial === true;
+  const supportText = supported ? (partial ? "Android/móvil: escritura parcial" : "Escritorio: compatible") : (platform.mobile ? "Móvil: descarga manual" : "No compatible");
+  const linkedText = st.linked ? (st.name || "Carpeta vinculada") : "Sin carpeta vinculada";
+  const permissionText = st.permission === "granted"
+    ? (partial ? "Con permiso ahora" : "Con permiso de escritura")
+    : st.permission === "prompt" && partial && st.linked
+      ? "Se pedirá al guardar"
+      : st.permission === "prompt"
+        ? "Permiso pendiente"
+        : st.permission === "denied"
+          ? "Permiso denegado"
+          : st.permission === "unsupported"
+            ? "No disponible"
+            : st.permission === "error" && partial && st.linked
+              ? "Recuperable al guardar"
+              : st.permission === "error"
+                ? "Revisar carpeta"
+                : "No solicitado";
+  const lastWork = st.lastWorkCopyAt ? formatDate(st.lastWorkCopyAt) : "Aún no creada";
+  const lastBackup = st.lastBackupAt ? formatDate(st.lastBackupAt) : "Aún no creada";
+  const lastError = st.lastError ? st.lastError : (st.reason || platform.reason || "");
+  if (box) {
+    box.innerHTML = `
+      <p><b>Modo</b><span>${esc(supportText)}</span></p>
+      <p><b>Carpeta</b><span>${esc(linkedText)}</span></p>
+      <p><b>Permiso</b><span>${esc(permissionText)}</span></p>
+      <p><b>Copia de trabajo</b><span>${esc(lastWork)}</span></p>
+      <p><b>Copia de seguridad</b><span>${esc(lastBackup)}</span></p>
+      <p><b>Protección</b><span>${esc(protectionTextV19(st))}</span></p>
+      <p class="system-folder-note-v19"><b>Aviso</b><span>${esc(lastError || "Sin incidencias")}</span></p>`;
+  }
+  const linkBtn = document.querySelector("#linkExternalFolderV16");
+  const unlinkBtn = document.querySelector("#unlinkExternalFolderV16");
+  const saveWorkBtn = document.querySelector("#saveExternalWorkCopyV16");
+  const saveBackupBtn = document.querySelector("#saveExternalBackupV16");
+  const refreshBtn = document.querySelector("#refreshExternalFolderV16");
+  [linkBtn, unlinkBtn, saveWorkBtn, saveBackupBtn, refreshBtn].forEach(btn => { if (btn) btn.disabled = false; });
+  if (linkBtn) linkBtn.disabled = !supported;
+  if (unlinkBtn) unlinkBtn.disabled = !supported || !st.linked;
+  if (saveWorkBtn) saveWorkBtn.disabled = !supported || !st.linked || st.permission === "denied" || st.permission === "unsupported";
+  if (saveBackupBtn) saveBackupBtn.disabled = !supported || !st.linked || st.permission === "denied" || st.permission === "unsupported";
+  if (refreshBtn) refreshBtn.disabled = !supported;
+  const primaryBtn = document.querySelector("#externalFolderPrimaryActionV111");
+  const statusLine = document.querySelector("#externalFolderStatusLineV111");
+  if (statusLine) {
+    const statusTone = !supported ? "neutral" : st.linked && st.writable ? ((partial && externalCopyDirtyV19) ? "warn" : "ok") : st.linked ? "warn" : "neutral";
+    const statusTitle = !supported
+      ? "Carpeta vinculada no disponible en este navegador"
+      : st.linked && st.writable
+        ? (partial ? "Carpeta activa ahora · modo móvil" : "Guardado en carpeta disponible")
+        : st.linked
+          ? "Carpeta recordada · necesita permiso"
+          : "Sin carpeta vinculada";
+    const statusBody = st.linked
+      ? `${linkedText}. ${permissionText}. ${protectionTextV19(st)}`
+      : "Puedes activar una carpeta para copias externas o usar la descarga manual.";
+    statusLine.className = `system-folder-status-line-v111 ${statusTone}`;
+    statusLine.innerHTML = `<b>${esc(statusTitle)}</b><span>${esc(statusBody)}</span>`;
+  }
+  if (primaryBtn) {
+    if (!st.linked) {
+      primaryBtn.dataset.systemAction = "link-backup-folder";
+      primaryBtn.textContent = "Activar guardado en carpeta";
+      primaryBtn.className = "btn primary";
+      primaryBtn.disabled = !supported;
+    } else if (st.permission !== "granted" || !st.writable) {
+      primaryBtn.dataset.systemAction = "refresh-external-folder";
+      primaryBtn.textContent = "Conceder permiso de escritura";
+      primaryBtn.className = "btn primary";
+      primaryBtn.disabled = !supported || st.permission === "unsupported";
+    } else {
+      primaryBtn.dataset.systemAction = "save-external-work-copy";
+      primaryBtn.textContent = "Guardar ahora en carpeta";
+      primaryBtn.className = partial ? "btn primary" : "btn success";
+      primaryBtn.disabled = !supported;
+    }
+  }
+  if (linkBtn) linkBtn.style.display = st.linked ? "none" : "";
+  if (refreshBtn) refreshBtn.style.display = st.linked && st.permission !== "granted" ? "" : "none";
+  renderProtectionBannerV111();
+  if (st.supported === null && !externalFolderRefreshPromiseV16) {
+    refreshExternalFolderStatusV16().catch(err => console.warn("[SwiftRemo] No se pudo comprobar carpeta vinculada", err));
+  }
+}
+
+async function refreshExternalFolderStatusV16({ requestPermission = false } = {}) {
+  if (externalFolderRefreshPromiseV16) return externalFolderRefreshPromiseV16;
+  externalFolderRefreshPromiseV16 = getExternalFolderStatus({ requestPermission })
+    .then(st => {
+      externalFolderStateV16 = st;
+      renderExternalFolderPanelV16();
+      return st;
+    })
+    .catch(err => {
+      const friendly = externalFolderFriendlyError(err);
+      externalFolderStateV16 = { supported: externalFolderFeatureAvailable(), linked: false, permission: "error", writable: false, lastError: friendly, reason: friendly };
+      renderExternalFolderPanelV16();
+      return externalFolderStateV16;
+    })
+    .finally(() => { externalFolderRefreshPromiseV16 = null; });
+  return externalFolderRefreshPromiseV16;
+}
+
+async function linkBackupFolderV16() {
+  try {
+    setStatus("Selecciona una carpeta. SwiftRemo pedirá permiso y creará una primera copia para validar la escritura.", "warn");
+    const st = await linkExternalFolder();
+    externalFolderStateV16 = st;
+    renderExternalFolderPanelV16();
+    let result = null;
+    if (swiftDb) {
+      // Android con vista de escritorio puede conservar el handle pero no dejar la escritura lista
+      // hasta una segunda consulta de permiso. Hacemos esa estabilización dentro del mismo flujo
+      // para evitar que el usuario tenga que pulsar "Comprobar" después de vincular.
+      await refreshExternalFolderStatusV16({ requestPermission: true }).catch(() => null);
+      result = await saveExternalCopies(swiftDb.exportBytes(), {
+        reason: "vinculacion_carpeta",
+        backup: true,
+        forceWorkArchive: true,
+        requestPermission: true,
+        retryOnRecoverable: true
+      });
+      if (result?.linked && !result?.written && result?.partial) {
+        await refreshExternalFolderStatusV16({ requestPermission: true }).catch(() => null);
+        result = await saveExternalCopies(swiftDb.exportBytes(), {
+          reason: "vinculacion_carpeta_reintento_android",
+          backup: true,
+          forceWorkArchive: true,
+          requestPermission: true,
+          retryOnRecoverable: true
+        });
+      }
+      externalFolderStateV16 = { ...externalFolderStateV16, ...result };
+      markPortableCopyProtectionV19({ external: result });
+    }
+    const count = result?.files?.length ? ` Primera copia creada: ${result.files.length} archivo/s.` : "";
+    const mobileNote = result?.partial ? " Android puede pedir permiso de nuevo más adelante; si hay cambios sin copia externa, la app avisará antes de cerrar cuando el navegador lo permita." : "";
+    const notWritten = result?.linked && !result?.written ? " Carpeta recordada, pero Android no confirmó escritura en este intento; usa Guardar copia de trabajo o descarga una copia manual antes de cerrar." : "";
+    setPersistenceStateRc12({ externalFolderLinked: true, externalFolderName: externalFolderStateV16.name || st.name, note: `Carpeta vinculada para copias automáticas.${count}${mobileNote}${notWritten}` });
+    setStatus(`Carpeta vinculada: ${externalFolderStateV16.name || st.name}.${count}${mobileNote}${notWritten}`, result?.partial || notWritten ? "warn" : "ok");
+    toast(result?.written ? "Carpeta vinculada y primera copia creada." : "Carpeta vinculada. Revisa la copia externa.", result?.written ? "ok" : "warn");
+  } catch (err) {
+    if (err?.name === "AbortError") {
+      setStatus("Vinculación de carpeta cancelada.", "warn");
+      return;
+    }
+    console.error(err);
+    const friendly = externalFolderFriendlyError(err);
+    setStatus(`No se pudo completar la vinculación con prueba de escritura: ${friendly}`, "err");
+    toast("No se pudo validar la carpeta.", "err");
+    await refreshExternalFolderStatusV16({ requestPermission: true }).catch(() => null);
+  }
+}
+
+async function unlinkBackupFolderV16() {
+  if (!confirm("Se olvidará la carpeta vinculada. No se eliminarán las copias ya creadas en esa carpeta. ¿Continuar?")) return;
+  try {
+    externalFolderStateV16 = await unlinkExternalFolder();
+    renderExternalFolderPanelV16();
+    setPersistenceStateRc12({ externalFolderLinked: false, externalFolderName: "", note: "Carpeta de copias automáticas desvinculada. Las copias ya existentes no se eliminan." });
+    setStatus("Carpeta desvinculada. El snapshot interno del navegador sigue activo.", "ok");
+    toast("Carpeta desvinculada.");
+  } catch (err) {
+    console.error(err);
+    const friendly = externalFolderFriendlyError(err);
+    setStatus(`No se pudo desvincular la carpeta: ${friendly}`, "err");
+    toast("No se pudo desvincular la carpeta.", "err");
+  }
+}
+
+async function saveExternalWorkCopyNowV16({ backup = false } = {}) {
+  try {
+    if (!swiftDb) return toast("La base todavía no está cargada.", "warn");
+    setStatus(backup ? "Creando copia de seguridad en carpeta vinculada…" : "Guardando copia de trabajo en carpeta vinculada…", "warn");
+    const result = await saveExternalCopies(swiftDb.exportBytes(), {
+      reason: backup ? "manual_backup" : "manual_work_copy",
+      backup,
+      forceWorkArchive: true,
+      requestPermission: true
+    });
+    externalFolderStateV16 = { ...externalFolderStateV16, ...result };
+    markPortableCopyProtectionV19({ external: result });
+    if (!result.linked) {
+      setStatus("No hay carpeta vinculada. Vincula una carpeta antes de usar el guardado automático externo.", "warn");
+      toast("Vincula una carpeta primero.", "warn");
+      return;
+    }
+    if (!result.written) {
+      const advice = result.reason || result.lastError || "No se pudo escribir en la carpeta. Descarga una copia manual para proteger los cambios.";
+      setStatus(`${advice} El trabajo sigue guardado en el navegador.`, "warn");
+      toast("Copia externa pendiente. Descarga una copia manual.", "warn");
+      return;
+    }
+    const kind = backup ? "copia de seguridad" : "copia de trabajo";
+    setPersistenceStateRc12({ externalFolderLinked: true, externalFolderName: result.name || externalFolderStateV16.name, note: `Guardada ${kind} en carpeta vinculada.` });
+    const partialNote = result?.partial ? " Modo móvil parcial: escritura correcta ahora; mantén una descarga manual periódica." : "";
+    setStatus(`Guardada ${kind} en carpeta vinculada (${result.files?.length || 1} archivo/s).${partialNote}`, result?.partial ? "warn" : "ok");
+    toast(`Guardada ${kind} en carpeta.`);
+  } catch (err) {
+    console.error(err);
+    const friendly = externalFolderFriendlyError(err);
+    setStatus(`No se pudo guardar en la carpeta vinculada: ${friendly} El trabajo sigue guardado en el navegador; descarga una copia manual.`, "err");
+    toast("No se pudo guardar en la carpeta vinculada.", "err");
+    await refreshExternalFolderStatusV16().catch(() => null);
+  }
+}
+
+async function persistExternalCopiesV16(bytes, { backup = false, reason = "auto", forceWorkArchive = false, dbChanged = false, requestPermission = false } = {}) {
+  try {
+    const result = await saveExternalCopies(bytes, { backup, reason, forceWorkArchive, requestPermission, retryOnRecoverable: requestPermission });
+    externalFolderStateV16 = { ...externalFolderStateV16, ...result };
+    markPortableCopyProtectionV19({ external: result, dbChanged });
+    if (result?.written) {
+      setPersistenceStateRc12({ externalFolderLinked: true, externalFolderName: result.name || externalFolderStateV16.name });
+    }
+    return result;
+  } catch (err) {
+    console.warn("[SwiftRemo] No se pudo guardar copia externa", err);
+    const friendly = externalFolderFriendlyError(err);
+    externalFolderStateV16 = { ...externalFolderStateV16, lastError: friendly, reason: friendly, permission: "error", writable: false };
+    markPortableCopyProtectionV19({ external: { linked: true, written: false, reason: friendly }, dbChanged });
+    return { linked: true, written: false, error: friendly, reason: friendly };
+  }
+}
+
 function lightweightTechnicalDiagnosticRc12() {
   const metrics = window.SwiftRemoBootMetrics?.snapshot?.() || null;
   const scalar = (sql) => {
@@ -581,6 +954,7 @@ function lightweightTechnicalDiagnosticRc12() {
     version: metaValue("schema_version") || "desconocida",
     releaseLabel: metaValue("release_label") || "",
     persistence: { ...persistenceStateRc12 },
+    externalFolder: { ...externalFolderStateV16 },
     counts: {
       ingredients: scalar("SELECT COUNT(*) FROM ingredients;"),
       activeIngredients: scalar("SELECT COUNT(*) FROM ingredients WHERE active=1;"),
@@ -599,6 +973,7 @@ function fullAuditJsonRc12() {
   const base = repo.exportJson();
   base.reportKind = "auditoria_completa_bajo_demanda";
   base.persistence = { ...persistenceStateRc12 };
+  base.externalFolder = { ...externalFolderStateV16 };
   return base;
 }
 
@@ -614,7 +989,7 @@ function renderBootMetricsPanelRc7() {
 
 
 const featureModulesV13 = createFeatureModuleManager({
-  version: "150v15",
+  version: "1150v115",
   toast,
   esc,
   moduleLoaded: name => window.SwiftRemoBootMetrics?.moduleLoaded?.(name),
@@ -695,19 +1070,25 @@ async function autosave({ backup = false, reason = "auto" } = {}) {
     setSaveIndicator("Guardando…", "saving", "Actualizando base de trabajo.");
     const bytes = swiftDb.exportBytes();
     const saved = await saveRecovery(bytes, { backup, reason });
-    setPersistenceStateRc12({ source: "snapshot", savedAt: saved.savedAt, snapshotSize: saved.size || bytes.byteLength || bytes.length || 0, note: backup ? `Snapshot local y copia interna de seguridad: ${reason}.` : `Snapshot local actualizado: ${reason}.` });
+    const external = await persistExternalCopiesV16(bytes, { backup, reason, dbChanged: true });
+    const externalNote = external?.written ? ` También actualizada la carpeta vinculada (${external.files?.length || 1} archivo/s).` : "";
+    const externalWarning = externalCopyDirtyV19 && (external?.linked || mobileLikeV19()) ? " Los cambios están guardados en el navegador; descarga una copia o revisa la carpeta vinculada antes de cerrar." : "";
+    setPersistenceStateRc12({ source: "snapshot", savedAt: saved.savedAt, snapshotSize: saved.size || bytes.byteLength || bytes.length || 0, note: (backup ? `Snapshot local y copia interna de seguridad: ${reason}.` : `Snapshot local actualizado: ${reason}.`) + externalNote + externalWarning });
     hasSaveError = false;
     setState("Guardado", "clean");
-    setSaveIndicator("Guardado", "ok", `Última actualización: ${formatDate(saved.savedAt)}`);
-    setStatus("Cambios guardados en el trabajo local del navegador.", "ok");
+    setSaveIndicator("Guardado en navegador", "ok", `Última actualización local: ${formatDate(saved.savedAt)}`);
+    setStatus(externalWarning ? `Cambios guardados en el navegador.${externalWarning}` : `Cambios guardados en el trabajo local del navegador.${externalNote}`, externalWarning ? "warn" : "ok");
     renderPersistencePanelRc12();
+    renderProtectionBannerV111();
     return saved;
   } catch (err) {
     console.error(err);
+    hasPendingSave = false;
     hasSaveError = true;
     setState("Error de guardado", "error");
     setSaveIndicator("No se pudo guardar", "err", "Descarga una copia de trabajo para no perder cambios.");
     setStatus("No se pudo guardar automáticamente. Descarga una copia de trabajo.", "err");
+    renderProtectionBannerV111();
     toast("No se pudo guardar. Descarga una copia de trabajo.", "err");
     throw err;
   }
@@ -775,8 +1156,8 @@ function renderActiveRoute(explicit = null, { reason = "active" } = {}) {
     "archive-bakery": [],
     "archive-culinary": [],
     "archive-review": [renderBaseStatusV663, renderPanelQualitySummary, renderAudit],
-    system: [renderBootMetricsPanelRc7, renderPersistencePanelRc12, renderOpfsWorkerEvaluationRc13],
-    "system-data": [renderBootMetricsPanelRc7, renderPersistencePanelRc12, renderOpfsWorkerEvaluationRc13, renderPrivateDataManager],
+    system: [renderBootMetricsPanelRc7, renderPersistencePanelRc12, renderExternalFolderPanelV16, renderOpfsWorkerEvaluationRc13],
+    "system-data": [renderBootMetricsPanelRc7, renderPersistencePanelRc12, renderExternalFolderPanelV16, renderOpfsWorkerEvaluationRc13, renderPrivateDataManager],
     "system-sql": [],
     "system-status": [renderBaseStatusV663, renderPanelQualitySummary, renderAudit]
   };
@@ -1037,7 +1418,7 @@ function savePracticeContextToSqliteV633(partial = {}) {
   practiceContextSaveTimer = setTimeout(() => {
     autosave({ backup: false, reason: "contexto práctica" })
       .then(() => { hasPendingSave = false; practiceContextSaveTimer = null; })
-      .catch(err => { hasSaveError = true; console.error(err); });
+      .catch(err => { hasPendingSave = false; practiceContextSaveTimer = null; hasSaveError = true; console.error(err); });
   }, 650);
 }
 
@@ -1635,10 +2016,6 @@ function applyWorkshopButtonState(wf) {
     "#workshopPrintSheets",
     "#workshopPrintOrder",
     "#workshopOpenPrintCenter",
-    "#workshopPrintSimpleSheets",
-    "#workshopPrintSimpleOrder",
-    "#workshopPrintSimpleDossier",
-    "#workshopPrintTeachingSheets",
     "#workshopPrintTechnicalOrder",
     "#workshopPrintTeachingDossier"
   ];
@@ -1659,7 +2036,7 @@ function applyWorkshopButtonState(wf) {
     btn.classList.toggle("hidden-by-workflow", !wf.hasItems);
   });
 
-  document.querySelectorAll("#workshopPrintDossier, #workshopPrintSheets, #workshopPrintOrder, #workshopOpenPrintCenter").forEach(btn => {
+  document.querySelectorAll("#workshopPrintDossier, #workshopPrintSheets, #workshopPrintOrder, #workshopPrintTeachingDossier, #workshopPrintTechnicalOrder, #workshopOpenPrintCenter").forEach(btn => {
     const card = btn.closest(".print-profile-card-618");
     if (card) card.classList.toggle("workflow-card-disabled", !wf.hasItems);
   });
@@ -3064,17 +3441,22 @@ function renderPrivateDataManager() {
   }
   ensurePrivateMediaSchema();
   syncPrivateSourceSlug();
+  const privateDetailsOpen = !!document.querySelector(".system-private-details-v17")?.open;
   if (recipeSelect) {
-    const current = recipeSelect.value;
-    const kind = document.querySelector("#privatePhotoKind")?.value || "all";
-    const rows = swiftDb.query(`
-      SELECT uid, source_type, source_id, name
-      FROM v_elaborations_unified
-      WHERE active=1 AND ($kind='all' OR source_type=$kind)
-      ORDER BY name;
-    `, { $kind: kind });
-    recipeSelect.innerHTML = `<option value="">Selecciona ficha/formulación…</option>` + rows.map(r => `<option value="${esc(r.uid)}">${esc(r.name)} · ${esc(r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería")}</option>`).join("");
-    if (rows.some(r => r.uid === current)) recipeSelect.value = current;
+    if (!privateDetailsOpen) {
+      recipeSelect.innerHTML = `<option value="">Abre Material privado para cargar fichas…</option>`;
+    } else {
+      const current = recipeSelect.value;
+      const kind = document.querySelector("#privatePhotoKind")?.value || "all";
+      const rows = swiftDb.query(`
+        SELECT uid, source_type, source_id, name
+        FROM v_elaborations_unified
+        WHERE active=1 AND ($kind='all' OR source_type=$kind)
+        ORDER BY name;
+      `, { $kind: kind });
+      recipeSelect.innerHTML = `<option value="">Selecciona ficha/formulación…</option>` + rows.map(r => `<option value="${esc(r.uid)}">${esc(r.name)} · ${esc(r.source_type === "bakery" ? "Panadería" : "Cocina/Pastelería")}</option>`).join("");
+      if (rows.some(r => r.uid === current)) recipeSelect.value = current;
+    }
   }
   if (!box) return;
   const stats = {
@@ -3194,19 +3576,27 @@ async function sha256Hex(bytes) {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
-function exportPrivateSqlite() {
+async function exportPrivateSqlite() {
   const base = slugTechnical(privateSourceName()) || PRIVATE_DEFAULT_SOURCE_ID;
-  downloadBytes(`SwiftRemo_${base}_${dateSlug()}.sqlite`, swiftDb.exportBytes());
-  setPersistenceStateRc12({ lastDownloadAt: new Date().toISOString(), lastDownloadKind: "copia con material local", privateMaterial: true, note: "Copia privada descargada. No subir a repositorio público." });
+  const bytes = swiftDb.exportBytes();
+  downloadBytes(`SwiftRemo_${base}_${dateSlug()}.sqlite`, bytes);
+  const external = await persistExternalCopiesV16(bytes, { reason: "copia_con_material_local", backup: true, forceWorkArchive: true });
+  markPortableCopyProtectionV19({ external, manualDownload: true });
+  const externalNote = external?.written ? ` También guardada en carpeta vinculada (${external.files?.length || 1} archivo/s).` : "";
+  setPersistenceStateRc12({ lastDownloadAt: new Date().toISOString(), lastDownloadKind: "copia con material local", privateMaterial: true, note: `Copia privada descargada. No subir a repositorio público.${externalNote}` });
   toast("Copia con material local descargada.");
-  setStatus("Copia con material local descargada. No la subas al repositorio público.", "ok");
+  setStatus(`Copia con material local descargada. No la subas al repositorio público.${externalNote}`, external?.linked && !external?.written ? "warn" : "ok");
 }
 
-function exportSqlite() {
-  downloadBytes(`swiftremo_trabajo_${dateSlug()}.sqlite`, swiftDb.exportBytes());
-  setPersistenceStateRc12({ lastDownloadAt: new Date().toISOString(), lastDownloadKind: "copia de trabajo", note: "Copia de trabajo descargada manualmente." });
+async function exportSqlite() {
+  const bytes = swiftDb.exportBytes();
+  downloadBytes(`swiftremo_trabajo_${dateSlug()}.sqlite`, bytes);
+  const external = await persistExternalCopiesV16(bytes, { reason: "descarga_manual", backup: false, forceWorkArchive: true });
+  markPortableCopyProtectionV19({ external, manualDownload: true });
+  const externalNote = external?.written ? ` También guardada en carpeta vinculada (${external.files?.length || 1} archivo/s).` : "";
+  setPersistenceStateRc12({ lastDownloadAt: new Date().toISOString(), lastDownloadKind: "copia de trabajo", note: `Copia de trabajo descargada manualmente.${externalNote}` });
   setState("Guardado", "clean");
-  setStatus("Copia de trabajo descargada. Esta es la copia principal para conservar o trasladar el trabajo.", "ok");
+  setStatus(`Copia de trabajo descargada. Esta es la copia principal para conservar o trasladar el trabajo.${externalNote}`, external?.linked && !external?.written ? "warn" : "ok");
   toast("Copia de trabajo descargada.");
 }
 

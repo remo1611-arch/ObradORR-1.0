@@ -1,1 +1,1 @@
-SwiftRemo SQL v1.5 · Renderizadores HTML pequeños · 2026-06-01
+SwiftRemo SQL v1.15.1 · GitHub-ready · catálogo FP Galicia · cache 1150v115

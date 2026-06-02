@@ -1315,3 +1315,63 @@ body[data-workflow-state="empty"] #tab-order .order-guidance-619{display:none;}
 #tab-system.has-domain-view > .system-home-rc6{display:none;}
 .domain-nested-view.system-screen-rc6:not([hidden]),
 .domain-nested-view.system-screen-rc2:not([hidden]){display:block;}
+
+/* SwiftRemo v1.10 · Sistema compacto y operativo */
+.system-data-hero-v17{margin-bottom:14px;}
+.system-status-row-v17{grid-template-columns:minmax(220px,.75fr) minmax(0,1.25fr);}
+.system-command-grid-v17{display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:14px;margin:14px 0;align-items:stretch;}
+.system-command-card-v17{display:flex;flex-direction:column;gap:12px;margin:0;}
+.system-command-card-v17.primary{border-color:#b9dec8;background:linear-gradient(135deg,#ffffff,#f6fbf8);}
+.system-command-card-v17.folder{border-color:#bdd7ee;background:linear-gradient(135deg,#ffffff,#f7fbff);}
+.system-command-card-v17.recover{border-color:#e7c6c6;background:linear-gradient(135deg,#ffffff,#fff8f8);}
+.system-card-head-v17{display:flex;gap:12px;align-items:flex-start;}
+.system-card-head-v17 h3{margin:0 0 4px;color:#172033;}
+.system-folder-summary-v17{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.system-folder-summary-v17 p{margin:0;border:1px solid var(--line);border-radius:14px;background:#fff;padding:10px 12px;min-height:58px;}
+.system-folder-summary-v17 b{display:block;font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin-bottom:4px;}
+.system-folder-summary-v17 span{display:block;color:#172033;line-height:1.3;word-break:break-word;}
+.system-button-stack-v17{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.system-button-stack-v17 .btn{width:100%;white-space:normal;}
+.system-button-stack-v17 .btn.danger{grid-column:1/-1;}
+.system-private-details-v17,.system-tech-details-v17{padding:0;overflow:hidden;margin:14px 0;}
+.system-private-details-v17>summary,.system-tech-details-v17>summary{list-style:none;display:flex;gap:12px;align-items:flex-start;cursor:pointer;padding:16px 18px;background:#fff;}
+.system-private-details-v17>summary::-webkit-details-marker,.system-tech-details-v17>summary::-webkit-details-marker{display:none;}
+.system-private-details-v17>summary::after,.system-tech-details-v17>summary::after{content:"Abrir";margin-left:auto;flex:0 0 auto;border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:#475569;background:#fff;font-size:.82rem;font-weight:700;}
+.system-private-details-v17[open]>summary::after,.system-tech-details-v17[open]>summary::after{content:"Cerrar";}
+.system-private-details-v17>summary b,.system-tech-details-v17>summary b{display:block;color:#172033;font-size:1.05rem;}
+.system-private-details-v17.secondary{border-style:dashed;background:#fbfdff;}
+.system-private-details-v17.secondary>summary{padding:13px 16px;background:#fbfdff;}
+.system-private-details-v17.secondary>summary b{font-size:1rem;}
+.system-private-details-v17>summary small,.system-tech-details-v17>summary small{display:block;color:#64748b;line-height:1.35;margin-top:4px;}
+.system-tech-grid-v17{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.system-tech-card-v17{border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px;min-width:0;}
+.system-tech-card-v17 h3{margin:0 0 6px;}
+.system-tech-card-v17 .system-rules-rc6{grid-template-columns:repeat(2,minmax(0,1fr));}
+.system-tech-card-v17 details{margin-top:10px;}
+.system-tech-card-v17 pre{max-height:260px;overflow:auto;}
+.system-help-v17{margin-top:14px;}
+@media(max-width:1120px){.system-command-grid-v17{grid-template-columns:1fr 1fr}.system-command-card-v17.folder{grid-column:1/-1;order:-1}.system-status-row-v17{grid-template-columns:1fr}.system-tech-grid-v17{grid-template-columns:1fr}}
+@media(max-width:760px){.system-command-grid-v17,.system-folder-summary-v17,.system-button-stack-v17,.system-tech-card-v17 .system-rules-rc6{grid-template-columns:1fr}.system-private-details-v17>summary::after,.system-tech-details-v17>summary::after{content:"+"}.system-private-details-v17[open]>summary::after,.system-tech-details-v17[open]>summary::after{content:"−"}.system-card-head-v17{gap:10px}}
+
+/* v1.12 · Sistema: protección visible y flujo de guardado clarificado */
+.system-protection-banner-v111{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-top:14px;border:1px solid var(--line);border-radius:16px;padding:14px 16px;background:#fff;box-shadow:0 6px 16px rgba(15,23,42,.05)}
+.system-protection-banner-v111 b{display:block;margin-bottom:3px;color:#172033}.system-protection-banner-v111 span{display:block;color:#475569;line-height:1.35}.system-protection-banner-v111.ok{border-color:#b9dec8;background:#f3fbf6}.system-protection-banner-v111.warn{border-color:#f0d7a7;background:#fff8de}.system-protection-banner-v111.err{border-color:#efb4aa;background:#fff0ed}.system-protection-banner-v111.neutral{background:#f8fafc}.system-protection-actions-v111{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.system-protection-actions-v111 .btn{white-space:normal}
+.system-action-grid-rc6.single{grid-template-columns:1fr}.system-secondary-options-v111,.system-folder-options-v111{border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.72);padding:0;overflow:hidden}.system-secondary-options-v111>summary,.system-folder-options-v111>summary{list-style:none;cursor:pointer;padding:11px 13px;font-weight:800;color:#334155;display:flex;align-items:center;justify-content:space-between;gap:10px}.system-secondary-options-v111>summary::-webkit-details-marker,.system-folder-options-v111>summary::-webkit-details-marker{display:none}.system-secondary-options-v111>summary::after,.system-folder-options-v111>summary::after{content:"Abrir";border:1px solid var(--line);border-radius:999px;padding:3px 9px;background:#fff;font-size:.78rem;color:#64748b}.system-secondary-options-v111[open]>summary::after,.system-folder-options-v111[open]>summary::after{content:"Cerrar"}.system-secondary-options-v111>.system-action-grid-rc6,.system-folder-options-v111>.system-folder-summary-v17,.system-folder-options-v111>.system-button-stack-v17{margin:0 12px 12px}.system-secondary-options-v111>.microcopy-rc6,.system-folder-options-v111>.microcopy-rc6{margin:10px 12px 12px}
+.system-folder-status-line-v111{border:1px solid var(--line);border-radius:16px;background:#fff;padding:13px 14px}.system-folder-status-line-v111 b{display:block;margin-bottom:4px;color:#172033}.system-folder-status-line-v111 span{display:block;color:#475569;line-height:1.35}.system-folder-status-line-v111.ok{border-color:#b9dec8;background:#f3fbf6}.system-folder-status-line-v111.warn{border-color:#f0d7a7;background:#fff8de}.system-folder-status-line-v111.err{border-color:#efb4aa;background:#fff0ed}.system-folder-status-line-v111.neutral{background:#f8fafc}.system-folder-primary-v111 .btn{width:100%;justify-content:center;font-size:1rem;padding-top:12px;padding-bottom:12px}
+@media(max-width:760px){.system-protection-banner-v111{display:block}.system-protection-actions-v111{justify-content:stretch;margin-top:10px}.system-protection-actions-v111 .btn{width:100%}.system-secondary-options-v111>summary::after,.system-folder-options-v111>summary::after{content:"+"}.system-secondary-options-v111[open]>summary::after,.system-folder-options-v111[open]>summary::after{content:"−"}}
+
+/* v1.14 · Correcciones PDF real de impresión */
+.print-profile-card-secondary-113{
+  background:#fff;
+  border-style:dashed;
+}
+.print-profile-card-secondary-113 b{
+  color:#355c74;
+}
+.print-profile-card-secondary-113 .btn{
+  justify-self:start;
+}
+@media(max-width:720px){
+  #workshopOutputActionsGrid .btn{width:100%;}
+  .print-profile-card-618{min-height:auto;}
+}

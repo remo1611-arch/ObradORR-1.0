@@ -1,0 +1,8 @@
+SwiftRemo SQL v1.10 · Carpeta vinculada y copias automáticas
+Fecha: 2026-06-01
+
+Validaciones:
+- Sintaxis JS: OK (node --check en app/js/*.js, app/js/domain/*.js, app/js/ui/*.js)
+- Rutas servidas por HTTP local: OK
+- Caché actualizado: ?v=1120v112
+- Nueva capa externa: opcional, no bloqueante, con fallback a IndexedDB/descarga manual

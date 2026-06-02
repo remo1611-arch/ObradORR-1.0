@@ -9,7 +9,7 @@
 <meta content="no-cache" http-equiv="Pragma"/>
 <meta content="0" http-equiv="Expires"/>
 <title>SwiftRemo SQL · Aula taller</title>
-<link href="./js/swiftremo-ui.css?v=150v15" rel="stylesheet"/>
+<link href="./js/swiftremo-ui.css?v=1150v115" rel="stylesheet"/>
 </head>
 <body>
 <header class="app-header">
@@ -933,14 +933,6 @@
 <div class="print-center-hint-642">
             La práctica solo ajusta cantidades y datos docentes. Para generar documentos, abre la pestaña Salida.
           </div>
-<div aria-hidden="true" class="sr-only print-compat-buttons-642">
-<button id="workshopPrintSimpleSheets" type="button">Ficha técnica</button>
-<button id="workshopPrintSimpleOrder" type="button">Pedido</button>
-<button id="workshopPrintSimpleDossier" type="button">Ficha técnica + pedido</button>
-<button id="workshopPrintTeachingSheets" type="button">Ficha técnica completa</button>
-<button id="workshopPrintTechnicalOrder" type="button">Pedido completo</button>
-<button id="workshopPrintTeachingDossier" type="button">Ficha técnica completa + pedido completo</button>
-</div>
 <div class="kpi-grid" id="workshopSelectionSummary"></div>
 <div class="work-current-note-624"><b>Flujo recomendado:</b> añade elaboraciones, indica producción total, revisa el pedido y genera documentos exclusivamente desde Salida.</div>
 <div class="workflow-host-6704" id="workshopPracticeState"></div>
@@ -1051,41 +1043,30 @@
 <form class="quantity-form-626 print-center-form-642" method="dialog">
 <div class="section-head quantity-head-626">
 <div>
-<h2>Imprimir / exportar PDF</h2>
-<p class="small">Escoge un documento simple o completo. La opción recomendada aparece marcada por defecto.</p>
+<h2>Personalizar salida</h2>
+<p class="small">Ajusta el documento y los modos técnicos cuando los botones directos de Salida no sean suficientes.</p>
 </div>
 <button aria-label="Cerrar" class="btn ghost" id="workshopPrintDialogClose" type="button">Cerrar</button>
 </div>
 <div class="quantity-contract-626" id="workshopPrintDialogSummary">Práctica actual.</div>
 <div class="print-profile-section-642">
-<h3>¿Qué quieres imprimir?</h3>
-<p class="small">Documento simple</p>
+<h3>Documento a generar</h3>
+<p class="small">Los accesos directos ya cubren lo habitual. Usa este panel para ajustar subelaboraciones y proceso.</p>
 <label class="print-profile-card-642 recommended-642">
 <input checked="" name="workshopPrintProfile" type="radio" value="both"/>
-<span><b>Ficha técnica + pedido</b><small>Opción recomendada: producción resumida y pedido limpio agrupado.</small></span>
+<span><b>Fichas + pedido limpio</b><small>Salida de aula: elaboraciones resumidas y pedido agrupado por familias.</small></span>
 </label>
 <label class="print-profile-card-642">
 <input name="workshopPrintProfile" type="radio" value="elaborations"/>
-<span><b>Ficha técnica</b><small>Solo producción: elaboraciones, cantidades e ingredientes.</small></span>
+<span><b>Fichas simples</b><small>Solo elaboraciones, cantidades e ingredientes. No incluye ficha docente completa.</small></span>
 </label>
 <label class="print-profile-card-642">
 <input name="workshopPrintProfile" type="radio" value="order"/>
-<span><b>Pedido</b><small>Solo listado de compra agrupado por familias. Sin origen ni proveedor visible.</small></span>
+<span><b>Pedido limpio</b><small>Listado de compra agrupado por familias. Sin coste, proveedor ni origen de uso.</small></span>
 </label>
-</div>
-<div class="print-profile-section-642 print-profile-complete-643">
-<p class="small">Documento completo</p>
 <label class="print-profile-card-642">
 <input name="workshopPrintProfile" type="radio" value="teaching"/>
-<span><b>Ficha técnica completa</b><small>Escandallo/formulación, coste, alérgenos y proceso técnico.</small></span>
-</label>
-<label class="print-profile-card-642">
-<input name="workshopPrintProfile" type="radio" value="technical_order"/>
-<span><b>Pedido completo</b><small>Incluye proveedor, zona, coste y origen/usado en.</small></span>
-</label>
-<label class="print-profile-card-642">
-<input name="workshopPrintProfile" type="radio" value="teaching_order"/>
-<span><b>Ficha técnica completa + pedido completo</b><small>Dossier completo: fichas técnicas ampliadas y pedido completo al final.</small></span>
+<span><b>Fichas docentes completas</b><small>Escandallo/formulación, coste, alérgenos y proceso técnico.</small></span>
 </label>
 </div>
 <div class="print-profile-section-642 print-subrecipe-mode-646">
@@ -1206,25 +1187,35 @@
           </div>
 <div class="workflow-host-6704" id="workshopOutputState"></div>
 <div class="print-profile-grid-618 print-profile-grid-619 output-grid-670 shell-output-grid-671" id="workshopOutputActionsGrid">
-<div class="print-profile-card-618 recommended-output-670">
-<b>Dossier completo</b>
-<span>Portada, fichas técnicas completas y pedido técnico final. Es la salida recomendada para aula-taller.</span>
-<button class="btn success" id="workshopPrintDossier" type="button">Vista previa / imprimir dossier</button>
+<div class="print-profile-card-618 recommended-output-670 shell-primary-card-671">
+<b>Fichas + pedido limpio</b>
+<span>Salida diaria de aula: elaboraciones resumidas y pedido limpio agrupado por familias.</span>
+<button class="btn success" id="workshopPrintDossier" type="button">Vista previa / imprimir</button>
 </div>
-<div class="print-profile-card-618">
-<b>Solo fichas</b>
-<span>Fichas técnicas completas de las elaboraciones seleccionadas, con proceso, APPCC y alérgenos.</span>
-<button class="btn success" id="workshopPrintSheets" type="button">Imprimir fichas</button>
+<div class="print-profile-card-618 shell-primary-card-671">
+<b>Fichas docentes</b>
+<span>Fichas técnicas completas de las elaboraciones seleccionadas, con coste, alérgenos y proceso.</span>
+<button class="btn success" id="workshopPrintSheets" type="button">Fichas docentes</button>
 </div>
-<div class="print-profile-card-618">
-<b>Solo pedido</b>
-<span>Pedido técnico completo con unidades, proveedor, zona, coste y uso en elaboraciones.</span>
-<button class="btn success" id="workshopPrintOrder" type="button">Imprimir pedido</button>
+<div class="print-profile-card-618 shell-primary-card-671">
+<b>Pedido limpio</b>
+<span>Listado de compra por familias para aula o economato. Sin proveedor, coste ni origen de uso.</span>
+<button class="btn success" id="workshopPrintOrder" type="button">Pedido limpio</button>
 </div>
-<div class="print-profile-card-618">
-<b>Salida personalizada</b>
-<span>Elige simple/completa, pedido, fichas y modo de subelaboraciones.</span>
-<button class="btn primary" id="workshopOpenPrintCenter" type="button">Abrir opciones de salida</button>
+<div class="print-profile-card-618 print-profile-card-secondary-113">
+<b>Dossier técnico</b>
+<span>Portada, fichas docentes completas y pedido técnico final. Útil para archivo o revisión exhaustiva.</span>
+<button class="btn primary" id="workshopPrintTeachingDossier" type="button">Dossier técnico</button>
+</div>
+<div class="print-profile-card-618 print-profile-card-secondary-113">
+<b>Pedido técnico</b>
+<span>Pedido con proveedor, zona, coste y origen de uso en elaboraciones.</span>
+<button class="btn ghost" id="workshopPrintTechnicalOrder" type="button">Pedido técnico</button>
+</div>
+<div class="print-profile-card-618 print-profile-card-secondary-113">
+<b>Personalizar salida</b>
+<span>Ajusta fichas simples/completas, subelaboraciones y proceso antes de generar el documento.</span>
+<button class="btn ghost" id="workshopOpenPrintCenter" type="button">Personalizar…</button>
 </div>
 </div>
 </div>
@@ -1233,19 +1224,19 @@
 <div class="card"><h2>Costes y márgenes</h2><div class="wide" id="marginsTable"></div></div>
 </section>
 <section class="tab-section system-screen-rc6" id="view-system-data">
-<div class="card system-hero-rc6">
+<div class="card system-hero-rc6 system-data-hero-v17">
 <div class="section-head system-titlebar-rc6">
 <div>
 <p class="eyebrow-rc6">Sistema</p>
 <h2>Datos y seguridad</h2>
-<p class="small">Pantalla simplificada para guardar el trabajo, recuperarlo, volver a la base pública o integrar material local autorizado.</p>
+<p class="small">Centro de guardado, recuperación, carpeta vinculada y material privado. Lo técnico queda plegado para no contaminar el uso diario.</p>
 </div>
 <div class="actions system-title-actions-rc6">
 <button class="btn success" data-system-action="export-work-copy" id="exportSqlite" type="button">Descargar copia de trabajo</button>
 <button class="btn ghost" data-system-route="workshop-practice" type="button">Volver a Taller</button>
 </div>
 </div>
-<div aria-label="Estado de guardado y base" class="system-status-row-rc6">
+<div aria-label="Estado rápido de guardado" class="system-status-row-rc6 system-status-row-v17">
 <div class="system-status-card-rc6">
 <span class="system-status-label-rc6">Guardado local</span>
 <div class="save-indicator saving" id="saveIndicator">Preparando guardado…</div>
@@ -1253,114 +1244,88 @@
 </div>
 <div class="system-status-card-rc6 status-box warn" id="statusBox">La base todavía no se ha cargado.</div>
 </div>
-<div aria-label="Diagnóstico de persistencia v1.5" class="card boot-metrics-rc10">
-<div class="section-head">
+<div aria-live="polite" class="system-protection-banner-v111 neutral" id="portableProtectionBannerV111">
+<div><b>Protección local activa</b><span>El trabajo se conserva en el navegador. Descarga una copia para trasladarlo o protegerlo fuera del navegador.</span></div>
+<div class="system-protection-actions-v111"><button class="btn ghost" data-system-action="export-work-copy" type="button">Descargar copia</button></div>
+</div>
+</div>
+
+<div aria-label="Acciones principales de datos" class="system-command-grid-v17">
+<section class="card system-command-card-v17 primary">
+<div class="system-card-head-v17">
 <div>
-<h3>Persistencia profesional v1.5</h3>
-<p class="small">Distingue base pública, trabajo local recuperado, copia descargada y material privado integrado.</p>
+<h3>Guardar una copia en este dispositivo</h3>
+<p class="small">Descarga la base de trabajo para conservarla, trasladarla a otro equipo o importarla después.</p>
 </div>
 </div>
-<div class="system-rules-rc6" id="persistenceSummaryRc12">
-<p><b>Estado activo</b><span>Pendiente de cargar…</span></p>
-<p><b>Snapshot local</b><span>Pendiente de comprobar…</span></p>
-<p><b>Copia descargada</b><span>Aún no descargada</span></p>
-<p><b>Material privado</b><span>No comprobado</span></p>
+<div class="system-action-grid-rc6 single">
+<button class="btn success" data-system-action="export-work-copy" type="button">Descargar copia de trabajo</button>
 </div>
-</div>
-<div aria-label="Diagnóstico de arranque v1.5" class="card boot-metrics-rc10">
-<div class="section-head">
-<div>
-<h3>Diagnóstico de arranque v1.5</h3>
-<p class="small">Medición técnica de arranque: SQLite/WASM, recuperación local, base pública y primer render activo.</p>
-</div>
-</div>
-<div class="system-rules-rc6" id="bootMetricsSummary">
-<p><b>Arranque</b><span>Pendiente de medir…</span></p>
-<p><b>SQLite/WASM</b><span>Pendiente de medir…</span></p>
-<p><b>Base / IndexedDB</b><span>Pendiente de medir…</span></p>
-<p><b>Render</b><span>Pendiente de medir…</span></p>
-</div>
-<details>
-<summary>Ver marcas técnicas</summary>
-<pre class="mono-output" id="bootMetricsDetails">Pendiente de arrancar…</pre>
-</details>
-</div>
-<div aria-label="Módulos bajo demanda v1.5" class="card boot-metrics-rc10">
-<div class="section-head">
-<div>
-<h3>Módulos bajo demanda v1.5</h3>
-<p class="small">Estado de carga de Panadería, Cocina/Pastelería e Histórico. Se precargan al pasar por encima o enfocar sus accesos para reducir el lag de entrada.</p>
-</div>
-</div>
-<div class="system-rules-rc6" id="featureModulesSummaryV12">
-<p><b>Panadería</b><span>Pendiente</span></p>
-<p><b>Cocina/Pastelería</b><span>Pendiente</span></p>
-<p><b>Histórico</b><span>Pendiente</span></p>
-</div>
-<details>
-<summary>Ver módulos técnicos</summary>
-<pre class="mono-output" id="featureModulesDetailsV12">Pendiente de cargar…</pre>
-</details>
-</div>
-<div aria-label="Evaluación OPFS Worker v1.5" class="card boot-metrics-rc10">
-<div class="section-head">
-<div>
-<h3>Evaluación OPFS/Worker v1.5</h3>
-<p class="small">Diagnóstico de compatibilidad y decisión técnica. No migra la base automáticamente.</p>
-</div>
-</div>
-<div class="system-rules-rc6" id="opfsWorkerSummaryRc13">
-<p><b>Decisión</b><span>Pendiente de evaluar…</span></p>
-<p><b>OPFS</b><span>Pendiente de comprobar…</span></p>
-<p><b>Worker</b><span>Pendiente de comprobar…</span></p>
-<p><b>Servidor actual</b><span>Pendiente de comprobar…</span></p>
-</div>
-<details>
-<summary>Ver evaluación técnica</summary>
-<pre class="mono-output" id="opfsWorkerDetailsRc13">Pendiente de arrancar…</pre>
-</details>
-</div>
-</div>
-<div aria-label="Acciones de gestión de datos" class="system-accordion-list-rc6">
-<details class="card system-accordion-rc6 primary" open="">
-<summary>
-<span class="step-badge-rc6">1</span>
-<span><b>Guardar mi trabajo</b><small>Guarda una copia completa para conservar el trabajo, moverlo a otro equipo o revisarlo antes de publicar.</small></span>
-</summary>
-<div class="system-panel-body-rc6">
+<details class="system-secondary-options-v111">
+<summary>Más opciones de descarga y soporte</summary>
 <div class="system-action-grid-rc6">
-<button class="btn primary" data-system-action="export-private-copy" id="exportPrivateSqlite" type="button">Descargar copia con material local</button>
-<button class="btn ghost" data-system-action="export-technical-json" id="exportJson" type="button">Descargar diagnóstico ligero</button>
-<button class="btn ghost" data-system-action="export-full-audit-json" id="exportFullAuditJsonRc12" type="button">Descargar auditoría completa</button>
+<button class="btn ghost" data-system-action="export-private-copy" id="exportPrivateSqlite" type="button">Descargar copia completa con material local</button>
+<button class="btn ghost" data-system-action="export-technical-json" id="exportJson" type="button">Diagnóstico ligero</button>
+<button class="btn ghost" data-system-action="export-full-audit-json" id="exportFullAuditJsonRc12" type="button">Auditoría completa</button>
 </div>
-<p class="microcopy-rc6"><b>Recomendación:</b> usa “Descargar copia de trabajo” antes de importar, reiniciar, cambiar de ordenador o publicar una nueva versión. El diagnóstico ligero solo describe el estado técnico; la auditoría completa queda bajo demanda porque puede ser pesada o contener material privado.</p>
-</div>
+<p class="microcopy-rc6"><b>Uso normal:</b> utiliza la copia de trabajo. La copia completa conserva también material privado local; la auditoría puede contener datos privados y solo debe compartirse tras revisión.</p>
 </details>
-<details class="card system-accordion-rc6">
-<summary>
-<span class="step-badge-rc6">2</span>
-<span><b>Recuperar una copia</b><small>Continúa desde una copia guardada anteriormente. Sustituye el trabajo local del navegador tras confirmación.</small></span>
-</summary>
-<div class="system-panel-body-rc6">
+</section>
+
+<section class="card system-command-card-v17 folder">
+<div class="system-card-head-v17">
+<div>
+<h3>Guardado automático en carpeta</h3>
+<p class="small">Misma función en PC y móvil, con distinto nivel de garantía: estable en escritorio compatible; parcial y recuperable en Android.</p>
+</div>
+</div>
+<div class="system-folder-status-line-v111 neutral" id="externalFolderStatusLineV111"><b>Sin carpeta vinculada</b><span>Puedes activar una carpeta para copias externas o usar la descarga manual.</span></div>
+<div class="system-folder-primary-v111">
+<button class="btn primary" data-system-action="link-backup-folder" id="externalFolderPrimaryActionV111" type="button">Activar guardado en carpeta</button>
+</div>
+<details class="system-folder-options-v111">
+<summary>Detalle y opciones adicionales</summary>
+<div class="system-folder-summary-v17" id="externalFolderSummaryV16">
+<p><b>Modo</b><span>Pendiente de comprobar…</span></p>
+<p><b>Carpeta</b><span>Sin carpeta vinculada</span></p>
+<p><b>Permiso</b><span>No solicitado</span></p>
+<p><b>Copia de trabajo</b><span>Aún no creada</span></p>
+<p><b>Copia de seguridad</b><span>Aún no creada</span></p>
+<p><b>Protección</b><span>Sin cambios pendientes de copia externa.</span></p>
+<p><b>Aviso</b><span>Sin incidencias</span></p>
+</div>
+<div class="system-button-stack-v17" id="externalFolderActionsV16">
+<button class="btn ghost" data-system-action="link-backup-folder" id="linkExternalFolderV16" type="button">Activar guardado en carpeta</button>
+<button class="btn ghost" data-system-action="refresh-external-folder" id="refreshExternalFolderV16" type="button">Conceder permiso de escritura</button>
+<button class="btn ghost" data-system-action="save-external-work-copy" id="saveExternalWorkCopyV16" type="button">Guardar copia de trabajo ahora</button>
+<button class="btn ghost" data-system-action="save-external-backup" id="saveExternalBackupV16" type="button">Crear copia de seguridad</button>
+<button class="btn danger" data-system-action="unlink-backup-folder" id="unlinkExternalFolderV16" type="button">Olvidar carpeta vinculada</button>
+</div>
+<p class="microcopy-rc6"><b>Copia de trabajo:</b> sobrescribe <code>SwiftRemo_trabajo_actual.sqlite</code> para continuar más tarde. <b>Copia de seguridad:</b> crea archivos fechados en <code>copias_seguridad</code> para recuperar si algo sale mal.</p>
+<p class="microcopy-rc6"><b>Android:</b> se intenta el mismo guardado, pero el navegador puede pedir permiso de nuevo. Si no hay copia externa reciente, la app avisará y mantendrá el snapshot interno.</p>
+</details>
+</section>
+
+<section class="card system-command-card-v17 recover">
+<div class="system-card-head-v17">
+<span class="step-badge-rc6">3</span>
+<div>
+<h3>Recuperar o reiniciar</h3>
+<p class="small">Carga una copia guardada o vuelve a la base pública incluida en la app.</p>
+</div>
+</div>
+<div class="system-action-grid-rc6">
 <button class="btn ghost system-file-button-rc6" data-system-file="#sqliteFile" type="button">Seleccionar copia guardada</button>
 <input accept=".sqlite,.db,application/octet-stream" class="system-hidden-file-rc6" id="sqliteFile" type="file"/>
-<p class="microcopy-rc6">Esta acción es para recuperar o trasladar trabajo. No la uses para preparar la base pública final sin revisar antes el contenido.</p>
-</div>
-</details>
-<details class="card system-accordion-rc6 danger">
-<summary>
-<span class="step-badge-rc6">3</span>
-<span><b>Reiniciar con la base pública</b><small>Vuelve a la base incluida en la app publicada y descarta el trabajo local del navegador.</small></span>
-</summary>
-<div class="system-panel-body-rc6">
 <button class="btn danger" data-system-action="reset-public-base" id="loadInitialDb" type="button">Reiniciar con base pública</button>
-<p class="microcopy-rc6"><b>Atención:</b> antes de reiniciar descarga una copia completa. Esta acción no conserva cambios locales, paquetes privados ni imágenes integradas.</p>
 </div>
-</details>
-<details class="card system-accordion-rc6 private">
+<p class="microcopy-rc6"><b>Atención:</b> recuperar sustituye el trabajo local actual y reiniciar vuelve a la base pública. Descarga una copia antes de cualquiera de estas acciones si quieres conservar el estado actual.</p>
+</section>
+</div>
+
+<details class="card system-private-details-v17 secondary">
 <summary>
-<span class="step-badge-rc6">4</span>
-<span><b>Material privado local</b><small>Integra fichas o fotos autorizadas solo en tu navegador y en tus copias descargadas.</small></span>
+<span><b>Material privado local</b><small>Solo para docentes con material externo autorizado: fichas o fotos que no se publican en la base pública.</small></span>
 </summary>
 <div class="system-panel-body-rc6">
 <div class="system-warning-strip-rc6">
@@ -1416,16 +1381,64 @@
 </div>
 </div>
 </details>
+
+<details class="card system-tech-details-v17">
+<summary>
+<span class="step-badge-rc6">i</span>
+<span><b>Diagnóstico avanzado</b><small>Para soporte técnico o resolución de problemas.</small></span>
+</summary>
+<div class="system-panel-body-rc6 system-tech-grid-v17">
+<section aria-label="Diagnóstico de persistencia" class="system-tech-card-v17">
+<h3>Persistencia profesional v1.5</h3>
+<p class="small">Distingue base pública, trabajo local recuperado, copia descargada y material privado integrado.</p>
+<div class="system-rules-rc6" id="persistenceSummaryRc12">
+<p><b>Estado activo</b><span>Pendiente de cargar…</span></p>
+<p><b>Snapshot local</b><span>Pendiente de comprobar…</span></p>
+<p><b>Copia descargada</b><span>Aún no descargada</span></p>
+<p><b>Material privado</b><span>No comprobado</span></p>
 </div>
-<div class="card system-help-rc6">
-<h2>Regla rápida</h2>
-<div class="system-rules-rc6">
-<p><b>Descargar copia de trabajo</b><span>Guarda todo el trabajo local.</span></p>
-<p><b>Recuperar una copia</b><span>Sustituye la trabajo local actual.</span></p>
-<p><b>Reiniciar</b><span>Vuelve a la base pública limpia.</span></p>
-<p><b>Privado</b><span>No se sube al repositorio.</span></p>
+</section>
+<section aria-label="Diagnóstico de arranque" class="system-tech-card-v17">
+<h3>Diagnóstico de arranque v1.5</h3>
+<div class="system-rules-rc6" id="bootMetricsSummary">
+<p><b>Arranque</b><span>Pendiente de medir…</span></p>
+<p><b>SQLite/WASM</b><span>Pendiente de medir…</span></p>
+<p><b>Base / IndexedDB</b><span>Pendiente de medir…</span></p>
+<p><b>Render</b><span>Pendiente de medir…</span></p>
 </div>
+<details>
+<summary>Ver marcas técnicas</summary>
+<pre class="mono-output" id="bootMetricsDetails">Pendiente de arrancar…</pre>
+</details>
+</section>
+<section aria-label="Módulos bajo demanda" class="system-tech-card-v17">
+<h3>Módulos bajo demanda v1.5</h3>
+<div class="system-rules-rc6" id="featureModulesSummaryV12">
+<p><b>Panadería</b><span>Pendiente</span></p>
+<p><b>Cocina/Pastelería</b><span>Pendiente</span></p>
+<p><b>Histórico</b><span>Pendiente</span></p>
 </div>
+<details>
+<summary>Ver módulos técnicos</summary>
+<pre class="mono-output" id="featureModulesDetailsV12">Pendiente de cargar…</pre>
+</details>
+</section>
+<section aria-label="Evaluación OPFS Worker" class="system-tech-card-v17">
+<h3>Evaluación OPFS/Worker v1.5</h3>
+<div class="system-rules-rc6" id="opfsWorkerSummaryRc13">
+<p><b>Decisión</b><span>Pendiente de evaluar…</span></p>
+<p><b>OPFS</b><span>Pendiente de comprobar…</span></p>
+<p><b>Worker</b><span>Pendiente de comprobar…</span></p>
+<p><b>Servidor actual</b><span>Pendiente de comprobar…</span></p>
+</div>
+<details>
+<summary>Ver evaluación técnica</summary>
+<pre class="mono-output" id="opfsWorkerDetailsRc13">Pendiente de arrancar…</pre>
+</details>
+</section>
+</div>
+</details>
+
 </section>
 <section class="tab-section" id="view-archive-review">
 <div class="card">
@@ -1561,11 +1574,11 @@
   </script>
 <div hidden="" id="swiftremoPrintPreview631"></div>
 <script>window.SwiftRemoBootMetrics&&window.SwiftRemoBootMetrics.mark('bootstrap:start');</script>
-<script onload="window.SwiftRemoBootMetrics&amp;&amp;window.SwiftRemoBootMetrics.moduleLoaded('app')" src="./js/app.js?v=150v15" type="module"></script>
-<script onload="window.SwiftRemoBootMetrics&amp;&amp;window.SwiftRemoBootMetrics.moduleLoaded('combobox')" src="./js/combobox.js?v=150v15" type="module"></script>
+<script onload="window.SwiftRemoBootMetrics&amp;&amp;window.SwiftRemoBootMetrics.moduleLoaded('app')" src="./js/app.js?v=1150v115" type="module"></script>
+<script onload="window.SwiftRemoBootMetrics&amp;&amp;window.SwiftRemoBootMetrics.moduleLoaded('combobox')" src="./js/combobox.js?v=1150v115" type="module"></script>
 <script type="module">
-    import { printClassOrder } from "./js/print.js?v=150v15";
-    import { toast } from "./js/ui.js?v=150v15";
+    import { printClassOrder } from "./js/print.js?v=1150v115";
+    import { toast } from "./js/ui.js?v=1150v115";
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.querySelector("#globalPrintOrderV61");
       if (btn) btn.addEventListener("click", () => {

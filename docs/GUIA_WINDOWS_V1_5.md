@@ -15,4 +15,4 @@ Set-Location (Join-Path $dest "swiftremo_v1_5")
 python -m http.server 8034
 ```
 
-Abrir: `http://127.0.0.1:8034/app/sqlite.html?v=150v15`
+Abrir: `http://127.0.0.1:8034/app/sqlite.html?v=1120v112`

@@ -1,0 +1,6 @@
+SwiftRemo v1.14 · correcciones PDF real de impresión
+
+- Cache: 1140v114.
+- node --check correcto en todos los módulos JS.
+- Importaciones internas actualizadas.
+- Servidor local probado en sqlite.html, app.js, print.js, CSS y SQLite.

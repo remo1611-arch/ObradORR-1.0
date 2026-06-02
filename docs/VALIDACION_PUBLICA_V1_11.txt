@@ -1,0 +1,5 @@
+SwiftRemo v1.12
+- node --check correcto en todos los JS.
+- Rutas JS internas sin importaciones rotas.
+- Servidor local probado para HTML, app.js, storage-service.js, CSS y SQLite.
+- Caché: 1120v112.

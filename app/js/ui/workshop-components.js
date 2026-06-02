@@ -1,4 +1,4 @@
-import { WORKSHOP_STEPS, canUseOrder, canUseOutput, canArchive } from './workshop-flow.js?v=150v15';
+import { WORKSHOP_STEPS, canUseOrder, canUseOutput, canArchive } from './workshop-flow.js?v=1140v114';
 function stepClass(active) {
   return active ? "workshop-step-pill active" : "workshop-step-pill";
 }
@@ -63,6 +63,6 @@ export function workshopOrderStateHtml(workshopState) {
 
 export function workshopOutputStateHtml(workshopState) {
   return workshopState?.hasItems
-    ? `<div class="workshop-state-card ready"><b>Salida preparada</b><span>Centro único para generar dossier, fichas, pedido u opciones avanzadas.</span></div>`
+    ? `<div class="workshop-state-card ready"><b>Salida preparada</b><span>Centro único para generar fichas, pedido limpio, salidas técnicas u opciones avanzadas.</span></div>`
     : `<div class="workshop-state-card empty"><b>Salida no disponible todavía</b><span>Añade al menos una elaboración para activar la impresión y la exportación documental.</span><div class="actions"><button type="button" class="btn primary" data-focus-practice-search="1">Añadir elaboración</button></div></div>`;
 }

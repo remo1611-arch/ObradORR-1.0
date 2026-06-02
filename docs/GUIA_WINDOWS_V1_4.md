@@ -23,5 +23,5 @@ python -m http.server 8033
 Abrir:
 
 ```text
-http://127.0.0.1:8033/app/sqlite.html?v=150v15
+http://127.0.0.1:8033/app/sqlite.html?v=1120v112
 ```
