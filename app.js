@@ -1,6 +1,6 @@
 
-const VERSION = 'obradorr_3_4_1_correccion_arranque_canonico';
-const NOMBRE_IDB = 'obradorr_3_4_1_catalogo_docente';
+const VERSION = '1.0.0';
+const NOMBRE_IDB = 'obradorr_1_0_0';
 const CLAVE_ACTUAL = 'current';
 const CLAVES_SNAPSHOT = ['current', 'prev1', 'prev2'];
 
@@ -271,7 +271,7 @@ function aplicarMigracionesCanonicas(db) {
       actualizado_en TEXT DEFAULT (datetime('now'))
     )`);
   }
-  db.run("INSERT OR REPLACE INTO contrato_canonico_obradorr (clave,valor,actualizado_en) VALUES ('version_contrato','3.4.1 corrección canónica de arranque y harina base única',datetime('now'))");
+  db.run("INSERT OR REPLACE INTO contrato_canonico_obradorr (clave,valor,actualizado_en) VALUES ('version_contrato','1.0.0 estable: catálogo documental, motor de selección, escalado, pedido e impresión',datetime('now'))");
   db.run("INSERT OR REPLACE INTO contrato_canonico_obradorr (clave,valor,actualizado_en) VALUES ('regla_modificaciones_serias','No se aceptan cambios sin contrato, migración si procede, UI completa, persistencia real, impresión afectada revisada y validación automática actualizada.',datetime('now'))");
   db.run('RELEASE SAVEPOINT migraciones_canonicas');
   } catch (error) {
@@ -1091,7 +1091,7 @@ function resumenParametrosPanaderos(e, factor = 1) {
   return { pan, params, harinaBase, masaCruda, aguaEfectiva, hidratacion, perdida, cocido, piezas };
 }
 
-/** Tabla de parámetros panaderos RC10-parity. */
+/** Tabla estable de parámetros panaderos. */
 function tablaParametrosPanaderos(e, factor = 1) {
   const r = resumenParametrosPanaderos(e, factor);
   return `<table class="tabla"><tbody>
@@ -1251,7 +1251,7 @@ function renderFichaCocina(e, opciones, factor = 1) {
   return `<article class="doc doc-cocina">${renderCabeceraFicha(e, 'Ficha de trabajo · cocina/pastelería', factor)}${opciones.fotos ? bloqueFotoPrincipal(e.id) : ''}<h3>Ingredientes y elaborados escalados</h3>${tablaLineasEscaladas(lineas)}${renderBloquesComunesFicha(e, opciones, factor)}</article>`;
 }
 
-/** Renderiza ficha panadera con adaptador documental completo RC10-parity. */
+/** Renderiza la ficha panadera con el adaptador documental estable. */
 function renderFichaPanaderia(e, opciones, factor = 1) {
   const lineas = lineasElaboracion(e.id).filter(l=>l.activo).map(l=>escalarLineaDirecta(l, factor));
   return `<article class="doc doc-panaderia">${renderCabeceraFicha(e, 'Ficha panadera · fórmula dentro del dossier único', factor)}${opciones.fotos ? bloqueFotoPrincipal(e.id) : ''}<h3>Ingredientes / líneas escaladas</h3>${tablaLineasEscaladas(lineas)}${bloquesPanaderia(e, factor)}${renderBloquesComunesFicha(e, opciones, factor)}</article>`;

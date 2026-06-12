@@ -495,7 +495,7 @@ summary { cursor: pointer; font-weight: 800; margin-bottom: .7rem; }
   .galeria-fotos { grid-template-columns: 1fr; }
 }
 
-/* 3.1.0 · contrato documental RC10-parity */
+/* Contrato documental estable · ObradORR 1.0.0 */
 .bloque-panaderia{border:1px solid var(--borde);border-radius:18px;padding:1rem;margin:1rem 0;background:#fffdf7}
 .bloque-panaderia h3{margin-top:1rem}.bloque-panaderia h3:first-child{margin-top:0}
 .subbloque{margin:.85rem 0;padding:.7rem;border-left:4px solid var(--primario);background:#f8faf8;border-radius:10px}

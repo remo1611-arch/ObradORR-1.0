@@ -1,6 +1,8 @@
-ObradORR 3.4.1 CORRECCIÓN ARRANQUE CANÓNICO
+ObradORR 1.0.0
 
-Base técnica: 3.3.0 Catálogo vivo + regla de cambios serios.
-Contenido añadido: catálogo docente inicial equilibrado.
-Estado de fichas nuevas/actualizadas: propuesta_documental, validación de obrador pendiente.
-Cache-busting: obradorr_3_4_1_correccion_arranque_canonico
+Canal: público estable
+Fecha de publicación: 12 de junio de 2026
+Aplicación: base documental offline de cocina, pastelería y panadería
+Catálogo: propuesta documental pendiente de validación de obrador
+Persistencia local: obradorr_1_0_0
+Cache-busting: obradorr_1_0_0

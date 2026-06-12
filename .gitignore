@@ -1,0 +1,10 @@
+# macOS y archivos locales
+.DS_Store
+__MACOSX/
+*.zip
+*.log
+*.tmp
+
+# Copias locales de trabajo
+backup/
+backups/
