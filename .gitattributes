@@ -1,8 +1,0 @@
-*.sqlite binary
-*.db binary
-*.wasm binary
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.webp binary
-*.zip binary
